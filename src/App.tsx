@@ -2,9 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
+import EmailVerificationPage from '@/pages/EmailVerificationPage';
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -48,12 +49,21 @@ function App() {
           }
         />
         <Route
+          path="/auth/verify-email/:token"
+          element={<EmailVerificationPage />}
+        />
+        <Route path="/verify-email" element={<EmailVerificationPage />} />
+        <Route
           path="/dashboard"
           element={
             isAuthenticated ? (
-              <div className="flex min-h-svh flex-col items-center justify-center">
-                <div>Dashboard (próximamente)</div>
-              </div>
+              user?.emailVerified ? (
+                <div className="flex min-h-svh flex-col items-center justify-center">
+                  <div>Dashboard (próximamente)</div>
+                </div>
+              ) : (
+                <Navigate to="/verify-email" replace />
+              )
             ) : (
               <Navigate to="/login" replace />
             )
