@@ -19,7 +19,8 @@ export function SignupForm({
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const navigate = useNavigate();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,6 +30,39 @@ export function SignupForm({
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+
+    if (!trimmedFirstName) {
+      setError('Por favor, ingresa tu nombre');
+      return;
+    }
+
+    if (trimmedFirstName.length < 2) {
+      setError('El nombre debe tener al menos 2 caracteres');
+      return;
+    }
+
+    if (trimmedFirstName.length > 50) {
+      setError('El nombre no puede tener más de 50 caracteres');
+      return;
+    }
+
+    if (!trimmedLastName) {
+      setError('Por favor, ingresa tu apellido');
+      return;
+    }
+
+    if (trimmedLastName.length < 2) {
+      setError('El apellido debe tener al menos 2 caracteres');
+      return;
+    }
+
+    if (trimmedLastName.length > 50) {
+      setError('El apellido no puede tener más de 50 caracteres');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
@@ -40,12 +74,16 @@ export function SignupForm({
       return;
     }
 
-    const nameParts = name.trim().split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+    if (password.length > 100) {
+      setError('La contraseña no puede tener más de 100 caracteres');
+      return;
+    }
 
-    if (!firstName) {
-      setError('Por favor, ingresa tu nombre completo');
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordRegex.test(password)) {
+      setError(
+        'La contraseña debe contener al menos una mayúscula, una minúscula y un número',
+      );
       return;
     }
 
@@ -55,10 +93,10 @@ export function SignupForm({
       await authService.register({
         email,
         password,
-        firstName,
-        lastName,
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
       });
-      navigate('/dashboard');
+      navigate('/verify-email');
     } catch (err: unknown) {
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.message
@@ -88,13 +126,25 @@ export function SignupForm({
                 </div>
               )}
               <div className="grid gap-2">
-                <Label htmlFor="name">Nombre Completo</Label>
+                <Label htmlFor="firstName">Nombre(s)</Label>
                 <Input
-                  id="name"
+                  id="firstName"
                   type="text"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nombre"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lastName">Apellido(s)</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Apellido"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                   required
                   disabled={isLoading}
                 />
@@ -126,7 +176,8 @@ export function SignupForm({
                   disabled={isLoading}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Debe tener al menos 8 caracteres.
+                  Debe tener al menos 8 caracteres y contener al menos una
+                  mayúscula, una minúscula y un número.
                 </p>
               </div>
               <div className="grid gap-2">
