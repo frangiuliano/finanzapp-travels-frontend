@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/authService';
-import { TeamSwitcher } from './team-switcher';
+import { TripSwitcher } from './trip-switcher';
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -36,21 +36,21 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     }
   };
 
-  const teams = [
+  const trips = [
     {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
+      name: 'Viaje a París',
+      icon: GalleryVerticalEnd,
+      baseCurrency: 'EUR',
     },
     {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
+      name: 'Vacaciones en Tokio',
+      icon: AudioWaveform,
+      baseCurrency: 'JPY',
     },
     {
-      name: 'Evil Corp.',
-      logo: Command,
-      plan: 'Free',
+      name: 'Aventura en Nueva York',
+      icon: Command,
+      baseCurrency: 'USD',
     },
   ];
 
@@ -101,7 +101,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={teams} />
+        <TripSwitcher trips={trips} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />
