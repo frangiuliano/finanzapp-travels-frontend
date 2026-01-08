@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import EmailVerificationPage from '@/pages/EmailVerificationPage';
+import DashboardPage from '@/pages/DashboardPage';
 
 function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -58,9 +59,7 @@ function App() {
           element={
             isAuthenticated ? (
               user?.emailVerified ? (
-                <div className="flex min-h-svh flex-col items-center justify-center">
-                  <div>Dashboard (próximamente)</div>
-                </div>
+                <DashboardPage />
               ) : (
                 <Navigate to="/verify-email" replace />
               )
