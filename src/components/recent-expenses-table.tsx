@@ -23,7 +23,6 @@ import {
   MoreVerticalIcon,
   WalletIcon,
 } from 'lucide-react';
-import { z } from 'zod';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,19 +57,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
-export const expenseSchema = z.object({
-  id: z.string(),
-  description: z.string(),
-  amount: z.number(),
-  currency: z.string(),
-  tripName: z.string(),
-  type: z.enum(['shared', 'personal']),
-  createdAt: z.string(),
-  createdBy: z.string(),
-});
-
-type Expense = z.infer<typeof expenseSchema>;
+import { Expense } from '@/types';
 
 const columns: ColumnDef<Expense>[] = [
   {
