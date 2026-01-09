@@ -5,9 +5,6 @@ import {
   WalletIcon,
   UsersIcon,
   SettingsIcon,
-  GalleryVerticalEnd,
-  AudioWaveform,
-  Command,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavMain } from '@/components/nav-main';
@@ -35,24 +32,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       console.error('Error al cerrar sesión:', error);
     }
   };
-
-  const trips = [
-    {
-      name: 'Viaje a París',
-      icon: GalleryVerticalEnd,
-      baseCurrency: 'EUR',
-    },
-    {
-      name: 'Vacaciones en Tokio',
-      icon: AudioWaveform,
-      baseCurrency: 'JPY',
-    },
-    {
-      name: 'Aventura en Nueva York',
-      icon: Command,
-      baseCurrency: 'USD',
-    },
-  ];
 
   const navMain = [
     {
@@ -101,7 +80,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TripSwitcher trips={trips} />
+        <TripSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />

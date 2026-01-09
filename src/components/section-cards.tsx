@@ -1,5 +1,5 @@
 import { TrendingUpIcon, PlaneIcon, WalletIcon, UsersIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -9,41 +9,37 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useSidebar } from '@/components/ui/sidebar-context';
-import { tripsService } from '@/services/tripsService';
+import { useTripsStore } from '@/store/tripsStore';
 
 export function SectionCards() {
   const { state } = useSidebar();
-  const [stats, setStats] = useState({
-    totalTrips: 0,
-    activeTrips: 0,
-    totalExpenses: 0,
-    participants: 0,
-  });
+  const trips = useTripsStore((state) => state.trips);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await tripsService.getAllTrips();
-        const trips = data.trips || [];
-        setStats({
-          totalTrips: trips.length,
-          activeTrips: trips.filter((trip) => {
-            // Considerar activos los viajes de los últimos 30 días
-            const createdAt = new Date(trip.createdAt);
-            const daysDiff =
-              (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-            return daysDiff <= 30;
-          }).length,
-          totalExpenses: 0, // TODO: Implementar cuando tengas el endpoint de gastos
-          participants: 0, // TODO: Implementar cuando tengas el endpoint de participantes
-        });
-      } catch (error) {
-        console.error('Error al cargar estadísticas:', error);
-      }
+  const stats = useMemo(() => {
+    if (!trips || trips.length === 0) {
+      return {
+        totalTrips: 0,
+        activeTrips: 0,
+        totalExpenses: 0,
+        participants: 0,
+      };
+    }
+
+    const totalTrips = trips.length;
+    const now = new Date().getTime();
+    const activeTrips = trips.filter((trip) => {
+      const createdAt = new Date(trip.createdAt).getTime();
+      const daysDiff = (now - createdAt) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 30;
+    }).length;
+
+    return {
+      totalTrips,
+      activeTrips,
+      totalExpenses: 0, // TODO: Implementar cuando tengas el endpoint de gastos
+      participants: 0, // TODO: Implementar cuando tengas el endpoint de participantes
     };
-
-    fetchStats();
-  }, []);
+  }, [trips]);
 
   const gridCols =
     state === 'collapsed'

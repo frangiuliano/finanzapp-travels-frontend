@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Plus } from 'lucide-react';
+import { ChevronsUpDown, Plus, PlaneIcon } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -16,23 +16,52 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar-context';
+import { CreateTripDialog } from '@/components/create-trip-dialog';
+import { useTripsStore } from '@/store/tripsStore';
 
-export function TripSwitcher({
-  trips,
-}: {
-  trips: {
-    name: string;
-    icon: React.ElementType;
-    baseCurrency: string;
-  }[];
-}) {
+export function TripSwitcher() {
   const { isMobile } = useSidebar();
-  const [activeTrip, setActiveTrip] = React.useState(trips[0]);
+  const trips = useTripsStore((state) => state.trips);
+  const currentTrip = useTripsStore((state) => state.currentTrip);
+  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
 
-  if (!activeTrip) {
-    return null;
+  const activeTrip = currentTrip || trips[0];
+
+  React.useEffect(() => {
+    if (!currentTrip && trips.length > 0) {
+      setCurrentTrip(trips[0]);
+    }
+  }, [trips, currentTrip, setCurrentTrip]);
+
+  if (!activeTrip || trips.length === 0) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+          >
+            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+              <Plus className="size-4" />
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-medium">Crear primer viaje</span>
+              <span className="truncate text-xs text-muted-foreground">
+                Haz clic para comenzar
+              </span>
+            </div>
+          </SidebarMenuButton>
+          <CreateTripDialog
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+          />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
   }
 
   return (
@@ -45,7 +74,7 @@ export function TripSwitcher({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <activeTrip.icon className="size-4" />
+                <PlaneIcon className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{activeTrip.name}</span>
@@ -67,19 +96,22 @@ export function TripSwitcher({
             </DropdownMenuLabel>
             {trips.map((trip, index) => (
               <DropdownMenuItem
-                key={trip.name}
-                onClick={() => setActiveTrip(trip)}
+                key={trip._id}
+                onClick={() => setCurrentTrip(trip)}
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
-                  <trip.icon className="size-3.5 shrink-0" />
+                  <PlaneIcon className="size-3.5 shrink-0" />
                 </div>
                 {trip.name}
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
+            <DropdownMenuItem
+              className="gap-2 p-2"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <Plus className="size-4" />
               </div>
@@ -90,6 +122,11 @@ export function TripSwitcher({
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      <CreateTripDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
     </SidebarMenu>
   );
 }
