@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Plus, PlaneIcon } from 'lucide-react';
+import { ChevronsUpDown, Plus, PlaneIcon, UserPlus } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useSidebar } from '@/components/ui/sidebar-context';
 import { CreateTripDialog } from '@/components/create-trip-dialog';
+import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
 import { useTripsStore } from '@/store/tripsStore';
 
 export function TripSwitcher() {
@@ -27,6 +28,7 @@ export function TripSwitcher() {
   const currentTrip = useTripsStore((state) => state.currentTrip);
   const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = React.useState(false);
 
   const activeTrip = currentTrip || trips[0];
 
@@ -110,6 +112,17 @@ export function TripSwitcher() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="gap-2 p-2"
+              onClick={() => setIsInviteDialogOpen(true)}
+            >
+              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                <UserPlus className="size-4" />
+              </div>
+              <div className="text-muted-foreground font-medium">
+                Invitar participante
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2 p-2"
               onClick={() => setIsCreateDialogOpen(true)}
             >
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
@@ -126,6 +139,11 @@ export function TripSwitcher() {
       <CreateTripDialog
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+      />
+
+      <InviteParticipantDialog
+        open={isInviteDialogOpen}
+        onOpenChange={setIsInviteDialogOpen}
       />
     </SidebarMenu>
   );

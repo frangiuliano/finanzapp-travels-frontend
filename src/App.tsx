@@ -4,6 +4,7 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import EmailVerificationPage from '@/pages/EmailVerificationPage';
 import DashboardPage from '@/pages/DashboardPage';
+import InvitationPage from '@/pages/InvitationPage';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -56,6 +57,7 @@ function App() {
           element={<EmailVerificationPage />}
         />
         <Route path="/verify-email" element={<EmailVerificationPage />} />
+        <Route path="/trips/invitation/:token" element={<InvitationPage />} />
         <Route
           path="/dashboard"
           element={
