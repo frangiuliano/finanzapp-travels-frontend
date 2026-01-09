@@ -4,6 +4,7 @@ import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import EmailVerificationPage from '@/pages/EmailVerificationPage';
 import DashboardPage from '@/pages/DashboardPage';
+import { Toaster } from '@/components/ui/sonner';
 
 function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -18,6 +19,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster />
       <Routes>
         <Route
           path="/"
