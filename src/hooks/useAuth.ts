@@ -35,7 +35,7 @@ export const useAuth = () => {
         } else {
           clearAuth();
         }
-      } catch (error) {
+      } catch {
         clearAuth();
       } finally {
         setLoading(false);
@@ -43,6 +43,7 @@ export const useAuth = () => {
     };
 
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
