@@ -29,9 +29,12 @@ import { CreateBudgetDialog } from '@/components/create-budget-dialog';
 import { EditTripDialog } from '@/components/edit-trip-dialog';
 import { CreateTripDialog } from '@/components/create-trip-dialog';
 import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
+import { AddGuestDialog } from '@/components/add-guest-dialog';
+import { InviteGuestDialog } from '@/components/invite-guest-dialog';
+import { TripExpensesSection } from '@/components/trip-expenses-section';
 import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
-import { Pencil, Plus, Trash2, UsersIcon, UserPlus } from 'lucide-react';
+import { Pencil, Plus, Trash2, UsersIcon, UserPlus, Mail } from 'lucide-react';
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<(Trip & { userRole?: ParticipantRole })[]>(
@@ -58,6 +61,13 @@ export default function TripsPage() {
     string | null
   >(null);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [selectedTripForAddGuest, setSelectedTripForAddGuest] = useState<
+    string | null
+  >(null);
+  const [isAddGuestDialogOpen, setIsAddGuestDialogOpen] = useState(false);
+  const [selectedGuestForInvite, setSelectedGuestForInvite] =
+    useState<Participant | null>(null);
+  const [isInviteGuestDialogOpen, setIsInviteGuestDialogOpen] = useState(false);
 
   const removeTrip = useTripsStore((state) => state.removeTrip);
 
@@ -212,7 +222,7 @@ export default function TripsPage() {
 
   const handleRemoveParticipant = async (
     tripId: string,
-    participantUserId: string,
+    participantId: string,
   ) => {
     if (
       !confirm(
@@ -223,13 +233,35 @@ export default function TripsPage() {
     }
 
     try {
-      await participantsService.removeParticipant(tripId, participantUserId);
+      await participantsService.removeParticipant(tripId, participantId);
       toast.success('Participante eliminado exitosamente');
       fetchTrips();
     } catch (error) {
       console.error('Error al eliminar participante:', error);
       toast.error('Error al eliminar el participante');
     }
+  };
+
+  const handleAddGuest = (tripId: string) => {
+    setSelectedTripForAddGuest(tripId);
+    setIsAddGuestDialogOpen(true);
+  };
+
+  const handleGuestAdded = () => {
+    fetchTrips();
+    setIsAddGuestDialogOpen(false);
+    setSelectedTripForAddGuest(null);
+  };
+
+  const handleInviteGuest = (participant: Participant) => {
+    setSelectedGuestForInvite(participant);
+    setIsInviteGuestDialogOpen(true);
+  };
+
+  const handleGuestInvited = () => {
+    fetchTrips();
+    setIsInviteGuestDialogOpen(false);
+    setSelectedGuestForInvite(null);
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -352,17 +384,28 @@ export default function TripsPage() {
                               </Badge>
                             </div>
                             {trip.userRole === ParticipantRole.OWNER && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleInviteParticipant(trip._id)
-                                }
-                                className="w-full sm:w-auto"
-                              >
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Invitar Participante
-                              </Button>
+                              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleInviteParticipant(trip._id)
+                                  }
+                                  className="flex-1 sm:flex-none"
+                                >
+                                  <Mail className="mr-2 h-4 w-4" />
+                                  Invitar por Email
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddGuest(trip._id)}
+                                  className="flex-1 sm:flex-none"
+                                >
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Añadir Invitado
+                                </Button>
+                              </div>
                             )}
                           </div>
 
@@ -386,26 +429,58 @@ export default function TripsPage() {
                               </TableHeader>
                               <TableBody>
                                 {participants.map((participant) => {
-                                  const userId =
-                                    typeof participant.userId === 'string'
-                                      ? participant.userId
-                                      : participant.userId._id;
-                                  const userName =
-                                    typeof participant.userId === 'string'
+                                  const isGuest =
+                                    !participant.userId &&
+                                    participant.guestName;
+
+                                  const displayName = isGuest
+                                    ? participant.guestName!
+                                    : typeof participant.userId === 'string'
                                       ? 'Usuario'
-                                      : `${participant.userId.firstName} ${participant.userId.lastName}`;
-                                  const userEmail =
-                                    typeof participant.userId === 'string'
+                                      : `${participant.userId?.firstName ?? ''} ${participant.userId?.lastName ?? ''}`.trim() ||
+                                        'Usuario';
+
+                                  const displayEmail = isGuest
+                                    ? participant.guestEmail || 'Sin email'
+                                    : typeof participant.userId === 'string'
                                       ? ''
-                                      : participant.userId.email;
+                                      : (participant.userId?.email ?? '');
+
+                                  const hasPendingInvitation =
+                                    participant.invitationId &&
+                                    (typeof participant.invitationId ===
+                                    'object'
+                                      ? participant.invitationId.status ===
+                                        'pending'
+                                      : true);
+
+                                  const participantId = participant._id;
 
                                   return (
                                     <TableRow key={participant._id}>
                                       <TableCell className="font-medium">
-                                        {userName}
+                                        <div className="flex items-center gap-2">
+                                          {displayName}
+                                          {isGuest && (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              Sin cuenta
+                                            </Badge>
+                                          )}
+                                        </div>
                                       </TableCell>
                                       <TableCell className="text-muted-foreground">
-                                        {userEmail}
+                                        {displayEmail}
+                                        {hasPendingInvitation && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="ml-2 text-xs"
+                                          >
+                                            Invitación pendiente
+                                          </Badge>
+                                        )}
                                       </TableCell>
                                       <TableCell>
                                         <Badge
@@ -427,18 +502,36 @@ export default function TripsPage() {
                                         participant.role !==
                                           ParticipantRole.OWNER && (
                                           <TableCell className="text-right">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() =>
-                                                handleRemoveParticipant(
-                                                  trip._id,
-                                                  userId,
-                                                )
-                                              }
-                                            >
-                                              <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-2">
+                                              {isGuest &&
+                                                !hasPendingInvitation && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                      handleInviteGuest(
+                                                        participant,
+                                                      )
+                                                    }
+                                                    title="Enviar invitación por email"
+                                                  >
+                                                    <Mail className="h-4 w-4" />
+                                                  </Button>
+                                                )}
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleRemoveParticipant(
+                                                    trip._id,
+                                                    participantId,
+                                                  )
+                                                }
+                                                title="Eliminar participante"
+                                              >
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                              </Button>
+                                            </div>
                                           </TableCell>
                                         )}
                                     </TableRow>
@@ -448,6 +541,17 @@ export default function TripsPage() {
                             </Table>
                           )}
                         </div>
+
+                        <Separator />
+
+                        {/* Sección de Gastos */}
+                        <TripExpensesSection
+                          tripId={trip._id}
+                          tripName={trip.name}
+                          budgets={budgets}
+                          participants={participants}
+                          onExpensesChange={fetchTrips}
+                        />
 
                         <Separator />
 
@@ -587,6 +691,35 @@ export default function TripsPage() {
           tripId={selectedTripForInvite}
           tripName={trips.find((t) => t._id === selectedTripForInvite)?.name}
           onSuccess={handleParticipantInvited}
+        />
+      )}
+
+      {selectedTripForAddGuest && (
+        <AddGuestDialog
+          open={isAddGuestDialogOpen}
+          onOpenChange={(open) => {
+            setIsAddGuestDialogOpen(open);
+            if (!open) {
+              setSelectedTripForAddGuest(null);
+            }
+          }}
+          tripId={selectedTripForAddGuest}
+          tripName={trips.find((t) => t._id === selectedTripForAddGuest)?.name}
+          onSuccess={handleGuestAdded}
+        />
+      )}
+
+      {selectedGuestForInvite && (
+        <InviteGuestDialog
+          open={isInviteGuestDialogOpen}
+          onOpenChange={(open) => {
+            setIsInviteGuestDialogOpen(open);
+            if (!open) {
+              setSelectedGuestForInvite(null);
+            }
+          }}
+          participant={selectedGuestForInvite}
+          onSuccess={handleGuestInvited}
         />
       )}
     </SidebarProvider>
