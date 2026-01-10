@@ -1,10 +1,16 @@
 import api from './api';
 
+export enum ParticipantRole {
+  OWNER = 'owner',
+  MEMBER = 'member',
+}
+
 export interface Trip {
   _id: string;
   name: string;
   baseCurrency: string;
   createdAt: string;
+  userRole?: ParticipantRole;
   createdBy?: {
     firstName: string;
     lastName: string;
@@ -29,5 +35,17 @@ export const tripsService = {
   }): Promise<{ message: string; trip: Trip }> {
     const response = await api.post('/trips', data);
     return response.data;
+  },
+
+  async updateTrip(
+    id: string,
+    data: { name?: string; baseCurrency?: string },
+  ): Promise<{ message: string; trip: Trip }> {
+    const response = await api.patch(`/trips/${id}`, data);
+    return response.data;
+  },
+
+  async deleteTrip(id: string): Promise<void> {
+    await api.delete(`/trips/${id}`);
   },
 };
