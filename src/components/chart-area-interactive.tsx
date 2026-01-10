@@ -41,7 +41,11 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ChartAreaInteractive() {
+interface ChartAreaInteractiveProps {
+  tripId?: string;
+}
+
+export function ChartAreaInteractive({ tripId }: ChartAreaInteractiveProps) {
   const isMobile = useIsMobile();
   const [timeRange, setTimeRange] = useState(() => (isMobile ? '7d' : '30d'));
   const [chartData, setChartData] = useState<
@@ -55,23 +59,12 @@ export function ChartAreaInteractive() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await tripsService.getAllTrips();
-        const trips = data.trips || [];
-
-        let mockData: Array<{ date: string; shared: number; personal: number }>;
-
-        if (trips.length > 0) {
-          // Generar datos de ejemplo basados en los viajes
-          // TODO: Reemplazar con datos reales de gastos cuando esté disponible
-          mockData = trips.map((trip) => ({
-            date: new Date(trip.createdAt).toISOString().split('T')[0],
-            shared: Math.floor(Math.random() * 500) + 100,
-            personal: Math.floor(Math.random() * 300) + 50,
-          }));
-        } else {
-          // Generar datos mock para los últimos 30 días si no hay viajes
+        // TODO: Reemplazar con datos reales de gastos filtrados por tripId cuando esté disponible
+        // Por ahora, generamos datos mock
+        if (tripId) {
+          // Si hay tripId, generar datos mock específicos para ese viaje
           const today = new Date();
-          mockData = Array.from({ length: 30 }, (_, i) => {
+          const mockData = Array.from({ length: 30 }, (_, i) => {
             const date = new Date(today);
             date.setDate(date.getDate() - (29 - i));
             return {
@@ -80,9 +73,39 @@ export function ChartAreaInteractive() {
               personal: Math.floor(Math.random() * 250) + 80,
             };
           });
-        }
+          setChartData(mockData);
+        } else {
+          // Si no hay tripId, generar datos para todos los viajes (comportamiento anterior)
+          const data = await tripsService.getAllTrips();
+          const trips = data.trips || [];
 
-        setChartData(mockData);
+          let mockData: Array<{
+            date: string;
+            shared: number;
+            personal: number;
+          }>;
+
+          if (trips.length > 0) {
+            mockData = trips.map((trip) => ({
+              date: new Date(trip.createdAt).toISOString().split('T')[0],
+              shared: Math.floor(Math.random() * 500) + 100,
+              personal: Math.floor(Math.random() * 300) + 50,
+            }));
+          } else {
+            const today = new Date();
+            mockData = Array.from({ length: 30 }, (_, i) => {
+              const date = new Date(today);
+              date.setDate(date.getDate() - (29 - i));
+              return {
+                date: date.toISOString().split('T')[0],
+                shared: Math.floor(Math.random() * 400) + 150,
+                personal: Math.floor(Math.random() * 250) + 80,
+              };
+            });
+          }
+
+          setChartData(mockData);
+        }
       } catch (error) {
         console.error('Error al cargar datos del gráfico:', error);
         // Si hay error, generar datos mock por defecto
@@ -101,7 +124,7 @@ export function ChartAreaInteractive() {
     };
 
     fetchData();
-  }, []);
+  }, [tripId]);
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date);
@@ -131,10 +154,14 @@ export function ChartAreaInteractive() {
   return (
     <Card className="@container/card">
       <CardHeader className="relative">
-        <CardTitle>Gastos por Viaje</CardTitle>
+        <CardTitle>
+          {tripId ? 'Gastos del Viaje' : 'Gastos por Viaje'}
+        </CardTitle>
         <CardDescription>
           <span className="@[540px]/card:block hidden">
-            Total de gastos compartidos y personales
+            {tripId
+              ? 'Gastos compartidos y personales del viaje seleccionado'
+              : 'Total de gastos compartidos y personales'}
           </span>
           <span className="@[540px]/card:hidden">Gastos totales</span>
         </CardDescription>

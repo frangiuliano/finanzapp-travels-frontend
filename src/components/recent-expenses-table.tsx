@@ -142,7 +142,11 @@ const columns: ColumnDef<Expense>[] = [
   },
 ];
 
-export function RecentExpensesTable() {
+interface RecentExpensesTableProps {
+  tripId?: string;
+}
+
+export function RecentExpensesTable({ tripId }: RecentExpensesTableProps) {
   const [data, setData] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [rowSelection, setRowSelection] = useState({});
@@ -160,11 +164,19 @@ export function RecentExpensesTable() {
     const fetchExpenses = async () => {
       try {
         // TODO: Reemplazar con la llamada real al API cuando esté disponible
-        // const response = await expensesService.getRecentExpenses();
-        // const expenses = response.data.sort((a, b) =>
-        //   new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        // );
-        // setData(expenses);
+        // if (tripId) {
+        //   const response = await expensesService.getExpensesByTrip(tripId);
+        //   const expenses = response.data.sort((a, b) =>
+        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        //   );
+        //   setData(expenses);
+        // } else {
+        //   const response = await expensesService.getRecentExpenses();
+        //   const expenses = response.data.sort((a, b) =>
+        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        //   );
+        //   setData(expenses);
+        // }
 
         // Datos mock por ahora
         const mockExpenses: Expense[] = [
@@ -200,8 +212,16 @@ export function RecentExpensesTable() {
           },
         ];
 
+        // Si hay tripId, filtrar por viaje (en el futuro esto vendrá del API)
+        let filteredExpenses = mockExpenses;
+        if (tripId) {
+          // Por ahora, como son datos mock, solo filtramos por nombre
+          // En el futuro, el filtro vendrá del backend
+          filteredExpenses = mockExpenses; // TODO: Filtrar por tripId real
+        }
+
         // Ordenar por fecha (más reciente primero)
-        const sorted = mockExpenses.sort(
+        const sorted = filteredExpenses.sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
@@ -214,7 +234,20 @@ export function RecentExpensesTable() {
     };
 
     fetchExpenses();
-  }, []);
+  }, [tripId]);
+
+  // Ocultar columna de viaje si hay tripId
+  useEffect(() => {
+    if (tripId) {
+      setColumnVisibility((prev) => ({ ...prev, tripName: false }));
+    } else {
+      setColumnVisibility((prev) => {
+        const newVisibility = { ...prev };
+        delete newVisibility.tripName;
+        return newVisibility;
+      });
+    }
+  }, [tripId]);
 
   const table = useReactTable({
     data,
@@ -244,9 +277,13 @@ export function RecentExpensesTable() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Últimos Gastos</CardTitle>
+            <CardTitle>
+              {tripId ? 'Gastos Recientes del Viaje' : 'Últimos Gastos'}
+            </CardTitle>
             <CardDescription>
-              Gastos recientes ordenados por fecha de creación
+              {tripId
+                ? 'Gastos recientes del viaje seleccionado'
+                : 'Gastos recientes ordenados por fecha de creación'}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
