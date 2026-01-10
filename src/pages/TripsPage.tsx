@@ -22,13 +22,16 @@ import {
 } from '@/components/ui/table';
 import { tripsService, Trip, ParticipantRole } from '@/services/tripsService';
 import { budgetsService } from '@/services/budgetsService';
+import { participantsService } from '@/services/participantsService';
 import { Budget } from '@/types/budget';
+import { Participant } from '@/types/participant';
 import { CreateBudgetDialog } from '@/components/create-budget-dialog';
 import { EditTripDialog } from '@/components/edit-trip-dialog';
 import { CreateTripDialog } from '@/components/create-trip-dialog';
+import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
 import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, UsersIcon, UserPlus } from 'lucide-react';
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<(Trip & { userRole?: ParticipantRole })[]>(
@@ -37,6 +40,9 @@ export default function TripsPage() {
   const [budgetsByTrip, setBudgetsByTrip] = useState<Record<string, Budget[]>>(
     {},
   );
+  const [participantsByTrip, setParticipantsByTrip] = useState<
+    Record<string, Participant[]>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTripForEdit, setSelectedTripForEdit] = useState<Trip | null>(
     null,
@@ -48,6 +54,10 @@ export default function TripsPage() {
   >(null);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
+  const [selectedTripForInvite, setSelectedTripForInvite] = useState<
+    string | null
+  >(null);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
   const removeTrip = useTripsStore((state) => state.removeTrip);
 
@@ -61,28 +71,58 @@ export default function TripsPage() {
       const { trips: fetchedTrips } = await tripsService.getAllTrips();
       setTrips(fetchedTrips);
 
-      // Cargar budgets para cada trip
-      const budgetsPromises = fetchedTrips.map(async (trip) => {
+      // Cargar budgets y participantes para cada trip
+      const dataPromises = fetchedTrips.map(async (trip) => {
         try {
-          const { budgets } = await budgetsService.getAllBudgetsByTrip(
-            trip._id,
-          );
-          return { tripId: trip._id, budgets };
+          const [budgetsResult, participantsResult] = await Promise.all([
+            budgetsService
+              .getAllBudgetsByTrip(trip._id)
+              .then(({ budgets }) => ({ budgets }))
+              .catch((error) => {
+                console.error(
+                  `Error al cargar budgets para trip ${trip._id}:`,
+                  error,
+                );
+                return { budgets: [] };
+              }),
+            participantsService
+              .getParticipants(trip._id)
+              .then(({ participants }) => ({ participants }))
+              .catch((error) => {
+                console.error(
+                  `Error al cargar participantes para trip ${trip._id}:`,
+                  error,
+                );
+                return { participants: [] };
+              }),
+          ]);
+
+          return {
+            tripId: trip._id,
+            budgets: budgetsResult.budgets,
+            participants: participantsResult.participants,
+          };
         } catch (error) {
-          console.error(
-            `Error al cargar budgets para trip ${trip._id}:`,
-            error,
-          );
-          return { tripId: trip._id, budgets: [] };
+          console.error(`Error al cargar datos para trip ${trip._id}:`, error);
+          return {
+            tripId: trip._id,
+            budgets: [],
+            participants: [],
+          };
         }
       });
 
-      const budgetsResults = await Promise.all(budgetsPromises);
+      const dataResults = await Promise.all(dataPromises);
       const budgetsMap: Record<string, Budget[]> = {};
-      budgetsResults.forEach(({ tripId, budgets }) => {
+      const participantsMap: Record<string, Participant[]> = {};
+
+      dataResults.forEach(({ tripId, budgets, participants }) => {
         budgetsMap[tripId] = budgets;
+        participantsMap[tripId] = participants;
       });
+
       setBudgetsByTrip(budgetsMap);
+      setParticipantsByTrip(participantsMap);
     } catch (error) {
       console.error('Error al cargar viajes:', error);
       toast.error('Error al cargar los viajes');
@@ -159,6 +199,39 @@ export default function TripsPage() {
     fetchTrips();
   };
 
+  const handleInviteParticipant = (tripId: string) => {
+    setSelectedTripForInvite(tripId);
+    setIsInviteDialogOpen(true);
+  };
+
+  const handleParticipantInvited = () => {
+    fetchTrips();
+    setIsInviteDialogOpen(false);
+    setSelectedTripForInvite(null);
+  };
+
+  const handleRemoveParticipant = async (
+    tripId: string,
+    participantUserId: string,
+  ) => {
+    if (
+      !confirm(
+        '¿Estás seguro de que deseas eliminar este participante del viaje?',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await participantsService.removeParticipant(tripId, participantUserId);
+      toast.success('Participante eliminado exitosamente');
+      fetchTrips();
+    } catch (error) {
+      console.error('Error al eliminar participante:', error);
+      toast.error('Error al eliminar el participante');
+    }
+  };
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -211,6 +284,7 @@ export default function TripsPage() {
             <div className="px-4 pb-4 lg:px-6 space-y-6">
               {trips.map((trip) => {
                 const budgets = budgetsByTrip[trip._id] || [];
+                const participants = participantsByTrip[trip._id] || [];
                 const totalBudget = budgets.reduce(
                   (sum, budget) => sum + budget.amount,
                   0,
@@ -266,84 +340,200 @@ export default function TripsPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <h3 className="font-semibold">Presupuestos</h3>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleCreateBudget(trip._id)}
-                            className="w-full sm:w-auto"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Agregar Presupuesto
-                          </Button>
-                        </div>
+                      <div className="space-y-6">
+                        {/* Sección de Participantes */}
+                        <div className="space-y-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-2">
+                              <UsersIcon className="h-5 w-5" />
+                              <h3 className="font-semibold">Participantes</h3>
+                              <Badge variant="outline" className="ml-2">
+                                {participants.length}
+                              </Badge>
+                            </div>
+                            {trip.userRole === ParticipantRole.OWNER && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleInviteParticipant(trip._id)
+                                }
+                                className="w-full sm:w-auto"
+                              >
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Invitar Participante
+                              </Button>
+                            )}
+                          </div>
 
-                        {budgets.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            No hay presupuestos para este viaje
-                          </p>
-                        ) : (
-                          <>
+                          {participants.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No hay participantes en este viaje
+                            </p>
+                          ) : (
                             <Table>
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>Nombre</TableHead>
-                                  <TableHead>Monto</TableHead>
-                                  <TableHead>Moneda</TableHead>
-                                  <TableHead className="text-right">
-                                    Acciones
-                                  </TableHead>
+                                  <TableHead>Email</TableHead>
+                                  <TableHead>Rol</TableHead>
+                                  {trip.userRole === ParticipantRole.OWNER && (
+                                    <TableHead className="text-right">
+                                      Acciones
+                                    </TableHead>
+                                  )}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {budgets.map((budget) => (
-                                  <TableRow key={budget._id}>
-                                    <TableCell className="font-medium">
-                                      {budget.name}
-                                    </TableCell>
-                                    <TableCell>
-                                      {formatCurrency(
-                                        budget.amount,
-                                        budget.currency,
-                                      )}
-                                    </TableCell>
-                                    <TableCell>{budget.currency}</TableCell>
-                                    <TableCell className="text-right">
-                                      <div className="flex justify-end gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() =>
-                                            handleEditBudget(budget)
+                                {participants.map((participant) => {
+                                  const userId =
+                                    typeof participant.userId === 'string'
+                                      ? participant.userId
+                                      : participant.userId._id;
+                                  const userName =
+                                    typeof participant.userId === 'string'
+                                      ? 'Usuario'
+                                      : `${participant.userId.firstName} ${participant.userId.lastName}`;
+                                  const userEmail =
+                                    typeof participant.userId === 'string'
+                                      ? ''
+                                      : participant.userId.email;
+
+                                  return (
+                                    <TableRow key={participant._id}>
+                                      <TableCell className="font-medium">
+                                        {userName}
+                                      </TableCell>
+                                      <TableCell className="text-muted-foreground">
+                                        {userEmail}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge
+                                          variant={
+                                            participant.role ===
+                                            ParticipantRole.OWNER
+                                              ? 'default'
+                                              : 'secondary'
                                           }
                                         >
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() =>
-                                            handleDeleteBudget(budget)
-                                          }
-                                        >
-                                          <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
+                                          {participant.role ===
+                                          ParticipantRole.OWNER
+                                            ? 'Propietario'
+                                            : 'Miembro'}
+                                        </Badge>
+                                      </TableCell>
+                                      {trip.userRole ===
+                                        ParticipantRole.OWNER &&
+                                        participant.role !==
+                                          ParticipantRole.OWNER && (
+                                          <TableCell className="text-right">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                handleRemoveParticipant(
+                                                  trip._id,
+                                                  userId,
+                                                )
+                                              }
+                                            >
+                                              <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                          </TableCell>
+                                        )}
+                                    </TableRow>
+                                  );
+                                })}
                               </TableBody>
                             </Table>
-                            <div className="pt-2 border-t">
-                              <p className="text-sm font-semibold text-right">
-                                Total:{' '}
-                                {formatCurrency(totalBudget, trip.baseCurrency)}
-                              </p>
-                            </div>
-                          </>
-                        )}
+                          )}
+                        </div>
+
+                        <Separator />
+
+                        {/* Sección de Presupuestos */}
+                        <div className="space-y-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h3 className="font-semibold">Presupuestos</h3>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCreateBudget(trip._id)}
+                              className="w-full sm:w-auto"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Agregar Presupuesto
+                            </Button>
+                          </div>
+
+                          {budgets.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No hay presupuestos para este viaje
+                            </p>
+                          ) : (
+                            <>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Nombre</TableHead>
+                                    <TableHead>Monto</TableHead>
+                                    <TableHead>Moneda</TableHead>
+                                    <TableHead className="text-right">
+                                      Acciones
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {budgets.map((budget) => (
+                                    <TableRow key={budget._id}>
+                                      <TableCell className="font-medium">
+                                        {budget.name}
+                                      </TableCell>
+                                      <TableCell>
+                                        {formatCurrency(
+                                          budget.amount,
+                                          budget.currency,
+                                        )}
+                                      </TableCell>
+                                      <TableCell>{budget.currency}</TableCell>
+                                      <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleEditBudget(budget)
+                                            }
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleDeleteBudget(budget)
+                                            }
+                                          >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                              <div className="pt-2 border-t">
+                                <p className="text-sm font-semibold text-right">
+                                  Total:{' '}
+                                  {formatCurrency(
+                                    totalBudget,
+                                    trip.baseCurrency,
+                                  )}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -382,6 +572,21 @@ export default function TripsPage() {
           tripId={selectedTripForBudget}
           budget={selectedBudget}
           onSuccess={handleBudgetSuccess}
+        />
+      )}
+
+      {selectedTripForInvite && (
+        <InviteParticipantDialog
+          open={isInviteDialogOpen}
+          onOpenChange={(open) => {
+            setIsInviteDialogOpen(open);
+            if (!open) {
+              setSelectedTripForInvite(null);
+            }
+          }}
+          tripId={selectedTripForInvite}
+          tripName={trips.find((t) => t._id === selectedTripForInvite)?.name}
+          onSuccess={handleParticipantInvited}
         />
       )}
     </SidebarProvider>

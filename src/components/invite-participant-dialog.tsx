@@ -20,6 +20,7 @@ interface InviteParticipantDialogProps {
   onOpenChange: (open: boolean) => void;
   tripId?: string;
   tripName?: string;
+  onSuccess?: () => void;
 }
 
 export function InviteParticipantDialog({
@@ -27,6 +28,7 @@ export function InviteParticipantDialog({
   onOpenChange,
   tripId,
   tripName,
+  onSuccess,
 }: InviteParticipantDialogProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -74,6 +76,7 @@ export function InviteParticipantDialog({
 
       setEmail('');
       onOpenChange(false);
+      onSuccess?.();
     } catch (err) {
       const axiosError = err as AxiosError<{ message?: string }>;
       const errorMessage =
