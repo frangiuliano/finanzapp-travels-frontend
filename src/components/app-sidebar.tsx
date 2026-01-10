@@ -2,9 +2,8 @@ import { ComponentProps } from 'react';
 import {
   PlaneIcon,
   BarChartIcon,
-  WalletIcon,
-  UsersIcon,
   SettingsIcon,
+  TrendingUpIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavMain } from '@/components/nav-main';
@@ -45,14 +44,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       icon: PlaneIcon,
     },
     {
-      title: 'Gastos',
-      url: '/expenses',
-      icon: WalletIcon,
-    },
-    {
-      title: 'Participantes',
-      url: '/participants',
-      icon: UsersIcon,
+      title: 'Estadísticas',
+      url: '/statistics',
+      icon: TrendingUpIcon,
     },
   ];
 

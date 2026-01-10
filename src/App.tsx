@@ -6,6 +6,7 @@ import EmailVerificationPage from '@/pages/EmailVerificationPage';
 import DashboardPage from '@/pages/DashboardPage';
 import InvitationPage from '@/pages/InvitationPage';
 import TripsPage from '@/pages/TripsPage';
+import StatisticsPage from '@/pages/StatisticsPage';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -79,6 +80,20 @@ function App() {
             isAuthenticated ? (
               user?.emailVerified ? (
                 <TripsPage />
+              ) : (
+                <Navigate to="/verify-email" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/statistics"
+          element={
+            isAuthenticated ? (
+              user?.emailVerified ? (
+                <StatisticsPage />
               ) : (
                 <Navigate to="/verify-email" replace />
               )
