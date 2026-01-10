@@ -12,8 +12,14 @@ import { Button } from '@/components/ui/button';
 import { PlaneIcon } from 'lucide-react';
 import { tripsService } from '@/services/tripsService';
 import { budgetsService } from '@/services/budgetsService';
+import { expensesService } from '@/services/expensesService';
+import { participantsService } from '@/services/participantsService';
 import { useTripsStore } from '@/store/tripsStore';
 import { Budget } from '@/types/budget';
+import { Expense } from '@/types/expense';
+import { Participant } from '@/types/participant';
+import { CreateExpenseDialog } from '@/components/create-expense-dialog';
+import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -23,6 +29,11 @@ export default function DashboardPage() {
   const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
   const setIsLoading = useTripsStore((state) => state.setIsLoading);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
   const activeTrip = currentTrip || trips[0];
 
@@ -48,40 +59,78 @@ export default function DashboardPage() {
   }, [setTrips, setCurrentTrip, setIsLoading, currentTrip]);
 
   useEffect(() => {
-    const fetchBudgets = async () => {
+    const fetchData = async () => {
       if (!activeTrip) {
         setBudgets([]);
+        setParticipants([]);
+        setTotalExpenses(0);
         return;
       }
 
       try {
-        const { budgets: fetchedBudgets } =
-          await budgetsService.getAllBudgetsByTrip(activeTrip._id);
-        setBudgets(fetchedBudgets);
+        const [budgetsResult, participantsResult, expensesResult] =
+          await Promise.all([
+            budgetsService
+              .getAllBudgetsByTrip(activeTrip._id)
+              .then(({ budgets }) => budgets)
+              .catch(() => []),
+            participantsService
+              .getParticipants(activeTrip._id)
+              .then(({ participants }) => participants)
+              .catch(() => []),
+            expensesService
+              .getExpenses(activeTrip._id)
+              .then(({ expenses }) => expenses)
+              .catch(() => []),
+          ]);
+
+        setBudgets(budgetsResult);
+        setParticipants(participantsResult);
+        const total = expensesResult.reduce(
+          (sum, expense) => sum + expense.amount,
+          0,
+        );
+        setTotalExpenses(total);
       } catch (error) {
-        console.error('Error al cargar budgets:', error);
+        console.error('Error al cargar datos:', error);
         setBudgets([]);
+        setParticipants([]);
+        setTotalExpenses(0);
       }
     };
 
-    fetchBudgets();
-  }, [activeTrip]);
+    fetchData();
+  }, [activeTrip, refreshTrigger]);
 
   const handleBudgetsChange = () => {
-    if (activeTrip) {
-      budgetsService
-        .getAllBudgetsByTrip(activeTrip._id)
-        .then(({ budgets: fetchedBudgets }) => {
-          setBudgets(fetchedBudgets);
-        })
-        .catch((error) => {
-          console.error('Error al recargar budgets:', error);
-        });
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleExpenseEdit = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setIsExpenseDialogOpen(true);
+  };
+
+  const handleExpenseDelete = async (expenseId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+      return;
+    }
+
+    try {
+      await expensesService.deleteExpense(expenseId);
+      toast.success('Gasto eliminado exitosamente');
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error('Error al eliminar gasto:', error);
+      toast.error('Error al eliminar el gasto');
     }
   };
 
-  // TODO: Implementar cuando tengas el endpoint de gastos
-  const totalExpenses = 0;
+  const handleExpenseSuccess = () => {
+    setRefreshTrigger((prev) => prev + 1);
+    setIsExpenseDialogOpen(false);
+    setSelectedExpense(null);
+  };
 
   if (!activeTrip) {
     return (
@@ -142,10 +191,31 @@ export default function DashboardPage() {
           </div>
           <Separator />
           <div className="px-4 pb-4 lg:px-6">
-            <RecentExpensesTable tripId={activeTrip._id} />
+            <RecentExpensesTable
+              tripId={activeTrip._id}
+              onEdit={handleExpenseEdit}
+              onDelete={handleExpenseDelete}
+              refreshTrigger={refreshTrigger}
+              onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
+            />
           </div>
         </div>
       </SidebarInset>
+
+      <CreateExpenseDialog
+        open={isExpenseDialogOpen}
+        onOpenChange={(open) => {
+          setIsExpenseDialogOpen(open);
+          if (!open) {
+            setSelectedExpense(null);
+          }
+        }}
+        tripId={activeTrip._id}
+        budgets={budgets}
+        participants={participants}
+        expense={selectedExpense}
+        onSuccess={handleExpenseSuccess}
+      />
     </SidebarProvider>
   );
 }
