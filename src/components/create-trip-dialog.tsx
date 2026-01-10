@@ -21,29 +21,21 @@ import { tripsService } from '@/services/tripsService';
 import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
+import { CURRENCY_OPTIONS, DEFAULT_CURRENCY } from '@/constants/currencies';
 
 interface CreateTripDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
-
-const currencies = [
-  { value: 'USD', label: 'USD - Dólar Estadounidense' },
-  { value: 'EUR', label: 'EUR - Euro' },
-  { value: 'ARS', label: 'ARS - Peso Argentino' },
-  { value: 'BRL', label: 'BRL - Real Brasileño' },
-  { value: 'MXN', label: 'MXN - Peso Mexicano' },
-  { value: 'COP', label: 'COP - Peso Colombiano' },
-  { value: 'CLP', label: 'CLP - Peso Chileno' },
-  { value: 'PEN', label: 'PEN - Sol Peruano' },
-];
 
 export function CreateTripDialog({
   open,
   onOpenChange,
+  onSuccess,
 }: CreateTripDialogProps) {
   const [name, setName] = useState('');
-  const [baseCurrency, setBaseCurrency] = useState('USD');
+  const [baseCurrency, setBaseCurrency] = useState(DEFAULT_CURRENCY);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string }>({});
 
@@ -88,9 +80,10 @@ export function CreateTripDialog({
       }
 
       setName('');
-      setBaseCurrency('USD');
+      setBaseCurrency(DEFAULT_CURRENCY);
       setErrors({});
 
+      onSuccess?.();
       onOpenChange(false);
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -112,7 +105,7 @@ export function CreateTripDialog({
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setName('');
-      setBaseCurrency('USD');
+      setBaseCurrency(DEFAULT_CURRENCY);
       setErrors({});
     }
     onOpenChange(newOpen);
@@ -155,7 +148,7 @@ export function CreateTripDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {currencies.map((currency) => (
+                {CURRENCY_OPTIONS.map((currency) => (
                   <SelectItem key={currency.value} value={currency.value}>
                     {currency.label}
                   </SelectItem>

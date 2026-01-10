@@ -26,6 +26,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -171,7 +172,7 @@ export function RecentExpensesTable() {
             id: '1',
             description: 'Almuerzo en restaurante',
             amount: 45.5,
-            currency: 'USD',
+            currency: DEFAULT_CURRENCY,
             tripName: 'Viaje a París',
             type: 'shared',
             createdAt: new Date().toISOString(),
@@ -181,7 +182,7 @@ export function RecentExpensesTable() {
             id: '2',
             description: 'Taxi al aeropuerto',
             amount: 30.0,
-            currency: 'USD',
+            currency: DEFAULT_CURRENCY,
             tripName: 'Viaje a París',
             type: 'personal',
             createdAt: new Date(Date.now() - 86400000).toISOString(),
