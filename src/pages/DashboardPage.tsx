@@ -30,7 +30,10 @@ export default function DashboardPage() {
   const setIsLoading = useTripsStore((state) => state.setIsLoading);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalBudgetedExpenses, setTotalBudgetedExpenses] = useState(0);
+  const [totalUnbudgetedExpenses, setTotalUnbudgetedExpenses] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
@@ -63,7 +66,10 @@ export default function DashboardPage() {
       if (!activeTrip) {
         setBudgets([]);
         setParticipants([]);
+        setExpenses([]);
         setTotalExpenses(0);
+        setTotalBudgetedExpenses(0);
+        setTotalUnbudgetedExpenses(0);
         return;
       }
 
@@ -86,16 +92,31 @@ export default function DashboardPage() {
 
         setBudgets(budgetsResult);
         setParticipants(participantsResult);
+        setExpenses(expensesResult);
+
         const total = expensesResult.reduce(
           (sum, expense) => sum + expense.amount,
           0,
         );
         setTotalExpenses(total);
+
+        const totalWithBudget = expensesResult
+          .filter((expense) => expense.budgetId)
+          .reduce((sum, expense) => sum + expense.amount, 0);
+        setTotalBudgetedExpenses(totalWithBudget);
+
+        const totalWithoutBudget = expensesResult
+          .filter((expense) => !expense.budgetId)
+          .reduce((sum, expense) => sum + expense.amount, 0);
+        setTotalUnbudgetedExpenses(totalWithoutBudget);
       } catch (error) {
         console.error('Error al cargar datos:', error);
         setBudgets([]);
         setParticipants([]);
+        setExpenses([]);
         setTotalExpenses(0);
+        setTotalBudgetedExpenses(0);
+        setTotalUnbudgetedExpenses(0);
       }
     };
 
@@ -173,6 +194,8 @@ export default function DashboardPage() {
               tripName={activeTrip.name}
               budgets={budgets}
               totalExpenses={totalExpenses}
+              totalBudgetedExpenses={totalBudgetedExpenses}
+              totalUnbudgetedExpenses={totalUnbudgetedExpenses}
               currency={activeTrip.baseCurrency}
             />
           </div>
@@ -182,6 +205,7 @@ export default function DashboardPage() {
               tripId={activeTrip._id}
               tripName={activeTrip.name}
               budgets={budgets}
+              expenses={expenses}
               onBudgetsChange={handleBudgetsChange}
             />
           </div>

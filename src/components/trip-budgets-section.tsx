@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 import { Budget } from '@/types/budget';
+import { Expense } from '@/types/expense';
 import { CreateBudgetDialog } from './create-budget-dialog';
 import { toast } from 'sonner';
 import { budgetsService } from '@/services/budgetsService';
@@ -26,6 +27,7 @@ interface TripBudgetsSectionProps {
   tripId: string;
   tripName: string;
   budgets: Budget[];
+  expenses: Expense[];
   onBudgetsChange: () => void;
 }
 
@@ -33,6 +35,7 @@ export function TripBudgetsSection({
   tripId,
   tripName,
   budgets,
+  expenses,
   onBudgetsChange,
 }: TripBudgetsSectionProps) {
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
@@ -74,15 +77,14 @@ export function TripBudgetsSection({
     }
   };
 
-  // TODO: Calcular gastos reales cuando esté disponible el endpoint
-  const getBudgetSpent = () => {
-    // Mock: Por ahora retornamos 0, cuando tengas gastos reales, calcula aquí
-    return 0;
+  const getBudgetSpent = (budgetId: string) => {
+    return expenses
+      .filter((expense) => expense.budgetId === budgetId)
+      .reduce((sum, expense) => sum + expense.amount, 0);
   };
 
   const getBudgetUsage = (budget: Budget) => {
-    // Mock: Por ahora retornamos 0, cuando tengas gastos reales, calcula aquí
-    const spent = getBudgetSpent();
+    const spent = getBudgetSpent(budget._id);
     return budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
   };
 
@@ -137,7 +139,7 @@ export function TripBudgetsSection({
               </TableHeader>
               <TableBody>
                 {budgets.map((budget) => {
-                  const spent = getBudgetSpent();
+                  const spent = getBudgetSpent(budget._id);
                   const usage = getBudgetUsage(budget);
 
                   return (

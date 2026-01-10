@@ -1,4 +1,9 @@
-import { WalletIcon, TrendingUpIcon, PiggyBankIcon } from 'lucide-react';
+import {
+  WalletIcon,
+  TrendingUpIcon,
+  PiggyBankIcon,
+  BanknoteIcon,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import {
   Card,
@@ -14,6 +19,8 @@ interface TripDashboardCardsProps {
   tripName: string;
   budgets: Budget[];
   totalExpenses: number;
+  totalBudgetedExpenses: number;
+  totalUnbudgetedExpenses: number;
   currency: string;
 }
 
@@ -21,27 +28,32 @@ export function TripDashboardCards({
   tripName,
   budgets,
   totalExpenses,
+  totalBudgetedExpenses,
+  totalUnbudgetedExpenses,
   currency,
 }: TripDashboardCardsProps) {
   const { state } = useSidebar();
 
   const stats = useMemo(() => {
     const totalBudget = budgets.reduce((sum, budget) => sum + budget.amount, 0);
+    // Usar solo gastos con presupuesto para calcular el uso
     const budgetUsage =
-      totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0;
+      totalBudget > 0 ? (totalBudgetedExpenses / totalBudget) * 100 : 0;
 
     return {
       totalBudget,
       totalExpenses,
+      totalBudgetedExpenses,
+      totalUnbudgetedExpenses,
       budgetUsage: Math.min(budgetUsage, 100), // Cap at 100%
       budgetCount: budgets.length,
     };
-  }, [budgets, totalExpenses]);
+  }, [budgets, totalExpenses, totalBudgetedExpenses, totalUnbudgetedExpenses]);
 
   const gridCols =
     state === 'collapsed'
-      ? 'grid-cols-1 md:grid-cols-3'
-      : 'grid-cols-1 md:grid-cols-3';
+      ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -103,13 +115,32 @@ export function TripDashboardCards({
         <CardFooter className="flex-col items-start gap-1 text-sm">
           <div className="line-clamp-1 flex gap-2 font-medium">
             {stats.totalBudget > 0
-              ? `${formatCurrency(stats.totalBudget - stats.totalExpenses)} restantes`
+              ? `${formatCurrency(stats.totalBudget - stats.totalBudgetedExpenses)} restantes`
               : 'Sin presupuesto definido'}
           </div>
           <div className="text-muted-foreground">
             {stats.totalBudget > 0
               ? `de ${formatCurrency(stats.totalBudget)}`
               : 'Agrega buckets para ver el uso'}
+          </div>
+        </CardFooter>
+      </Card>
+      <Card className="@container/card">
+        <CardHeader className="relative">
+          <CardDescription>Gastos Fuera de Presupuesto</CardDescription>
+          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+            {formatCurrency(stats.totalUnbudgetedExpenses)}
+          </CardTitle>
+          <div className="absolute right-4 top-4">
+            <BanknoteIcon className="size-6 text-muted-foreground" />
+          </div>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">
+            Gastos sin presupuesto asignado
+          </div>
+          <div className="text-muted-foreground">
+            No afectan el uso del presupuesto
           </div>
         </CardFooter>
       </Card>
