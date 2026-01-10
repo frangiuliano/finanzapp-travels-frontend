@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import {
   Card,
@@ -46,11 +46,7 @@ export function TripExpensesSection({
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
-    fetchExpenses();
-  }, [tripId, refreshTrigger]);
-
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     if (!tripId) return;
 
     try {
@@ -69,7 +65,11 @@ export function TripExpensesSection({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tripId]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses, refreshTrigger]);
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('es-ES', {

@@ -92,9 +92,13 @@ export function CreateExpenseDialog({
           : new Date().toISOString().split('T')[0],
       );
 
-      if (expense.paidByParticipantId) {
+      if (expense.paidByParticipant || expense.paidByParticipantId) {
         setPaidByType('participant');
-        setPaidByParticipantId(expense.paidByParticipantId);
+        const participantId =
+          expense.paidByParticipant?._id || expense.paidByParticipantId;
+        if (participantId) {
+          setPaidByParticipantId(participantId.toString());
+        }
       } else if (expense.paidByThirdParty) {
         setPaidByType('thirdParty');
         setThirdPartyName(expense.paidByThirdParty.name);
