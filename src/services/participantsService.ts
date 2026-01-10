@@ -38,7 +38,7 @@ export const participantsService = {
     tripId: string,
   ): Promise<{ participants: Participant[] }> {
     const response = await api.get(`/participants/trip/${tripId}`);
-    return { participants: response.data };
+    return response.data;
   },
 
   async getPendingInvitations(
@@ -50,8 +50,34 @@ export const participantsService = {
 
   async removeParticipant(
     tripId: string,
-    participantUserId: string,
+    participantId: string,
   ): Promise<void> {
-    await api.delete(`/participants/trip/${tripId}/user/${participantUserId}`);
+    await api.delete(
+      `/participants/trip/${tripId}/participant/${participantId}`,
+    );
+  },
+
+  async addGuestParticipant(
+    tripId: string,
+    guestName: string,
+    guestEmail?: string,
+  ): Promise<{ participant: Participant; message: string }> {
+    const response = await api.post('/participants/guest', {
+      tripId,
+      guestName,
+      guestEmail,
+    });
+    return response.data;
+  },
+
+  async inviteGuest(
+    participantId: string,
+    email: string,
+  ): Promise<{ invitation: Invitation; message: string }> {
+    const response = await api.post(
+      `/participants/guest/${participantId}/invite`,
+      { email },
+    );
+    return response.data;
   },
 };

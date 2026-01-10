@@ -13,6 +13,34 @@ export enum InvitationStatus {
 export interface Participant {
   _id: string;
   tripId: string;
+  userId?:
+    | string
+    | {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+  guestName?: string;
+  guestEmail?: string;
+  invitationId?:
+    | string
+    | {
+        _id: string;
+        status: InvitationStatus;
+        email: string;
+      };
+  role: ParticipantRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type GuestParticipant = Participant & {
+  userId: undefined;
+  guestName: string;
+};
+
+export type RegisteredParticipant = Participant & {
   userId:
     | string
     | {
@@ -21,10 +49,7 @@ export interface Participant {
         lastName: string;
         email: string;
       };
-  role: ParticipantRole;
-  createdAt: string;
-  updatedAt: string;
-}
+};
 
 export interface Invitation {
   _id: string;
