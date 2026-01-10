@@ -22,6 +22,8 @@ import {
   ColumnsIcon,
   MoreVerticalIcon,
   WalletIcon,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -58,9 +60,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Expense } from '@/types';
+import { Expense, ExpenseStatus } from '@/types/expense';
+import { expensesService } from '@/services/expensesService';
+import { toast } from 'sonner';
 
-const columns: ColumnDef<Expense>[] = [
+const createColumns = (
+  tripId: string,
+  onEdit?: (expense: Expense) => void,
+  onDelete?: (expenseId: string) => void,
+  onRefresh?: () => void,
+): ColumnDef<Expense>[] => [
   {
     accessorKey: 'description',
     header: 'Descripción',
@@ -70,27 +79,65 @@ const columns: ColumnDef<Expense>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'tripName',
-    header: 'Viaje',
-    cell: ({ row }) => (
-      <div className="text-muted-foreground">{row.original.tripName}</div>
-    ),
+    accessorKey: 'budget',
+    header: 'Presupuesto',
+    cell: ({ row }) => {
+      const budget = row.original.budget;
+      return (
+        <div className="text-muted-foreground">
+          {budget?.name || 'Sin presupuesto'}
+        </div>
+      );
+    },
   },
   {
-    accessorKey: 'type',
-    header: 'Tipo',
-    cell: ({ row }) => (
-      <Badge variant={row.original.type === 'shared' ? 'default' : 'outline'}>
-        {row.original.type === 'shared' ? 'Compartido' : 'Personal'}
-      </Badge>
-    ),
+    accessorKey: 'paidBy',
+    header: 'Pagado por',
+    cell: ({ row }) => {
+      const expense = row.original;
+      if (expense.paidByParticipant) {
+        const participant = expense.paidByParticipant;
+        const name =
+          participant.guestName ||
+          (participant.userId
+            ? `${participant.userId.firstName} ${participant.userId.lastName}`
+            : 'Usuario');
+        return <div className="text-muted-foreground">{name}</div>;
+      } else if (expense.paidByThirdParty) {
+        return (
+          <div className="text-muted-foreground">
+            {expense.paidByThirdParty.name}
+            {expense.paidByThirdParty.email && (
+              <span className="ml-1 text-xs">
+                ({expense.paidByThirdParty.email})
+              </span>
+            )}
+          </div>
+        );
+      }
+      return <div className="text-muted-foreground">-</div>;
+    },
+  },
+  {
+    accessorKey: 'status',
+    header: 'Estado',
+    cell: ({ row }) => {
+      const status = row.original.status;
+      return (
+        <Badge
+          variant={status === ExpenseStatus.PAID ? 'default' : 'secondary'}
+        >
+          {status === ExpenseStatus.PAID ? 'Pagado' : 'Pendiente'}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: 'amount',
     header: () => <div className="w-full text-right">Monto</div>,
     cell: ({ row }) => {
       const amount = row.original.amount;
-      const currency = row.original.currency;
+      const currency = row.original.currency || DEFAULT_CURRENCY;
       return (
         <div className="text-right font-medium">
           {new Intl.NumberFormat('es-ES', {
@@ -102,10 +149,10 @@ const columns: ColumnDef<Expense>[] = [
     },
   },
   {
-    accessorKey: 'createdAt',
+    accessorKey: 'expenseDate',
     header: () => <div className="w-full text-right">Fecha</div>,
     cell: ({ row }) => {
-      const date = new Date(row.original.createdAt);
+      const date = new Date(row.original.expenseDate || row.original.createdAt);
       return (
         <div className="text-right text-muted-foreground">
           {date.toLocaleDateString('es-ES', {
@@ -119,7 +166,7 @@ const columns: ColumnDef<Expense>[] = [
   },
   {
     id: 'actions',
-    cell: () => (
+    cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -132,10 +179,39 @@ const columns: ColumnDef<Expense>[] = [
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Editar</DropdownMenuItem>
-          <DropdownMenuItem>Duplicar</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Eliminar</DropdownMenuItem>
+          {onEdit && (
+            <DropdownMenuItem onClick={() => onEdit(row.original)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </DropdownMenuItem>
+          )}
+          {row.original.status === ExpenseStatus.PENDING && (
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  await expensesService.settleExpense(row.original._id);
+                  toast.success('Gasto marcado como pagado');
+                  onRefresh?.();
+                } catch {
+                  toast.error('Error al marcar el gasto como pagado');
+                }
+              }}
+            >
+              Marcar como pagado
+            </DropdownMenuItem>
+          )}
+          {onDelete && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(row.original._id)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),
@@ -143,17 +219,27 @@ const columns: ColumnDef<Expense>[] = [
 ];
 
 interface RecentExpensesTableProps {
-  tripId?: string;
+  tripId: string;
+  onEdit?: (expense: Expense) => void;
+  onDelete?: (expenseId: string) => void;
+  refreshTrigger?: number;
+  onRefresh?: () => void;
 }
 
-export function RecentExpensesTable({ tripId }: RecentExpensesTableProps) {
+export function RecentExpensesTable({
+  tripId,
+  onEdit,
+  onDelete,
+  refreshTrigger,
+  onRefresh,
+}: RecentExpensesTableProps) {
   const [data, setData] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'createdAt', desc: true },
+    { id: 'expenseDate', desc: true },
   ]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -162,92 +248,33 @@ export function RecentExpensesTable({ tripId }: RecentExpensesTableProps) {
 
   useEffect(() => {
     const fetchExpenses = async () => {
+      if (!tripId) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // TODO: Reemplazar con la llamada real al API cuando esté disponible
-        // if (tripId) {
-        //   const response = await expensesService.getExpensesByTrip(tripId);
-        //   const expenses = response.data.sort((a, b) =>
-        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        //   );
-        //   setData(expenses);
-        // } else {
-        //   const response = await expensesService.getRecentExpenses();
-        //   const expenses = response.data.sort((a, b) =>
-        //     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        //   );
-        //   setData(expenses);
-        // }
-
-        // Datos mock por ahora
-        const mockExpenses: Expense[] = [
-          {
-            id: '1',
-            description: 'Almuerzo en restaurante',
-            amount: 45.5,
-            currency: DEFAULT_CURRENCY,
-            tripName: 'Viaje a París',
-            type: 'shared',
-            createdAt: new Date().toISOString(),
-            createdBy: 'Franco Giuliano',
-          },
-          {
-            id: '2',
-            description: 'Taxi al aeropuerto',
-            amount: 30.0,
-            currency: DEFAULT_CURRENCY,
-            tripName: 'Viaje a París',
-            type: 'personal',
-            createdAt: new Date(Date.now() - 86400000).toISOString(),
-            createdBy: 'Franco Giuliano',
-          },
-          {
-            id: '3',
-            description: 'Entradas al museo',
-            amount: 25.0,
-            currency: 'EUR',
-            tripName: 'Viaje a Madrid',
-            type: 'shared',
-            createdAt: new Date(Date.now() - 172800000).toISOString(),
-            createdBy: 'Franco Giuliano',
-          },
-        ];
-
-        // Si hay tripId, filtrar por viaje (en el futuro esto vendrá del API)
-        let filteredExpenses = mockExpenses;
-        if (tripId) {
-          // Por ahora, como son datos mock, solo filtramos por nombre
-          // En el futuro, el filtro vendrá del backend
-          filteredExpenses = mockExpenses; // TODO: Filtrar por tripId real
-        }
-
-        // Ordenar por fecha (más reciente primero)
-        const sorted = filteredExpenses.sort(
+        setLoading(true);
+        const response = await expensesService.getExpenses(tripId);
+        const expenses = response.expenses.sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            new Date(b.expenseDate || b.createdAt).getTime() -
+            new Date(a.expenseDate || a.createdAt).getTime(),
         );
-        setData(sorted);
+        setData(expenses);
       } catch (error) {
         console.error('Error al cargar gastos recientes:', error);
+        toast.error('Error al cargar los gastos');
+        setData([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchExpenses();
-  }, [tripId]);
+  }, [tripId, refreshTrigger]);
 
-  // Ocultar columna de viaje si hay tripId
-  useEffect(() => {
-    if (tripId) {
-      setColumnVisibility((prev) => ({ ...prev, tripName: false }));
-    } else {
-      setColumnVisibility((prev) => {
-        const newVisibility = { ...prev };
-        delete newVisibility.tripName;
-        return newVisibility;
-      });
-    }
-  }, [tripId]);
+  const columns = createColumns(tripId, onEdit, onDelete, onRefresh);
 
   const table = useReactTable({
     data,
@@ -259,7 +286,7 @@ export function RecentExpensesTable({ tripId }: RecentExpensesTableProps) {
       columnFilters,
       pagination,
     },
-    getRowId: (row) => row.id,
+    getRowId: (row) => row._id,
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
@@ -277,13 +304,9 @@ export function RecentExpensesTable({ tripId }: RecentExpensesTableProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>
-              {tripId ? 'Gastos Recientes del Viaje' : 'Últimos Gastos'}
-            </CardTitle>
+            <CardTitle>Gastos Recientes del Viaje</CardTitle>
             <CardDescription>
-              {tripId
-                ? 'Gastos recientes del viaje seleccionado'
-                : 'Gastos recientes ordenados por fecha de creación'}
+              Gastos recientes ordenados por fecha de creación
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
