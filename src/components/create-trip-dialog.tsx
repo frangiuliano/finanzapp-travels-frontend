@@ -21,7 +21,12 @@ import { tripsService } from '@/services/tripsService';
 import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
-import { CURRENCY_OPTIONS, DEFAULT_CURRENCY } from '@/constants/currencies';
+import {
+  CURRENCY_OPTIONS,
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+  SupportedCurrency,
+} from '@/constants/currencies';
 
 interface CreateTripDialogProps {
   open: boolean;
@@ -141,7 +146,11 @@ export function CreateTripDialog({
             <Label htmlFor="baseCurrency">Moneda Base</Label>
             <Select
               value={baseCurrency}
-              onValueChange={setBaseCurrency}
+              onValueChange={(value) => {
+                if (SUPPORTED_CURRENCIES.includes(value as SupportedCurrency)) {
+                  setBaseCurrency(value as SupportedCurrency);
+                }
+              }}
               disabled={isLoading}
             >
               <SelectTrigger>

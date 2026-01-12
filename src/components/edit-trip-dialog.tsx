@@ -20,7 +20,12 @@ import {
 import { tripsService, Trip } from '@/services/tripsService';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
-import { CURRENCY_OPTIONS, DEFAULT_CURRENCY } from '@/constants/currencies';
+import {
+  CURRENCY_OPTIONS,
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+  SupportedCurrency,
+} from '@/constants/currencies';
 
 interface EditTripDialogProps {
   open: boolean;
@@ -43,7 +48,7 @@ export function EditTripDialog({
   useEffect(() => {
     if (trip) {
       setName(trip.name);
-      setBaseCurrency(trip.baseCurrency);
+      setBaseCurrency(trip.baseCurrency as SupportedCurrency);
     } else {
       setName('');
       setBaseCurrency(DEFAULT_CURRENCY);
@@ -139,7 +144,11 @@ export function EditTripDialog({
             <Label htmlFor="baseCurrency">Moneda Base</Label>
             <Select
               value={baseCurrency}
-              onValueChange={setBaseCurrency}
+              onValueChange={(value) => {
+                if (SUPPORTED_CURRENCIES.includes(value as SupportedCurrency)) {
+                  setBaseCurrency(value as SupportedCurrency);
+                }
+              }}
               disabled={isLoading}
             >
               <SelectTrigger>
