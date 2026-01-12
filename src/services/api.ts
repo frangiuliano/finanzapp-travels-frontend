@@ -23,13 +23,26 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    const isAuthEndpoint =
-      originalRequest?.url?.includes('/auth/login') ||
-      originalRequest?.url?.includes('/auth/register') ||
-      originalRequest?.url?.includes('/auth/forgot-password') ||
-      originalRequest?.url?.includes('/auth/reset-password') ||
-      originalRequest?.url?.includes('/auth/verify-email');
+    // Lista de endpoints de autenticación que NO deben intentar refresh
+    const authEndpoints = [
+      '/auth/login',
+      '/auth/register',
+      '/auth/forgot-password',
+      '/auth/reset-password',
+      '/auth/verify-email',
+      '/auth/refresh', // Excluir también el propio endpoint de refresh para evitar loops
+    ];
 
+    // Verificar si el request es a un endpoint de autenticación
+    const requestUrl = originalRequest?.url || '';
+    const isAuthEndpoint = authEndpoints.some((endpoint) =>
+      requestUrl.includes(endpoint),
+    );
+
+    // Solo intentar refresh si:
+    // 1. Es un error 401
+    // 2. No es un endpoint de autenticación
+    // 3. No se ha intentado refresh ya
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
