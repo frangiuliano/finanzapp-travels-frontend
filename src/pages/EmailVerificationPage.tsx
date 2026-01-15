@@ -168,6 +168,13 @@ export default function EmailVerificationPage() {
     }
   };
 
+  const handleGoToLogin = () => {
+    if (isAuthenticated) {
+      useAuthStore.getState().clearAuth();
+    }
+    navigate('/login');
+  };
+
   if (token) {
     return (
       <div
@@ -210,16 +217,26 @@ export default function EmailVerificationPage() {
                   <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                     {errorMessage}
                   </div>
-                  <Button
-                    onClick={handleResendEmail}
-                    className="w-full"
-                    variant="outline"
-                    disabled={isResending}
-                  >
-                    {isResending
-                      ? 'Reenviando...'
-                      : 'Reenviar email de verificación'}
-                  </Button>
+                  {isAuthenticated && (
+                    <Button
+                      onClick={handleResendEmail}
+                      className="w-full"
+                      variant="outline"
+                      disabled={isResending}
+                    >
+                      {isResending
+                        ? 'Reenviando...'
+                        : 'Reenviar email de verificación'}
+                    </Button>
+                  )}
+                  <div className="text-center text-sm">
+                    <button
+                      onClick={handleGoToLogin}
+                      className="text-primary hover:underline"
+                    >
+                      Ir al inicio de sesión
+                    </button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -261,21 +278,25 @@ export default function EmailVerificationPage() {
               </ul>
             </div>
 
-            <Button
-              onClick={handleResendEmail}
-              className="w-full"
-              variant="outline"
-              disabled={isResending}
-            >
-              {isResending ? 'Reenviando...' : 'Reenviar email de verificación'}
-            </Button>
+            {isAuthenticated && (
+              <Button
+                onClick={handleResendEmail}
+                className="w-full"
+                variant="outline"
+                disabled={isResending}
+              >
+                {isResending
+                  ? 'Reenviando...'
+                  : 'Reenviar email de verificación'}
+              </Button>
+            )}
 
             <div className="text-center text-sm">
               <button
-                onClick={() => navigate('/login')}
+                onClick={handleGoToLogin}
                 className="text-primary hover:underline"
               >
-                Volver al inicio de sesión
+                Ir al inicio de sesión
               </button>
             </div>
           </CardContent>
