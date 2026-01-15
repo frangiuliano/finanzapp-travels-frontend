@@ -33,8 +33,17 @@ export function TripSwitcher() {
   const activeTrip = currentTrip || trips[0];
 
   React.useEffect(() => {
-    if (!currentTrip && trips.length > 0) {
-      setCurrentTrip(trips[0]);
+    if (trips.length > 0) {
+      if (!currentTrip) {
+        setCurrentTrip(trips[0]);
+      } else {
+        const currentTripExists = trips.some(
+          (trip) => trip._id === currentTrip._id,
+        );
+        if (!currentTripExists) {
+          setCurrentTrip(trips[0]);
+        }
+      }
     }
   }, [trips, currentTrip, setCurrentTrip]);
 
