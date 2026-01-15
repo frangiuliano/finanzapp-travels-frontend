@@ -34,7 +34,16 @@ import { InviteGuestDialog } from '@/components/invite-guest-dialog';
 import { TripExpensesSection } from '@/components/trip-expenses-section';
 import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
-import { Pencil, Plus, Trash2, UsersIcon, UserPlus, Mail } from 'lucide-react';
+import {
+  Pencil,
+  Plus,
+  Trash2,
+  UsersIcon,
+  UserPlus,
+  Mail,
+  CreditCard,
+} from 'lucide-react';
+import { ManageCardsDialog } from '@/components/manage-cards-dialog';
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<(Trip & { userRole?: ParticipantRole })[]>(
@@ -68,8 +77,12 @@ export default function TripsPage() {
   const [selectedGuestForInvite, setSelectedGuestForInvite] =
     useState<Participant | null>(null);
   const [isInviteGuestDialogOpen, setIsInviteGuestDialogOpen] = useState(false);
+  const [isCardsDialogOpen, setIsCardsDialogOpen] = useState(false);
 
   const removeTrip = useTripsStore((state) => state.removeTrip);
+  const setTripsStore = useTripsStore((state) => state.setTrips);
+  const currentTrip = useTripsStore((state) => state.currentTrip);
+  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
 
   useEffect(() => {
     fetchTrips();
@@ -80,6 +93,18 @@ export default function TripsPage() {
     try {
       const { trips: fetchedTrips } = await tripsService.getAllTrips();
       setTrips(fetchedTrips);
+      setTripsStore(fetchedTrips);
+
+      if (!currentTrip && fetchedTrips.length > 0) {
+        setCurrentTrip(fetchedTrips[0]);
+      } else if (currentTrip && fetchedTrips.length > 0) {
+        const currentTripExists = fetchedTrips.some(
+          (trip) => trip._id === currentTrip._id,
+        );
+        if (!currentTripExists) {
+          setCurrentTrip(fetchedTrips[0]);
+        }
+      }
 
       // Cargar budgets y participantes para cada trip
       const dataPromises = fetchedTrips.map(async (trip) => {
@@ -292,13 +317,23 @@ export default function TripsPage() {
                 Gestiona tus viajes y presupuestos
               </p>
             </div>
-            <Button
-              onClick={() => setIsCreateTripDialogOpen(true)}
-              className="w-full md:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Viaje
-            </Button>
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setIsCardsDialogOpen(true)}
+                className="w-full md:w-auto"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Gestionar Tarjetas
+              </Button>
+              <Button
+                onClick={() => setIsCreateTripDialogOpen(true)}
+                className="w-full md:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Viaje
+              </Button>
+            </div>
           </div>
           <Separator />
 
@@ -722,6 +757,14 @@ export default function TripsPage() {
           onSuccess={handleGuestInvited}
         />
       )}
+
+      <ManageCardsDialog
+        open={isCardsDialogOpen}
+        onOpenChange={setIsCardsDialogOpen}
+        onSuccess={() => {
+          // Opcional: recargar datos si es necesario
+        }}
+      />
     </SidebarProvider>
   );
 }
