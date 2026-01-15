@@ -38,7 +38,7 @@ function App() {
         <Route
           path="/login"
           element={
-            isAuthenticated ? (
+            isAuthenticated && user?.emailVerified ? (
               <Navigate to="/dashboard" replace />
             ) : (
               <LoginPage />
