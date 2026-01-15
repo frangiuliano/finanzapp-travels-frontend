@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
@@ -15,13 +15,45 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { MessageSquare, Copy, Check } from 'lucide-react';
 import { botService } from '@/services/botService';
+import { tripsService } from '@/services/tripsService';
+import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 
 export default function SettingsPage() {
+  const trips = useTripsStore((state) => state.trips);
+  const currentTrip = useTripsStore((state) => state.currentTrip);
+  const setTrips = useTripsStore((state) => state.setTrips);
+  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
   const [token, setToken] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (trips.length === 0) {
+      const fetchTrips = async () => {
+        try {
+          const { trips: fetchedTrips } = await tripsService.getAllTrips();
+          setTrips(fetchedTrips);
+
+          if (!currentTrip && fetchedTrips.length > 0) {
+            setCurrentTrip(fetchedTrips[0]);
+          } else if (currentTrip && fetchedTrips.length > 0) {
+            const currentTripExists = fetchedTrips.some(
+              (trip) => trip._id === currentTrip._id,
+            );
+            if (!currentTripExists) {
+              setCurrentTrip(fetchedTrips[0]);
+            }
+          }
+        } catch (error) {
+          console.error('Error al cargar viajes:', error);
+        }
+      };
+
+      fetchTrips();
+    }
+  }, [trips.length, currentTrip, setTrips, setCurrentTrip]);
 
   const handleGenerateToken = async () => {
     setIsGenerating(true);
