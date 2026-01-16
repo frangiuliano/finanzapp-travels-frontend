@@ -8,6 +8,11 @@ export enum SplitType {
   MANUAL = 'manual',
 }
 
+export enum PaymentMethod {
+  CASH = 'cash',
+  CARD = 'card',
+}
+
 export interface ExpenseSplit {
   participantId: string;
   participant?: {
@@ -55,6 +60,18 @@ export interface Expense {
     email?: string;
   };
   status: ExpenseStatus;
+  paymentMethod: PaymentMethod;
+  cardId?: string;
+  card?: {
+    _id: string;
+    name: string;
+    lastFourDigits: string;
+    type: string;
+    user?: {
+      firstName: string;
+      lastName: string;
+    };
+  };
   isDivisible: boolean;
   splitType?: SplitType;
   splits?: ExpenseSplit[];
@@ -84,6 +101,8 @@ export interface CreateExpenseDto {
     email?: string;
   };
   status?: ExpenseStatus;
+  paymentMethod?: PaymentMethod;
+  cardId?: string;
   isDivisible?: boolean;
   splitType?: SplitType;
   splits?: {
