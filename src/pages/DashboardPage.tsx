@@ -4,7 +4,6 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { TripDashboardCards } from '@/components/trip-dashboard-cards';
 import { TripBudgetsSection } from '@/components/trip-budgets-section';
-import { ChartAreaInteractive } from '@/components/chart-area-interactive';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
@@ -200,20 +199,6 @@ export default function DashboardPage() {
             />
           </div>
           <Separator />
-          <div className="px-4 lg:px-6">
-            <TripBudgetsSection
-              tripId={activeTrip._id}
-              tripName={activeTrip.name}
-              budgets={budgets}
-              expenses={expenses}
-              onBudgetsChange={handleBudgetsChange}
-            />
-          </div>
-          <Separator />
-          <div className="px-4 lg:px-6">
-            <ChartAreaInteractive tripId={activeTrip._id} />
-          </div>
-          <Separator />
           <div className="px-4 pb-4 lg:px-6">
             <RecentExpensesTable
               tripId={activeTrip._id}
@@ -221,6 +206,16 @@ export default function DashboardPage() {
               onDelete={handleExpenseDelete}
               refreshTrigger={refreshTrigger}
               onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
+            />
+          </div>
+          <Separator />
+          <div className="px-4 lg:px-6">
+            <TripBudgetsSection
+              tripId={activeTrip._id}
+              tripName={activeTrip.name}
+              budgets={budgets}
+              expenses={expenses}
+              onBudgetsChange={handleBudgetsChange}
             />
           </div>
         </div>
