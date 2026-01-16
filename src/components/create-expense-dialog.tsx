@@ -118,7 +118,14 @@ export function CreateExpenseDialog({
       setTags(expense.tags?.join(', ') || '');
       setStatus(expense.status);
       setPaymentMethod(expense.paymentMethod || PaymentMethod.CASH);
-      setCardId(expense.cardId || '');
+
+      if (expense.paymentMethod === PaymentMethod.CARD && expense.cardId) {
+        // El cardId se establecerá cuando las tarjetas estén disponibles
+        // Se maneja en un useEffect separado
+      } else {
+        setCardId('');
+      }
+
       setIsDivisible(expense.isDivisible || false);
       setSplitType(expense.splitType || SplitType.EQUAL);
       setExpenseDate(
@@ -151,7 +158,6 @@ export function CreateExpenseDialog({
         });
         setManualSplits(splits);
       } else {
-        // Inicializar manualSplits para todos los participantes deshabilitados
         const splits: Record<string, { amount: string; enabled: boolean }> = {};
         participants.forEach((p) => {
           splits[p._id] = { amount: '', enabled: false };
@@ -159,8 +165,7 @@ export function CreateExpenseDialog({
         setManualSplits(splits);
       }
     } else {
-      // Reset para nuevo gasto
-      setBudgetId(''); // String vacío, se mostrará como "none" en el Select
+      setBudgetId('');
       setAmount('');
       setDescription('');
       setMerchantName('');
@@ -187,6 +192,45 @@ export function CreateExpenseDialog({
     }
     setErrors({});
   }, [expense, open, budgets, participants]);
+
+  useEffect(() => {
+    if (
+      expense &&
+      expense.paymentMethod === PaymentMethod.CARD &&
+      expense.cardId
+    ) {
+      const cardIdStr = expense.cardId;
+      console.log('Intentando preseleccionar tarjeta:', {
+        cardId: cardIdStr,
+        availableCardsCount: availableCards.length,
+        paymentMethod: expense.paymentMethod,
+        availableCardIds: availableCards.map((c) => c._id),
+      });
+
+      if (availableCards.length > 0) {
+        const cardExists = availableCards.find(
+          (card) => card._id === cardIdStr,
+        );
+        if (cardExists) {
+          console.log('Tarjeta encontrada, preseleccionando:', cardExists.name);
+          setCardId(cardIdStr);
+        } else {
+          console.warn('Tarjeta no encontrada en la lista disponible:', {
+            buscando: cardIdStr,
+            disponibles: availableCards.map((c) => ({
+              id: c._id,
+              name: c.name,
+            })),
+          });
+          setCardId('');
+        }
+      } else {
+        console.log('Tarjetas aún no cargadas, esperando...');
+      }
+    } else if (expense && expense.paymentMethod !== PaymentMethod.CARD) {
+      setCardId('');
+    }
+  }, [expense?.cardId, expense?.paymentMethod, availableCards]);
 
   const getParticipantName = (participant: Participant): string => {
     if (participant.guestName) {
