@@ -61,7 +61,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Expense, ExpenseStatus } from '@/types/expense';
+import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
+import { CardType } from '@/types/card';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
 
@@ -74,6 +75,7 @@ const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
     description: 'Descripción',
     budget: 'Presupuesto',
     paidBy: 'Pagado por',
+    paymentMethod: 'Método de pago',
     status: 'Estado',
     amount: 'Monto',
     expenseDate: 'Fecha',
@@ -131,6 +133,48 @@ const createColumns = (
             )}
           </div>
         );
+      }
+      return <div className="text-muted-foreground">-</div>;
+    },
+  },
+  {
+    accessorKey: 'paymentMethod',
+    header: 'Método de pago',
+    cell: ({ row }) => {
+      const expense = row.original;
+      if (!expense.paymentMethod) {
+        return <div className="text-muted-foreground">-</div>;
+      }
+      if (expense.paymentMethod === PaymentMethod.CASH) {
+        return <div className="text-muted-foreground">Efectivo</div>;
+      }
+      if (expense.paymentMethod === PaymentMethod.CARD) {
+        if (expense.card) {
+          const getCardTypeLabel = (type: CardType): string => {
+            const labels: Record<CardType, string> = {
+              [CardType.VISA]: 'Visa',
+              [CardType.MASTERCARD]: 'Mastercard',
+              [CardType.AMEX]: 'American Express',
+              [CardType.OTHER]: 'Otra',
+            };
+            return labels[type] || 'Otra';
+          };
+
+          return (
+            <div className="text-muted-foreground">
+              {expense.card.name}
+              {expense.card.lastFourDigits && (
+                <span className="ml-1 text-xs">
+                  (****{expense.card.lastFourDigits}
+                  {expense.card.type &&
+                    ` - ${getCardTypeLabel(expense.card.type as CardType)}`}
+                  )
+                </span>
+              )}
+            </div>
+          );
+        }
+        return <div className="text-muted-foreground">Tarjeta</div>;
       }
       return <div className="text-muted-foreground">-</div>;
     },

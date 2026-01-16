@@ -19,7 +19,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Budget } from '@/types/budget';
 import { Participant } from '@/types/participant';
-import { Expense, ExpenseStatus } from '@/types/expense';
+import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
+import { CardType } from '@/types/card';
 import { CreateExpenseDialog } from './create-expense-dialog';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
@@ -204,6 +205,7 @@ export function TripExpensesSection({
                     <TableHead>Descripción</TableHead>
                     <TableHead>Presupuesto</TableHead>
                     <TableHead>Pagado por</TableHead>
+                    <TableHead>Método de pago</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
@@ -233,6 +235,55 @@ export function TripExpensesSection({
                             : expense.paidByThirdParty
                               ? `${expense.paidByThirdParty.name}${expense.paidByThirdParty.email ? ` (${expense.paidByThirdParty.email})` : ''}`
                               : '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {!expense.paymentMethod ? (
+                            <span className="text-muted-foreground">-</span>
+                          ) : expense.paymentMethod === PaymentMethod.CASH ? (
+                            <span className="text-muted-foreground">
+                              Efectivo
+                            </span>
+                          ) : expense.paymentMethod === PaymentMethod.CARD ? (
+                            expense.card ? (
+                              (() => {
+                                const getCardTypeLabel = (
+                                  type: CardType,
+                                ): string => {
+                                  const labels: Record<CardType, string> = {
+                                    [CardType.VISA]: 'Visa',
+                                    [CardType.MASTERCARD]: 'Mastercard',
+                                    [CardType.AMEX]: 'American Express',
+                                    [CardType.OTHER]: 'Otra',
+                                  };
+                                  return labels[type] || 'Otra';
+                                };
+
+                                return (
+                                  <span className="text-muted-foreground">
+                                    {expense.card.name}
+                                    {expense.card.lastFourDigits && (
+                                      <span className="ml-1 text-xs">
+                                        (****{expense.card.lastFourDigits}
+                                        {expense.card.type &&
+                                          ` - ${getCardTypeLabel(
+                                            expense.card.type as CardType,
+                                          )}`}
+                                        )
+                                      </span>
+                                    )}
+                                  </span>
+                                );
+                              })()
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Tarjeta
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
