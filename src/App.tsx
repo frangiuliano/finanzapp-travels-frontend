@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
 import EmailVerificationPage from '@/pages/EmailVerificationPage';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import InvitationPage from '@/pages/InvitationPage';
 import TripsPage from '@/pages/TripsPage';
@@ -61,6 +63,26 @@ function App() {
           element={<EmailVerificationPage />}
         />
         <Route path="/verify-email" element={<EmailVerificationPage />} />
+        <Route
+          path="/forgot-password"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <ForgotPasswordPage />
+            )
+          }
+        />
+        <Route
+          path="/auth/reset-password"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <ResetPasswordPage />
+            )
+          }
+        />
         <Route path="/trips/invitation/:token" element={<InvitationPage />} />
         <Route
           path="/dashboard"
