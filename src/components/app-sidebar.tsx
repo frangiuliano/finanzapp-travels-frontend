@@ -1,10 +1,5 @@
 import { ComponentProps } from 'react';
-import {
-  PlaneIcon,
-  BarChartIcon,
-  SettingsIcon,
-  TrendingUpIcon,
-} from 'lucide-react';
+import { PlaneIcon, BarChartIcon, SettingsIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavMain } from '@/components/nav-main';
 import { NavSecondary } from '@/components/nav-secondary';
@@ -42,11 +37,6 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       title: 'Gestión de viaje',
       url: '/trips',
       icon: PlaneIcon,
-    },
-    {
-      title: 'Estadísticas',
-      url: '/statistics',
-      icon: TrendingUpIcon,
     },
   ];
 
