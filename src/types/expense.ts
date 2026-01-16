@@ -44,7 +44,7 @@ export interface Expense {
   merchantName?: string;
   tags?: string[];
   category?: string;
-  paidByParticipantId?: string;
+  paidByParticipantId: string;
   paidByParticipant?: {
     _id: string;
     userId?: {
@@ -54,10 +54,6 @@ export interface Expense {
     };
     guestName?: string;
     guestEmail?: string;
-  };
-  paidByThirdParty?: {
-    name: string;
-    email?: string;
   };
   status: ExpenseStatus;
   paymentMethod: PaymentMethod;
@@ -95,11 +91,7 @@ export interface CreateExpenseDto {
   merchantName?: string;
   tags?: string[];
   category?: string;
-  paidByParticipantId?: string;
-  paidByThirdParty?: {
-    name: string;
-    email?: string;
-  };
+  paidByParticipantId: string;
   status?: ExpenseStatus;
   paymentMethod?: PaymentMethod;
   cardId?: string;
@@ -149,4 +141,16 @@ export interface ParticipantBalance {
   totalPaid: number;
   totalOwed: number;
   balance: number;
+}
+
+export interface ParticipantDebt {
+  fromParticipantId: string;
+  fromParticipantName: string;
+  toParticipantId: string;
+  toParticipantName: string;
+  amount: number;
+}
+
+export interface ParticipantDebtsResponse {
+  debts: ParticipantDebt[];
 }
