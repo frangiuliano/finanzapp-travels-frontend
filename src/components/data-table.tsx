@@ -107,7 +107,6 @@ type DataTableRow = {
   reviewer: string;
 };
 
-// Create a separate component for the drag handle
 function DragHandle({ id }: { id: number }) {
   const { attributes, listeners } = useSortable({
     id,
