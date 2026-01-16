@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
+  Column,
   ColumnDef,
   ColumnFiltersState,
   SortingState,
@@ -63,6 +64,22 @@ import {
 import { Expense, ExpenseStatus } from '@/types/expense';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
+
+const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
+  const header = column.columnDef.header;
+  if (typeof header === 'string') {
+    return header;
+  }
+  const headerMap: Record<string, string> = {
+    description: 'Descripción',
+    budget: 'Presupuesto',
+    paidBy: 'Pagado por',
+    status: 'Estado',
+    amount: 'Monto',
+    expenseDate: 'Fecha',
+  };
+  return headerMap[column.id] || column.id;
+};
 
 const createColumns = (
   tripId: string,
@@ -337,7 +354,7 @@ export function RecentExpensesTable({
                           column.toggleVisibility(!!value)
                         }
                       >
-                        {column.id}
+                        {getColumnHeaderText(column)}
                       </DropdownMenuCheckboxItem>
                     );
                   })}
