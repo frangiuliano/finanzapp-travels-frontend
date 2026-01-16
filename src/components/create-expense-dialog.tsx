@@ -26,11 +26,17 @@ import {
   ExpenseStatus,
   SplitType,
   CreateExpenseDto,
+  UpdateExpenseDto,
+  PaymentMethod,
 } from '@/types/expense';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
+import { Card } from '@/types/card';
+import { cardsService } from '@/services/cardsService';
+import { ManageCardsDialog } from '@/components/manage-cards-dialog';
+import { Plus } from 'lucide-react';
 
 interface CreateExpenseDialogProps {
   open: boolean;
@@ -64,6 +70,12 @@ export function CreateExpenseDialog({
   const [thirdPartyName, setThirdPartyName] = useState('');
   const [thirdPartyEmail, setThirdPartyEmail] = useState('');
   const [status, setStatus] = useState<ExpenseStatus>(ExpenseStatus.PAID);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    PaymentMethod.CASH,
+  );
+  const [cardId, setCardId] = useState('');
+  const [availableCards, setAvailableCards] = useState<Card[]>([]);
+  const [isCardsDialogOpen, setIsCardsDialogOpen] = useState(false);
   const [isDivisible, setIsDivisible] = useState(false);
   const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL);
   const [manualSplits, setManualSplits] = useState<
@@ -75,6 +87,27 @@ export function CreateExpenseDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const fetchCards = async () => {
+    if (!tripId) return;
+    try {
+      const result = await cardsService.getCardsByTrip(tripId);
+      console.log('Tarjetas cargadas para el viaje:', result.cards);
+      setAvailableCards(result.cards || []);
+    } catch (error) {
+      console.error('Error al cargar tarjetas:', error);
+      setAvailableCards([]);
+    }
+  };
+
+  useEffect(() => {
+    if (open && tripId) {
+      fetchCards();
+    } else {
+      setAvailableCards([]);
+      setCardId('');
+    }
+  }, [open, tripId]);
+
   useEffect(() => {
     if (expense) {
       setBudgetId(expense.budgetId || '');
@@ -84,6 +117,8 @@ export function CreateExpenseDialog({
       setCategory(expense.category || '');
       setTags(expense.tags?.join(', ') || '');
       setStatus(expense.status);
+      setPaymentMethod(expense.paymentMethod || PaymentMethod.CASH);
+      setCardId(expense.cardId || '');
       setIsDivisible(expense.isDivisible || false);
       setSplitType(expense.splitType || SplitType.EQUAL);
       setExpenseDate(
@@ -138,6 +173,8 @@ export function CreateExpenseDialog({
       setThirdPartyName('');
       setThirdPartyEmail('');
       setStatus(ExpenseStatus.PAID);
+      setPaymentMethod(PaymentMethod.CASH);
+      setCardId('');
       setIsDivisible(false);
       setSplitType(SplitType.EQUAL);
       setExpenseDate(new Date().toISOString().split('T')[0]);
@@ -189,6 +226,10 @@ export function CreateExpenseDialog({
       } else if (thirdPartyName.trim().length < 2) {
         newErrors.thirdPartyName = 'El nombre debe tener al menos 2 caracteres';
       }
+    }
+
+    if (paymentMethod === PaymentMethod.CARD && !cardId) {
+      newErrors.cardId = 'Debes seleccionar una tarjeta';
     }
 
     // Validar división solo si isDivisible es true
@@ -261,8 +302,7 @@ export function CreateExpenseDialog({
               }))
         : undefined;
 
-      const expenseData: CreateExpenseDto = {
-        tripId,
+      const baseData = {
         budgetId: budgetId || undefined,
         amount: numAmount,
         currency: DEFAULT_CURRENCY,
@@ -285,6 +325,8 @@ export function CreateExpenseDialog({
               }
             : undefined,
         status,
+        paymentMethod,
+        cardId: paymentMethod === PaymentMethod.CARD ? cardId : undefined,
         isDivisible,
         splitType: isDivisible ? splitType : undefined,
         splits,
@@ -294,10 +336,15 @@ export function CreateExpenseDialog({
       };
 
       if (expense) {
-        await expensesService.updateExpense(expense._id, expenseData);
+        const updateData: UpdateExpenseDto = baseData;
+        await expensesService.updateExpense(expense._id, updateData);
         toast.success('Gasto actualizado exitosamente');
       } else {
-        await expensesService.createExpense(expenseData);
+        const createData: CreateExpenseDto = {
+          ...baseData,
+          tripId,
+        };
+        await expensesService.createExpense(createData);
         toast.success('Gasto creado exitosamente');
       }
 
@@ -610,6 +657,73 @@ export function CreateExpenseDialog({
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="paymentMethod">Método de Pago</Label>
+            <Select
+              value={paymentMethod}
+              onValueChange={(value) => {
+                setPaymentMethod(value as PaymentMethod);
+                if (value === PaymentMethod.CASH) {
+                  setCardId('');
+                }
+              }}
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PaymentMethod.CASH}>Efectivo</SelectItem>
+                <SelectItem value={PaymentMethod.CARD}>Tarjeta</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {paymentMethod === PaymentMethod.CARD && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="cardId">Tarjeta *</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => setIsCardsDialogOpen(true)}
+                  className="h-auto p-0 text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Agregar Tarjeta
+                </Button>
+              </div>
+              <Select
+                value={cardId}
+                onValueChange={setCardId}
+                disabled={isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una tarjeta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCards.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      No hay tarjetas disponibles
+                    </div>
+                  ) : (
+                    availableCards.map((card) => (
+                      <SelectItem key={card._id} value={card._id}>
+                        {card.name} (****{card.lastFourDigits})
+                        {card.user &&
+                          ` - ${card.user.firstName} ${card.user.lastName}`}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {errors.cardId && (
+                <p className="text-sm text-destructive">{errors.cardId}</p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2 border-t pt-4">
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -778,6 +892,34 @@ export function CreateExpenseDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <ManageCardsDialog
+        open={isCardsDialogOpen}
+        onOpenChange={async (open) => {
+          setIsCardsDialogOpen(open);
+          if (!open && tripId) {
+            // Recargar tarjetas cuando se cierre el diálogo
+            try {
+              const result = await cardsService.getCardsByTrip(tripId);
+              setAvailableCards(result.cards || []);
+            } catch (error) {
+              console.error('Error al recargar tarjetas:', error);
+            }
+          }
+        }}
+        tripId={tripId}
+        onSuccess={async () => {
+          // Recargar tarjetas después de crear/eliminar
+          if (tripId) {
+            try {
+              const result = await cardsService.getCardsByTrip(tripId);
+              setAvailableCards(result.cards || []);
+            } catch (error) {
+              console.error('Error al recargar tarjetas:', error);
+            }
+          }
+        }}
+      />
     </Dialog>
   );
 }
