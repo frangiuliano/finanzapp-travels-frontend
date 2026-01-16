@@ -170,14 +170,6 @@ export function LoginForm({
               >
                 {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={isLoading || emailNotVerified}
-              >
-                Iniciar sesión con Google
-              </Button>
             </div>
             <div className="mt-4 text-center text-sm">
               ¿No tienes una cuenta?{' '}
