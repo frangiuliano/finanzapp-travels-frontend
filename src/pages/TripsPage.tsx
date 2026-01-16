@@ -44,6 +44,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { ManageCardsDialog } from '@/components/manage-cards-dialog';
+import { CreateExpenseDialog } from '@/components/create-expense-dialog';
 
 export default function TripsPage() {
   const [trips, setTrips] = useState<(Trip & { userRole?: ParticipantRole })[]>(
@@ -78,6 +79,7 @@ export default function TripsPage() {
     useState<Participant | null>(null);
   const [isInviteGuestDialogOpen, setIsInviteGuestDialogOpen] = useState(false);
   const [isCardsDialogOpen, setIsCardsDialogOpen] = useState(false);
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
 
   const removeTrip = useTripsStore((state) => state.removeTrip);
   const setTripsStore = useTripsStore((state) => state.setTrips);
@@ -106,7 +108,6 @@ export default function TripsPage() {
         }
       }
 
-      // Cargar budgets y participantes para cada trip
       const dataPromises = fetchedTrips.map(async (trip) => {
         try {
           const [budgetsResult, participantsResult] = await Promise.all([
@@ -312,7 +313,7 @@ export default function TripsPage() {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <div className="flex flex-col gap-4 px-4 pt-4 lg:px-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Mis Viajes</h1>
+              <h1 className="text-2xl font-bold">Mi viaje</h1>
               <p className="text-muted-foreground">
                 Gestiona tus viajes y presupuestos
               </p>
@@ -327,11 +328,12 @@ export default function TripsPage() {
                 Gestionar Tarjetas
               </Button>
               <Button
-                onClick={() => setIsCreateTripDialogOpen(true)}
+                onClick={() => setIsExpenseDialogOpen(true)}
                 className="w-full md:w-auto"
+                disabled={!currentTrip}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Nuevo Viaje
+                Nuevo Gasto
               </Button>
             </div>
           </div>
@@ -408,6 +410,99 @@ export default function TripsPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">
+                        {/* Sección de Gastos */}
+                        <TripExpensesSection
+                          tripId={trip._id}
+                          tripName={trip.name}
+                          budgets={budgets}
+                          participants={participants}
+                          onExpensesChange={fetchTrips}
+                        />
+                        <Separator />
+                        {/* Sección de Presupuestos */}
+                        <div className="space-y-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h3 className="font-semibold">Presupuestos</h3>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCreateBudget(trip._id)}
+                              className="w-full sm:w-auto"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Agregar Presupuesto
+                            </Button>
+                          </div>
+
+                          {budgets.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              No hay presupuestos para este viaje
+                            </p>
+                          ) : (
+                            <>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Nombre</TableHead>
+                                    <TableHead>Monto</TableHead>
+                                    <TableHead>Moneda</TableHead>
+                                    <TableHead className="text-right">
+                                      Acciones
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {budgets.map((budget) => (
+                                    <TableRow key={budget._id}>
+                                      <TableCell className="font-medium">
+                                        {budget.name}
+                                      </TableCell>
+                                      <TableCell>
+                                        {formatCurrency(
+                                          budget.amount,
+                                          budget.currency,
+                                        )}
+                                      </TableCell>
+                                      <TableCell>{budget.currency}</TableCell>
+                                      <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleEditBudget(budget)
+                                            }
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleDeleteBudget(budget)
+                                            }
+                                          >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                              <div className="pt-2 border-t">
+                                <p className="text-sm font-semibold text-right">
+                                  Total:{' '}
+                                  {formatCurrency(
+                                    totalBudget,
+                                    trip.baseCurrency,
+                                  )}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <Separator />
                         {/* Sección de Participantes */}
                         <div className="space-y-3">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -576,103 +671,6 @@ export default function TripsPage() {
                             </Table>
                           )}
                         </div>
-
-                        <Separator />
-
-                        {/* Sección de Gastos */}
-                        <TripExpensesSection
-                          tripId={trip._id}
-                          tripName={trip.name}
-                          budgets={budgets}
-                          participants={participants}
-                          onExpensesChange={fetchTrips}
-                        />
-
-                        <Separator />
-
-                        {/* Sección de Presupuestos */}
-                        <div className="space-y-3">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <h3 className="font-semibold">Presupuestos</h3>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCreateBudget(trip._id)}
-                              className="w-full sm:w-auto"
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Agregar Presupuesto
-                            </Button>
-                          </div>
-
-                          {budgets.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              No hay presupuestos para este viaje
-                            </p>
-                          ) : (
-                            <>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Nombre</TableHead>
-                                    <TableHead>Monto</TableHead>
-                                    <TableHead>Moneda</TableHead>
-                                    <TableHead className="text-right">
-                                      Acciones
-                                    </TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {budgets.map((budget) => (
-                                    <TableRow key={budget._id}>
-                                      <TableCell className="font-medium">
-                                        {budget.name}
-                                      </TableCell>
-                                      <TableCell>
-                                        {formatCurrency(
-                                          budget.amount,
-                                          budget.currency,
-                                        )}
-                                      </TableCell>
-                                      <TableCell>{budget.currency}</TableCell>
-                                      <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              handleEditBudget(budget)
-                                            }
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                              handleDeleteBudget(budget)
-                                            }
-                                          >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                              <div className="pt-2 border-t">
-                                <p className="text-sm font-semibold text-right">
-                                  Total:{' '}
-                                  {formatCurrency(
-                                    totalBudget,
-                                    trip.baseCurrency,
-                                  )}
-                                </p>
-                              </div>
-                            </>
-                          )}
-                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -765,6 +763,22 @@ export default function TripsPage() {
           // Opcional: recargar datos si es necesario
         }}
       />
+
+      {currentTrip && (
+        <CreateExpenseDialog
+          open={isExpenseDialogOpen}
+          onOpenChange={(open) => {
+            setIsExpenseDialogOpen(open);
+          }}
+          tripId={currentTrip._id}
+          budgets={budgetsByTrip[currentTrip._id] || []}
+          participants={participantsByTrip[currentTrip._id] || []}
+          onSuccess={() => {
+            fetchTrips();
+            setIsExpenseDialogOpen(false);
+          }}
+        />
+      )}
     </SidebarProvider>
   );
 }

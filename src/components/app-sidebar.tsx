@@ -39,7 +39,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       icon: BarChartIcon,
     },
     {
-      title: 'Viajes',
+      title: 'Gestión de viaje',
       url: '/trips',
       icon: PlaneIcon,
     },
