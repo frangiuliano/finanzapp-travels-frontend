@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { TripDashboardCards } from '@/components/trip-dashboard-cards';
-import { TripBudgetsSection } from '@/components/trip-budgets-section';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
+import { StatisticsCards } from '@/components/statistics-cards';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,8 @@ import { PlaneIcon } from 'lucide-react';
 import { tripsService } from '@/services/tripsService';
 import { budgetsService } from '@/services/budgetsService';
 import { expensesService } from '@/services/expensesService';
-import { participantsService } from '@/services/participantsService';
 import { useTripsStore } from '@/store/tripsStore';
 import { Budget } from '@/types/budget';
-import { Expense } from '@/types/expense';
-import { Participant } from '@/types/participant';
-import { CreateExpenseDialog } from '@/components/create-expense-dialog';
-import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -28,14 +23,10 @@ export default function DashboardPage() {
   const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
   const setIsLoading = useTripsStore((state) => state.setIsLoading);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalBudgetedExpenses, setTotalBudgetedExpenses] = useState(0);
   const [totalUnbudgetedExpenses, setTotalUnbudgetedExpenses] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
   const activeTrip = currentTrip || trips[0];
 
@@ -64,8 +55,6 @@ export default function DashboardPage() {
     const fetchData = async () => {
       if (!activeTrip) {
         setBudgets([]);
-        setParticipants([]);
-        setExpenses([]);
         setTotalExpenses(0);
         setTotalBudgetedExpenses(0);
         setTotalUnbudgetedExpenses(0);
@@ -73,25 +62,18 @@ export default function DashboardPage() {
       }
 
       try {
-        const [budgetsResult, participantsResult, expensesResult] =
-          await Promise.all([
-            budgetsService
-              .getAllBudgetsByTrip(activeTrip._id)
-              .then(({ budgets }) => budgets)
-              .catch(() => []),
-            participantsService
-              .getParticipants(activeTrip._id)
-              .then(({ participants }) => participants)
-              .catch(() => []),
-            expensesService
-              .getExpenses(activeTrip._id)
-              .then(({ expenses }) => expenses)
-              .catch(() => []),
-          ]);
+        const [budgetsResult, expensesResult] = await Promise.all([
+          budgetsService
+            .getAllBudgetsByTrip(activeTrip._id)
+            .then(({ budgets }) => budgets)
+            .catch(() => []),
+          expensesService
+            .getExpenses(activeTrip._id)
+            .then(({ expenses }) => expenses)
+            .catch(() => []),
+        ]);
 
         setBudgets(budgetsResult);
-        setParticipants(participantsResult);
-        setExpenses(expensesResult);
 
         const total = expensesResult.reduce(
           (sum, expense) => sum + expense.amount,
@@ -111,8 +93,6 @@ export default function DashboardPage() {
       } catch (error) {
         console.error('Error al cargar datos:', error);
         setBudgets([]);
-        setParticipants([]);
-        setExpenses([]);
         setTotalExpenses(0);
         setTotalBudgetedExpenses(0);
         setTotalUnbudgetedExpenses(0);
@@ -121,36 +101,6 @@ export default function DashboardPage() {
 
     fetchData();
   }, [activeTrip, refreshTrigger]);
-
-  const handleBudgetsChange = () => {
-    setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleExpenseEdit = (expense: Expense) => {
-    setSelectedExpense(expense);
-    setIsExpenseDialogOpen(true);
-  };
-
-  const handleExpenseDelete = async (expenseId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
-      return;
-    }
-
-    try {
-      await expensesService.deleteExpense(expenseId);
-      toast.success('Gasto eliminado exitosamente');
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      console.error('Error al eliminar gasto:', error);
-      toast.error('Error al eliminar el gasto');
-    }
-  };
-
-  const handleExpenseSuccess = () => {
-    setRefreshTrigger((prev) => prev + 1);
-    setIsExpenseDialogOpen(false);
-    setSelectedExpense(null);
-  };
 
   if (!activeTrip) {
     return (
@@ -202,39 +152,22 @@ export default function DashboardPage() {
           <div className="px-4 pb-4 lg:px-6">
             <RecentExpensesTable
               tripId={activeTrip._id}
-              onEdit={handleExpenseEdit}
-              onDelete={handleExpenseDelete}
               refreshTrigger={refreshTrigger}
               onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
             />
           </div>
           <Separator />
-          <div className="px-4 lg:px-6">
-            <TripBudgetsSection
-              tripId={activeTrip._id}
-              tripName={activeTrip.name}
-              budgets={budgets}
-              expenses={expenses}
-              onBudgetsChange={handleBudgetsChange}
-            />
+          <div className="px-4 pt-4 lg:px-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Estadísticas</h2>
+              <p className="text-muted-foreground">
+                Análisis detallado de gastos y deudas
+              </p>
+            </div>
+            <StatisticsCards />
           </div>
         </div>
       </SidebarInset>
-
-      <CreateExpenseDialog
-        open={isExpenseDialogOpen}
-        onOpenChange={(open) => {
-          setIsExpenseDialogOpen(open);
-          if (!open) {
-            setSelectedExpense(null);
-          }
-        }}
-        tripId={activeTrip._id}
-        budgets={budgets}
-        participants={participants}
-        expense={selectedExpense}
-        onSuccess={handleExpenseSuccess}
-      />
     </SidebarProvider>
   );
 }
