@@ -9,6 +9,7 @@ import TripsPage from '@/pages/TripsPage';
 import StatisticsPage from '@/pages/StatisticsPage';
 import SettingsPage from '@/pages/SettingsPage';
 import { Toaster } from '@/components/ui/sonner';
+import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 
 function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -24,6 +25,7 @@ function App() {
   return (
     <BrowserRouter>
       <Toaster />
+      <PWAUpdatePrompt />
       <Routes>
         <Route
           path="/"
