@@ -1,7 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Plus, PlaneIcon, UserPlus } from 'lucide-react';
+import {
+  ChevronsUpDown,
+  Plus,
+  PlaneIcon,
+  UserPlus,
+  Trash2,
+} from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -21,12 +27,15 @@ import { useSidebar } from '@/components/ui/sidebar-context';
 import { CreateTripDialog } from '@/components/create-trip-dialog';
 import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
 import { useTripsStore } from '@/store/tripsStore';
+import { tripsService } from '@/services/tripsService';
+import { toast } from 'sonner';
 
 export function TripSwitcher() {
   const { isMobile } = useSidebar();
   const trips = useTripsStore((state) => state.trips);
   const currentTrip = useTripsStore((state) => state.currentTrip);
   const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
+  const removeTrip = useTripsStore((state) => state.removeTrip);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = React.useState(false);
 
@@ -46,6 +55,39 @@ export function TripSwitcher() {
       }
     }
   }, [trips, currentTrip, setCurrentTrip]);
+
+  const handleDeleteTrip = async (
+    e: React.MouseEvent,
+    trip: (typeof trips)[0],
+  ) => {
+    e.stopPropagation();
+
+    if (
+      !confirm(
+        `¿Estás seguro de que deseas eliminar el viaje "${trip.name}"? Esta acción eliminará todos los presupuestos, participantes e invitaciones asociadas y no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await tripsService.deleteTrip(trip._id);
+      toast.success('Viaje eliminado exitosamente');
+      removeTrip(trip._id);
+
+      if (currentTrip?._id === trip._id) {
+        const remainingTrips = trips.filter((t) => t._id !== trip._id);
+        if (remainingTrips.length > 0) {
+          setCurrentTrip(remainingTrips[0]);
+        } else {
+          setCurrentTrip(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error al eliminar viaje:', error);
+      toast.error('Error al eliminar el viaje');
+    }
+  };
 
   if (!activeTrip || trips.length === 0) {
     return (
@@ -109,12 +151,20 @@ export function TripSwitcher() {
               <DropdownMenuItem
                 key={trip._id}
                 onClick={() => setCurrentTrip(trip)}
-                className="gap-2 p-2"
+                className="gap-2 p-2 relative"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
                   <PlaneIcon className="size-3.5 shrink-0" />
                 </div>
-                {trip.name}
+                <span className="flex-1">{trip.name}</span>
+                <button
+                  onClick={(e) => handleDeleteTrip(e, trip)}
+                  className="ml-auto rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  title="Eliminar viaje"
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </button>
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
               </DropdownMenuItem>
             ))}
