@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
@@ -86,11 +86,45 @@ export default function TripsPage() {
   const currentTrip = useTripsStore((state) => state.currentTrip);
   const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
 
-  useEffect(() => {
-    fetchTrips();
+  const fetchTripData = useCallback(async (tripId: string) => {
+    try {
+      const [budgetsResult, participantsResult] = await Promise.all([
+        budgetsService
+          .getAllBudgetsByTrip(tripId)
+          .then(({ budgets }) => ({ budgets }))
+          .catch((error) => {
+            console.error(
+              `Error al cargar budgets para trip ${tripId}:`,
+              error,
+            );
+            return { budgets: [] };
+          }),
+        participantsService
+          .getParticipants(tripId)
+          .then(({ participants }) => ({ participants }))
+          .catch((error) => {
+            console.error(
+              `Error al cargar participantes para trip ${tripId}:`,
+              error,
+            );
+            return { participants: [] };
+          }),
+      ]);
+
+      setBudgetsByTrip((prev) => ({
+        ...prev,
+        [tripId]: budgetsResult.budgets,
+      }));
+      setParticipantsByTrip((prev) => ({
+        ...prev,
+        [tripId]: participantsResult.participants,
+      }));
+    } catch (error) {
+      console.error(`Error al cargar datos para trip ${tripId}:`, error);
+    }
   }, []);
 
-  const fetchTrips = async () => {
+  const fetchTrips = useCallback(async () => {
     setIsLoading(true);
     try {
       const { trips: fetchedTrips } = await tripsService.getAllTrips();
@@ -107,65 +141,24 @@ export default function TripsPage() {
           setCurrentTrip(fetchedTrips[0]);
         }
       }
-
-      const dataPromises = fetchedTrips.map(async (trip) => {
-        try {
-          const [budgetsResult, participantsResult] = await Promise.all([
-            budgetsService
-              .getAllBudgetsByTrip(trip._id)
-              .then(({ budgets }) => ({ budgets }))
-              .catch((error) => {
-                console.error(
-                  `Error al cargar budgets para trip ${trip._id}:`,
-                  error,
-                );
-                return { budgets: [] };
-              }),
-            participantsService
-              .getParticipants(trip._id)
-              .then(({ participants }) => ({ participants }))
-              .catch((error) => {
-                console.error(
-                  `Error al cargar participantes para trip ${trip._id}:`,
-                  error,
-                );
-                return { participants: [] };
-              }),
-          ]);
-
-          return {
-            tripId: trip._id,
-            budgets: budgetsResult.budgets,
-            participants: participantsResult.participants,
-          };
-        } catch (error) {
-          console.error(`Error al cargar datos para trip ${trip._id}:`, error);
-          return {
-            tripId: trip._id,
-            budgets: [],
-            participants: [],
-          };
-        }
-      });
-
-      const dataResults = await Promise.all(dataPromises);
-      const budgetsMap: Record<string, Budget[]> = {};
-      const participantsMap: Record<string, Participant[]> = {};
-
-      dataResults.forEach(({ tripId, budgets, participants }) => {
-        budgetsMap[tripId] = budgets;
-        participantsMap[tripId] = participants;
-      });
-
-      setBudgetsByTrip(budgetsMap);
-      setParticipantsByTrip(participantsMap);
     } catch (error) {
       console.error('Error al cargar viajes:', error);
       toast.error('Error al cargar los viajes');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentTrip, setCurrentTrip, setTripsStore]);
+
+  useEffect(() => {
+    fetchTrips();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (currentTrip?._id) {
+      fetchTripData(currentTrip._id);
+    }
+  }, [currentTrip?._id, fetchTripData]);
 
   const handleEditTrip = (trip: Trip) => {
     setSelectedTripForEdit(trip);
@@ -216,7 +209,9 @@ export default function TripsPage() {
     try {
       await budgetsService.deleteBudget(budget._id);
       toast.success('Presupuesto eliminado exitosamente');
-      fetchTrips(); // Recargar para actualizar los budgets
+      if (currentTrip) {
+        fetchTripData(currentTrip._id);
+      }
     } catch (error) {
       console.error('Error al eliminar presupuesto:', error);
       toast.error('Error al eliminar el presupuesto');
@@ -232,7 +227,9 @@ export default function TripsPage() {
   };
 
   const handleBudgetSuccess = () => {
-    fetchTrips();
+    if (currentTrip) {
+      fetchTripData(currentTrip._id);
+    }
   };
 
   const handleInviteParticipant = (tripId: string) => {
@@ -241,7 +238,9 @@ export default function TripsPage() {
   };
 
   const handleParticipantInvited = () => {
-    fetchTrips();
+    if (currentTrip) {
+      fetchTripData(currentTrip._id);
+    }
     setIsInviteDialogOpen(false);
     setSelectedTripForInvite(null);
   };
@@ -261,7 +260,9 @@ export default function TripsPage() {
     try {
       await participantsService.removeParticipant(tripId, participantId);
       toast.success('Participante eliminado exitosamente');
-      fetchTrips();
+      if (currentTrip) {
+        fetchTripData(currentTrip._id);
+      }
     } catch (error) {
       console.error('Error al eliminar participante:', error);
       toast.error('Error al eliminar el participante');
@@ -274,7 +275,9 @@ export default function TripsPage() {
   };
 
   const handleGuestAdded = () => {
-    fetchTrips();
+    if (currentTrip) {
+      fetchTripData(currentTrip._id);
+    }
     setIsAddGuestDialogOpen(false);
     setSelectedTripForAddGuest(null);
   };
@@ -285,7 +288,9 @@ export default function TripsPage() {
   };
 
   const handleGuestInvited = () => {
-    fetchTrips();
+    if (currentTrip) {
+      fetchTripData(currentTrip._id);
+    }
     setIsInviteGuestDialogOpen(false);
     setSelectedGuestForInvite(null);
   };
@@ -343,7 +348,7 @@ export default function TripsPage() {
             <div className="px-4 py-8 text-center lg:px-6">
               <p>Cargando viajes...</p>
             </div>
-          ) : trips.length === 0 ? (
+          ) : !currentTrip ? (
             <div className="px-4 py-8 text-center lg:px-6">
               <p className="text-muted-foreground">
                 No tienes viajes aún. ¡Crea tu primer viaje!
@@ -351,7 +356,9 @@ export default function TripsPage() {
             </div>
           ) : (
             <div className="px-4 pb-4 lg:px-6 space-y-6">
-              {trips.map((trip) => {
+              {(() => {
+                const trip =
+                  trips.find((t) => t._id === currentTrip._id) || currentTrip;
                 const budgets = budgetsByTrip[trip._id] || [];
                 const participants = participantsByTrip[trip._id] || [];
                 const totalBudget = budgets.reduce(
@@ -416,7 +423,11 @@ export default function TripsPage() {
                           tripName={trip.name}
                           budgets={budgets}
                           participants={participants}
-                          onExpensesChange={fetchTrips}
+                          onExpensesChange={() => {
+                            if (currentTrip) {
+                              fetchTripData(currentTrip._id);
+                            }
+                          }}
                         />
                         <Separator />
                         {/* Sección de Presupuestos */}
@@ -675,7 +686,7 @@ export default function TripsPage() {
                     </CardContent>
                   </Card>
                 );
-              })}
+              })()}
             </div>
           )}
         </div>
@@ -774,7 +785,9 @@ export default function TripsPage() {
           budgets={budgetsByTrip[currentTrip._id] || []}
           participants={participantsByTrip[currentTrip._id] || []}
           onSuccess={() => {
-            fetchTrips();
+            if (currentTrip) {
+              fetchTripData(currentTrip._id);
+            }
             setIsExpenseDialogOpen(false);
           }}
         />

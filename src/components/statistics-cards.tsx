@@ -26,49 +26,46 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function StatisticsCards() {
-  const trips = useTripsStore((state) => state.trips);
+  const currentTrip = useTripsStore((state) => state.currentTrip);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [allDebts, setAllDebts] = useState<ParticipantDebt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!currentTrip) {
+        setAllExpenses([]);
+        setAllDebts([]);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const expensesPromises = trips.map((trip) =>
+        const [expensesResult, debtsResult] = await Promise.all([
           expensesService
-            .getExpenses(trip._id)
+            .getExpenses(currentTrip._id)
             .then(({ expenses }) => expenses)
             .catch(() => []),
-        );
-
-        const debtsPromises = trips.map((trip) =>
           expensesService
-            .getParticipantDebts(trip._id)
+            .getParticipantDebts(currentTrip._id)
             .then(({ debts }) => debts)
             .catch(() => []),
-        );
-
-        const [expensesResults, debtsResults] = await Promise.all([
-          Promise.all(expensesPromises),
-          Promise.all(debtsPromises),
         ]);
 
-        setAllExpenses(expensesResults.flat());
-        setAllDebts(debtsResults.flat());
+        setAllExpenses(expensesResult);
+        setAllDebts(debtsResult);
       } catch (error) {
         console.error('Error al cargar datos de estadísticas:', error);
+        setAllExpenses([]);
+        setAllDebts([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (trips.length > 0) {
-      fetchData();
-    } else {
-      setIsLoading(false);
-    }
-  }, [trips]);
+    fetchData();
+  }, [currentTrip]);
 
   const merchantsData = useMemo(() => {
     const merchantMap = new Map<string, number>();
