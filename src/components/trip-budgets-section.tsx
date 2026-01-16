@@ -94,7 +94,7 @@ export function TripBudgetsSection({
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Buckets del Viaje</CardTitle>
+              <CardTitle>Presupuestos del viaje</CardTitle>
               <CardDescription>
                 Presupuestos asignados para {tripName}
               </CardDescription>
@@ -106,7 +106,7 @@ export function TripBudgetsSection({
               className="w-full sm:w-auto"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Crear Bucket
+              Crear Presupuesto
             </Button>
           </div>
         </CardHeader>
@@ -114,7 +114,7 @@ export function TripBudgetsSection({
           {budgets.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
-                No hay buckets creados para este viaje
+                No hay presupuestos creados para este viaje
               </p>
               <Button
                 variant="outline"
@@ -123,7 +123,7 @@ export function TripBudgetsSection({
                 className="mt-4"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Crear tu primer bucket
+                Crear tu primer presupuesto
               </Button>
             </div>
           ) : (

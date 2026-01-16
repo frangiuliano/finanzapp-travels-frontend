@@ -68,7 +68,7 @@ export function TripDashboardCards({
     >
       <Card className="@container/card">
         <CardHeader className="relative">
-          <CardDescription>Buckets</CardDescription>
+          <CardDescription>Presupuestos</CardDescription>
           <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
             {stats.budgetCount}
           </CardTitle>
@@ -121,7 +121,7 @@ export function TripDashboardCards({
           <div className="text-muted-foreground">
             {stats.totalBudget > 0
               ? `de ${formatCurrency(stats.totalBudget)}`
-              : 'Agrega buckets para ver el uso'}
+              : 'Agrega presupuestos para ver el uso'}
           </div>
         </CardFooter>
       </Card>

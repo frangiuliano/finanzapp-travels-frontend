@@ -509,13 +509,7 @@ export function CreateExpenseDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budgetId">
-                Presupuesto{' '}
-                <span className="text-muted-foreground">(Bucket)</span>
-                <span className="text-xs text-muted-foreground ml-1">
-                  (Opcional)
-                </span>
-              </Label>
+              <Label htmlFor="budgetId">Presupuesto </Label>
               <Select
                 value={budgetId || 'none'}
                 onValueChange={(value) =>
