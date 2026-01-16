@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, Copy, Check } from 'lucide-react';
+import { MessageSquare, Copy, Check, ExternalLink } from 'lucide-react';
 import { botService } from '@/services/botService';
 import { tripsService } from '@/services/tripsService';
 import { useTripsStore } from '@/store/tripsStore';
@@ -137,9 +137,20 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button onClick={handleGenerateToken} disabled={isGenerating}>
-                {isGenerating ? 'Generando...' : 'Generar nuevo token'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleGenerateToken} disabled={isGenerating}>
+                  {isGenerating ? 'Generando...' : 'Generar nuevo token'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    window.open('https://t.me/finanzapp_travels_bot', '_blank')
+                  }
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Abrir bot en Telegram
+                </Button>
+              </div>
 
               {token && (
                 <div className="rounded-lg bg-muted p-4 space-y-2">
