@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
-import { CreditCardIcon, ClockIcon, StoreIcon } from 'lucide-react';
+import { CreditCardIcon, ArrowRightIcon, StoreIcon } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -16,8 +16,7 @@ import {
 } from '@/components/ui/chart';
 import { useTripsStore } from '@/store/tripsStore';
 import { expensesService } from '@/services/expensesService';
-import type { Expense } from '@/types/expense';
-import { ExpenseStatus } from '@/types/expense';
+import type { Expense, ParticipantDebt } from '@/types/expense';
 
 const chartConfig = {
   amount: {
@@ -29,6 +28,7 @@ const chartConfig = {
 export function StatisticsCards() {
   const trips = useTripsStore((state) => state.trips);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [allDebts, setAllDebts] = useState<ParticipantDebt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -42,9 +42,20 @@ export function StatisticsCards() {
             .catch(() => []),
         );
 
-        const expensesResults = await Promise.all(expensesPromises);
-        const flatExpenses = expensesResults.flat();
-        setAllExpenses(flatExpenses);
+        const debtsPromises = trips.map((trip) =>
+          expensesService
+            .getParticipantDebts(trip._id)
+            .then(({ debts }) => debts)
+            .catch(() => []),
+        );
+
+        const [expensesResults, debtsResults] = await Promise.all([
+          Promise.all(expensesPromises),
+          Promise.all(debtsPromises),
+        ]);
+
+        setAllExpenses(expensesResults.flat());
+        setAllDebts(debtsResults.flat());
       } catch (error) {
         console.error('Error al cargar datos de estadísticas:', error);
       } finally {
@@ -93,11 +104,9 @@ export function StatisticsCards() {
     return Array.from(cardMap.values()).sort((a, b) => b.total - a.total);
   }, [allExpenses]);
 
-  const pendingTotal = useMemo(() => {
-    return allExpenses
-      .filter((expense) => expense.status === ExpenseStatus.PENDING)
-      .reduce((sum, expense) => sum + expense.amount, 0);
-  }, [allExpenses]);
+  const totalDebts = useMemo(() => {
+    return allDebts.reduce((sum, debt) => sum + debt.amount, 0);
+  }, [allDebts]);
 
   if (isLoading) {
     return (
@@ -224,39 +233,63 @@ export function StatisticsCards() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <ClockIcon className="size-5" />
-              <CardTitle>Pendientes</CardTitle>
+              <ArrowRightIcon className="size-5" />
+              <CardTitle>Deudas entre Participantes</CardTitle>
             </div>
-            <CardDescription>
-              Total de gastos pendientes de pago
-            </CardDescription>
+            <CardDescription>Resumen de deudas pendientes</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <div className="flex size-20 items-center justify-center rounded-full bg-orange-500/10">
-                <ClockIcon className="size-10 text-orange-500" />
+            {allDebts.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
+                  <div className="text-sm font-medium">
+                    Total de deudas pendientes
+                  </div>
+                  <div className="text-lg font-semibold">
+                    $
+                    {totalDebts.toLocaleString('es-ES', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {allDebts.map((debt, index) => (
+                    <div
+                      key={`${debt.fromParticipantId}-${debt.toParticipantId}-${index}`}
+                      className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex size-8 items-center justify-center rounded-full bg-red-500/10">
+                          <ArrowRightIcon className="size-4 text-red-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {debt.fromParticipantName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            debe a {debt.toParticipantName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right ml-2">
+                        <p className="text-sm font-semibold">
+                          $
+                          {debt.amount.toLocaleString('es-ES', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-4xl font-bold">
-                  $
-                  {pendingTotal.toLocaleString('es-ES', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {
-                    allExpenses.filter(
-                      (e) => e.status === ExpenseStatus.PENDING,
-                    ).length
-                  }{' '}
-                  {allExpenses.filter((e) => e.status === ExpenseStatus.PENDING)
-                    .length === 1
-                    ? 'gasto pendiente'
-                    : 'gastos pendientes'}
-                </p>
+            ) : (
+              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+                No hay deudas pendientes
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

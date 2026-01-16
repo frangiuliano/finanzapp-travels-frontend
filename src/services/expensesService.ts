@@ -6,6 +6,7 @@ import type {
   ExpenseStatus,
   TripExpenseSummary,
   ParticipantBalance,
+  ParticipantDebtsResponse,
 } from '@/types/expense';
 
 export const expensesService = {
@@ -68,6 +69,11 @@ export const expensesService = {
     expense: Expense;
   }> {
     const response = await api.post(`/expenses/${id}/settle`);
+    return response.data;
+  },
+
+  async getParticipantDebts(tripId: string): Promise<ParticipantDebtsResponse> {
+    const response = await api.get(`/expenses/trip/${tripId}/debts`);
     return response.data;
   },
 };
