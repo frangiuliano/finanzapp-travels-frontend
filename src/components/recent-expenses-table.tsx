@@ -122,17 +122,6 @@ const createColumns = (
             ? `${participant.userId.firstName} ${participant.userId.lastName}`
             : 'Usuario');
         return <div className="text-muted-foreground">{name}</div>;
-      } else if (expense.paidByThirdParty) {
-        return (
-          <div className="text-muted-foreground">
-            {expense.paidByThirdParty.name}
-            {expense.paidByThirdParty.email && (
-              <span className="ml-1 text-xs">
-                ({expense.paidByThirdParty.email})
-              </span>
-            )}
-          </div>
-        );
       }
       return <div className="text-muted-foreground">-</div>;
     },

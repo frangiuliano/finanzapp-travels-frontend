@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Budget } from '@/types/budget';
 import { Participant } from '@/types/participant';
 import {
@@ -63,12 +62,7 @@ export function CreateExpenseDialog({
   const [merchantName, setMerchantName] = useState('');
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState('');
-  const [paidByType, setPaidByType] = useState<'participant' | 'thirdParty'>(
-    'participant',
-  );
   const [paidByParticipantId, setPaidByParticipantId] = useState('');
-  const [thirdPartyName, setThirdPartyName] = useState('');
-  const [thirdPartyEmail, setThirdPartyEmail] = useState('');
   const [status, setStatus] = useState<ExpenseStatus>(ExpenseStatus.PAID);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     PaymentMethod.CASH,
@@ -135,16 +129,11 @@ export function CreateExpenseDialog({
       );
 
       if (expense.paidByParticipant || expense.paidByParticipantId) {
-        setPaidByType('participant');
         const participantId =
           expense.paidByParticipant?._id || expense.paidByParticipantId;
         if (participantId) {
           setPaidByParticipantId(participantId.toString());
         }
-      } else if (expense.paidByThirdParty) {
-        setPaidByType('thirdParty');
-        setThirdPartyName(expense.paidByThirdParty.name);
-        setThirdPartyEmail(expense.paidByThirdParty.email || '');
       }
 
       // Configurar splits si el gasto es divisible
@@ -171,12 +160,9 @@ export function CreateExpenseDialog({
       setMerchantName('');
       setCategory('');
       setTags('');
-      setPaidByType('participant');
       setPaidByParticipantId(
         participants.length > 0 ? participants[0]._id : '',
       );
-      setThirdPartyName('');
-      setThirdPartyEmail('');
       setStatus(ExpenseStatus.PAID);
       setPaymentMethod(PaymentMethod.CASH);
       setCardId('');
@@ -260,16 +246,8 @@ export function CreateExpenseDialog({
       newErrors.description = 'La descripción debe tener al menos 3 caracteres';
     }
 
-    if (paidByType === 'participant' && !paidByParticipantId) {
+    if (!paidByParticipantId) {
       newErrors.paidBy = 'Debes seleccionar quién pagó';
-    }
-
-    if (paidByType === 'thirdParty') {
-      if (!thirdPartyName.trim()) {
-        newErrors.thirdPartyName = 'El nombre del tercero es obligatorio';
-      } else if (thirdPartyName.trim().length < 2) {
-        newErrors.thirdPartyName = 'El nombre debe tener al menos 2 caracteres';
-      }
     }
 
     if (paymentMethod === PaymentMethod.CARD && !cardId) {
@@ -359,15 +337,7 @@ export function CreateExpenseDialog({
               .map((t) => t.trim())
               .filter((t) => t.length > 0)
           : undefined,
-        paidByParticipantId:
-          paidByType === 'participant' ? paidByParticipantId : undefined,
-        paidByThirdParty:
-          paidByType === 'thirdParty'
-            ? {
-                name: thirdPartyName.trim(),
-                email: thirdPartyEmail.trim() || undefined,
-              }
-            : undefined,
+        paidByParticipantId,
         status,
         paymentMethod,
         cardId: paymentMethod === PaymentMethod.CARD ? cardId : undefined,
@@ -614,69 +584,28 @@ export function CreateExpenseDialog({
             />
           </div>
 
-          <Tabs
-            value={paidByType}
-            onValueChange={(value) =>
-              setPaidByType(value as 'participant' | 'thirdParty')
-            }
-          >
-            <TabsList>
-              <TabsTrigger value="participant">
-                Pagado por Participante
-              </TabsTrigger>
-              <TabsTrigger value="thirdParty">Pagado por Tercero</TabsTrigger>
-            </TabsList>
-            <TabsContent value="participant" className="space-y-2">
-              <Label htmlFor="paidByParticipantId">Participante *</Label>
-              <Select
-                value={paidByParticipantId}
-                onValueChange={setPaidByParticipantId}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un participante" />
-                </SelectTrigger>
-                <SelectContent>
-                  {participants.map((participant) => (
-                    <SelectItem key={participant._id} value={participant._id}>
-                      {getParticipantName(participant)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.paidBy && (
-                <p className="text-sm text-destructive">{errors.paidBy}</p>
-              )}
-            </TabsContent>
-            <TabsContent value="thirdParty" className="space-y-2">
-              <div className="space-y-2">
-                <Label htmlFor="thirdPartyName">Nombre del Tercero *</Label>
-                <Input
-                  id="thirdPartyName"
-                  value={thirdPartyName}
-                  onChange={(e) => setThirdPartyName(e.target.value)}
-                  placeholder="Ej: Juan Pérez"
-                  disabled={isLoading}
-                />
-                {errors.thirdPartyName && (
-                  <p className="text-sm text-destructive">
-                    {errors.thirdPartyName}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="thirdPartyEmail">Email del Tercero</Label>
-                <Input
-                  id="thirdPartyEmail"
-                  type="email"
-                  value={thirdPartyEmail}
-                  onChange={(e) => setThirdPartyEmail(e.target.value)}
-                  placeholder="Ej: juan@example.com"
-                  disabled={isLoading}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-2">
+            <Label htmlFor="paidByParticipantId">Pagado por *</Label>
+            <Select
+              value={paidByParticipantId}
+              onValueChange={setPaidByParticipantId}
+              disabled={isLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un participante" />
+              </SelectTrigger>
+              <SelectContent>
+                {participants.map((participant) => (
+                  <SelectItem key={participant._id} value={participant._id}>
+                    {getParticipantName(participant)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.paidBy && (
+              <p className="text-sm text-destructive">{errors.paidBy}</p>
+            )}
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="status">Estado</Label>

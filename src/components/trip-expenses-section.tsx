@@ -232,9 +232,7 @@ export function TripExpensesSection({
                         <div className="text-sm">
                           {expense.paidByParticipant
                             ? getParticipantName(expense.paidByParticipant)
-                            : expense.paidByThirdParty
-                              ? `${expense.paidByThirdParty.name}${expense.paidByThirdParty.email ? ` (${expense.paidByThirdParty.email})` : ''}`
-                              : '-'}
+                            : '-'}
                         </div>
                       </TableCell>
                       <TableCell>
