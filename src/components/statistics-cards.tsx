@@ -1,92 +1,265 @@
-import { TrendingUpIcon, PlaneIcon } from 'lucide-react';
-import { useMemo } from 'react';
-import { Badge } from '@/components/ui/badge';
+import { useMemo, useEffect, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { CreditCardIcon, ClockIcon, StoreIcon } from 'lucide-react';
 import {
   Card,
+  CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useSidebar } from '@/components/ui/sidebar-context';
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
 import { useTripsStore } from '@/store/tripsStore';
+import { expensesService } from '@/services/expensesService';
+import type { Expense } from '@/types/expense';
+import { ExpenseStatus } from '@/types/expense';
+
+const chartConfig = {
+  amount: {
+    label: 'Monto',
+    color: 'hsl(var(--chart-1))',
+  },
+} satisfies ChartConfig;
 
 export function StatisticsCards() {
-  const { state } = useSidebar();
   const trips = useTripsStore((state) => state.trips);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const stats = useMemo(() => {
-    if (!trips || trips.length === 0) {
-      return {
-        totalTrips: 0,
-        activeTrips: 0,
-      };
-    }
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const expensesPromises = trips.map((trip) =>
+          expensesService
+            .getExpenses(trip._id)
+            .then(({ expenses }) => expenses)
+            .catch(() => []),
+        );
 
-    const totalTrips = trips.length;
-    const now = new Date().getTime();
-    const activeTrips = trips.filter((trip) => {
-      const createdAt = new Date(trip.createdAt).getTime();
-      const daysDiff = (now - createdAt) / (1000 * 60 * 60 * 24);
-      return daysDiff <= 30;
-    }).length;
-
-    return {
-      totalTrips,
-      activeTrips,
+        const expensesResults = await Promise.all(expensesPromises);
+        const flatExpenses = expensesResults.flat();
+        setAllExpenses(flatExpenses);
+      } catch (error) {
+        console.error('Error al cargar datos de estadísticas:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
+    if (trips.length > 0) {
+      fetchData();
+    } else {
+      setIsLoading(false);
+    }
   }, [trips]);
 
-  const gridCols =
-    state === 'collapsed'
-      ? 'grid-cols-1 md:grid-cols-2'
-      : 'grid-cols-1 md:grid-cols-2';
+  const merchantsData = useMemo(() => {
+    const merchantMap = new Map<string, number>();
+
+    allExpenses.forEach((expense) => {
+      if (expense.merchantName) {
+        const current = merchantMap.get(expense.merchantName) || 0;
+        merchantMap.set(expense.merchantName, current + expense.amount);
+      }
+    });
+
+    return Array.from(merchantMap.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }, [allExpenses]);
+
+  const cardsData = useMemo(() => {
+    const cardMap = new Map<string, { name: string; total: number }>();
+
+    allExpenses.forEach((expense) => {
+      if (expense.cardId && expense.card) {
+        const cardKey = expense.cardId;
+        const current = cardMap.get(cardKey) || {
+          name: expense.card.name || `****${expense.card.lastFourDigits}`,
+          total: 0,
+        };
+        current.total += expense.amount;
+        cardMap.set(cardKey, current);
+      }
+    });
+
+    return Array.from(cardMap.values()).sort((a, b) => b.total - a.total);
+  }, [allExpenses]);
+
+  const pendingTotal = useMemo(() => {
+    return allExpenses
+      .filter((expense) => expense.status === ExpenseStatus.PENDING)
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }, [allExpenses]);
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Cargando estadísticas...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`grid gap-4 ${gridCols} *:data-[slot=card]:shadow-xs *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card`}
-    >
-      <Card className="@container/card">
-        <CardHeader className="relative">
-          <CardDescription>Total de Viajes</CardDescription>
-          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            {stats.totalTrips}
-          </CardTitle>
-          <div className="absolute right-4 top-4">
-            <PlaneIcon className="size-6 text-muted-foreground" />
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <StoreIcon className="size-5" />
+            <CardTitle>Gastos por Local</CardTitle>
           </div>
+          <CardDescription>
+            Locales donde más se ha gastado (ordenados de mayor a menor)
+          </CardDescription>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Todos tus viajes registrados
-          </div>
-          <div className="text-muted-foreground">
-            Viajes creados desde el inicio
-          </div>
-        </CardFooter>
+        <CardContent>
+          {merchantsData.length > 0 ? (
+            <ChartContainer config={chartConfig} className="h-[400px] w-full">
+              <BarChart
+                data={merchantsData}
+                margin={{ left: 20, right: 20, top: 20, bottom: 60 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis
+                  type="number"
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) =>
+                    `$${value.toLocaleString('es-ES', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}`
+                  }
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => [
+                        `$${Number(value).toLocaleString('es-ES', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`,
+                        'Total',
+                      ]}
+                    />
+                  }
+                />
+                <Bar
+                  dataKey="total"
+                  fill="var(--color-amount)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+              No hay datos de locales disponibles
+            </div>
+          )}
+        </CardContent>
       </Card>
-      <Card className="@container/card">
-        <CardHeader className="relative">
-          <CardDescription>Viajes Activos</CardDescription>
-          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            {stats.activeTrips}
-          </CardTitle>
-          <div className="absolute right-4 top-4">
-            <Badge variant="outline" className="flex gap-1 rounded-lg text-xs">
-              <TrendingUpIcon className="size-3" />
-              Recientes
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Viajes de los últimos 30 días <TrendingUpIcon className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Viajes en curso o recientes
-          </div>
-        </CardFooter>
-      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CreditCardIcon className="size-5" />
+              <CardTitle>Tarjetas</CardTitle>
+            </div>
+            <CardDescription>Total gastado con cada tarjeta</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {cardsData.length > 0 ? (
+              <div className="space-y-4">
+                {cardsData.map((card, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+                        <CreditCardIcon className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{card.name}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold">
+                        $
+                        {card.total.toLocaleString('es-ES', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+                No hay gastos con tarjetas
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ClockIcon className="size-5" />
+              <CardTitle>Pendientes</CardTitle>
+            </div>
+            <CardDescription>
+              Total de gastos pendientes de pago
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <div className="flex size-20 items-center justify-center rounded-full bg-orange-500/10">
+                <ClockIcon className="size-10 text-orange-500" />
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-bold">
+                  $
+                  {pendingTotal.toLocaleString('es-ES', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {
+                    allExpenses.filter(
+                      (e) => e.status === ExpenseStatus.PENDING,
+                    ).length
+                  }{' '}
+                  {allExpenses.filter((e) => e.status === ExpenseStatus.PENDING)
+                    .length === 1
+                    ? 'gasto pendiente'
+                    : 'gastos pendientes'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

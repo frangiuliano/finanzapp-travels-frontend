@@ -35,9 +35,7 @@ export default function StatisticsPage() {
           <div className="px-4 pt-4 lg:px-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold">Estadísticas</h1>
-              <p className="text-muted-foreground">
-                Resumen general de tus viajes
-              </p>
+              <p className="text-muted-foreground">Resumen general</p>
             </div>
             <StatisticsCards />
           </div>
