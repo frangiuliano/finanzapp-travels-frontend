@@ -39,6 +39,7 @@ export default function InvitationPage() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,6 +106,7 @@ export default function InvitationPage() {
 
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
+    const trimmedUsername = username.trim();
 
     if (!trimmedFirstName || trimmedFirstName.length < 2) {
       setFormError('El nombre debe tener al menos 2 caracteres');
@@ -113,6 +115,29 @@ export default function InvitationPage() {
 
     if (!trimmedLastName || trimmedLastName.length < 2) {
       setFormError('El apellido debe tener al menos 2 caracteres');
+      return;
+    }
+
+    if (!trimmedUsername) {
+      setFormError('Por favor, ingresa un nombre de usuario');
+      return;
+    }
+
+    if (trimmedUsername.length < 3) {
+      setFormError('El nombre de usuario debe tener al menos 3 caracteres');
+      return;
+    }
+
+    if (trimmedUsername.length > 30) {
+      setFormError('El nombre de usuario no puede tener más de 30 caracteres');
+      return;
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(trimmedUsername)) {
+      setFormError(
+        'El nombre de usuario solo puede contener letras, números y guiones bajos',
+      );
       return;
     }
 
@@ -139,6 +164,7 @@ export default function InvitationPage() {
     try {
       await authService.register({
         email: invitationInfo.userEmail,
+        username: trimmedUsername,
         password,
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
@@ -317,6 +343,22 @@ export default function InvitationPage() {
                     required
                     disabled={isSubmitting}
                   />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Nombre de Usuario</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="nombre_usuario"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    De 3 a 30 caracteres. Solo letras, números y guiones bajos.
+                  </p>
                 </div>
 
                 <div className="grid gap-2">
