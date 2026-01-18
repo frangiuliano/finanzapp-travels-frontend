@@ -164,6 +164,7 @@ export default function DashboardPage() {
               totalBudgetedExpenses={totalBudgetedExpenses}
               totalUnbudgetedExpenses={totalUnbudgetedExpenses}
               currency={activeTrip.baseCurrency}
+              expenses={expenses}
             />
           </div>
           {budgets.length > 0 && (
