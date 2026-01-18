@@ -293,7 +293,7 @@ export function RecentExpensesTable({
   ]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 5,
   });
 
   useEffect(() => {
@@ -466,11 +466,11 @@ export function RecentExpensesTable({
                 {table.getFilteredRowModel().rows.length} fila(s)
                 seleccionada(s).
               </div>
-              <div className="flex w-full items-center gap-8 lg:w-fit">
-                <div className="hidden items-center gap-2 lg:flex">
+              <div className="flex w-full items-center gap-4 lg:gap-8 lg:w-fit">
+                <div className="flex items-center gap-2">
                   <Label
                     htmlFor="rows-per-page"
-                    className="text-sm font-medium"
+                    className="text-xs sm:text-sm font-medium hidden sm:inline"
                   >
                     Filas por página
                   </Label>
@@ -480,13 +480,13 @@ export function RecentExpensesTable({
                       table.setPageSize(Number(value));
                     }}
                   >
-                    <SelectTrigger className="w-20" id="rows-per-page">
+                    <SelectTrigger className="w-16 sm:w-20" id="rows-per-page">
                       <SelectValue
                         placeholder={table.getState().pagination.pageSize}
                       />
                     </SelectTrigger>
                     <SelectContent side="top">
-                      {[10, 20, 30, 40, 50].map((pageSize) => (
+                      {[5, 10, 20, 30, 40, 50].map((pageSize) => (
                         <SelectItem key={pageSize} value={`${pageSize}`}>
                           {pageSize}
                         </SelectItem>
