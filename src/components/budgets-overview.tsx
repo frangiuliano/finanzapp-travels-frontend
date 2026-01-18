@@ -237,17 +237,28 @@ export function BudgetsOverview({
                     <TableRow key={expense._id}>
                       <TableCell className="font-medium">
                         <div className="flex flex-col gap-1">
-                          <span>{expense.description}</span>
+                          {expense.merchantName && (
+                            <span className="font-bold md:hidden">
+                              {expense.merchantName}
+                            </span>
+                          )}
+                          <span
+                            className={
+                              expense.merchantName
+                                ? 'text-xs text-muted-foreground md:hidden'
+                                : ''
+                            }
+                          >
+                            {expense.description}
+                          </span>
+                          <span className="hidden md:inline">
+                            {expense.description}
+                          </span>
                           <span className="text-xs text-muted-foreground sm:hidden">
                             {formatDate(
                               expense.expenseDate || expense.createdAt,
                             )}
                           </span>
-                          {expense.merchantName && (
-                            <span className="text-xs text-muted-foreground md:hidden">
-                              {expense.merchantName}
-                            </span>
-                          )}
                           <span className="text-xs text-muted-foreground md:hidden">
                             {getParticipantName(expense)}
                           </span>
