@@ -20,7 +20,7 @@ export function LoginForm({
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export function LoginForm({
     setIsLoading(true);
 
     try {
-      await authService.login({ email, password });
+      await authService.login({ emailOrUsername, password });
 
       try {
         const userResponse = await api.get('/auth/me');
@@ -85,7 +85,8 @@ export function LoginForm({
         <CardHeader>
           <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
           <CardDescription>
-            Ingresa tu email para iniciar sesión en tu cuenta
+            Ingresa tu email o nombre de usuario para iniciar sesión en tu
+            cuenta
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -133,13 +134,15 @@ export function LoginForm({
               )}
 
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="emailOrUsername">
+                  Email o Nombre de Usuario
+                </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="emailOrUsername"
+                  type="text"
+                  placeholder="email@example.com o nombre_usuario"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   required
                   disabled={isLoading || emailNotVerified}
                 />

@@ -28,6 +28,7 @@ export default function AccountPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function AccountPage() {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
       setEmail(user.email || '');
+      setUsername(user.username || '');
     }
   }, [user]);
 
@@ -42,10 +44,36 @@ export default function AccountPage() {
     e.preventDefault();
     setIsSaving(true);
 
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+
+    if (trimmedUsername && trimmedUsername.length < 3) {
+      toast.error('El nombre de usuario debe tener al menos 3 caracteres');
+      setIsSaving(false);
+      return;
+    }
+
+    if (trimmedUsername && trimmedUsername.length > 30) {
+      toast.error('El nombre de usuario no puede tener más de 30 caracteres');
+      setIsSaving(false);
+      return;
+    }
+
+    if (trimmedUsername && !/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+      toast.error(
+        'El nombre de usuario solo puede contener letras, números y guiones bajos',
+      );
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const updatedUser = await authService.updateProfile({
         firstName,
         lastName,
+        email: trimmedEmail !== user?.email ? trimmedEmail : undefined,
+        username:
+          trimmedUsername !== user?.username ? trimmedUsername : undefined,
       });
 
       if (accessToken) {
@@ -85,7 +113,8 @@ export default function AccountPage() {
                 <CardTitle>Información Personal</CardTitle>
               </div>
               <CardDescription>
-                Actualiza tu nombre y apellido. El email no se puede modificar.
+                Actualiza tu información personal. Puedes modificar tu nombre,
+                apellido, email y nombre de usuario.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -115,16 +144,34 @@ export default function AccountPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="username">Nombre de Usuario</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="nombre_usuario"
+                    required
+                    disabled={isSaving}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    De 3 a 30 caracteres. Solo letras, números y guiones bajos.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
-                    disabled
-                    className="bg-muted cursor-not-allowed"
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    required
+                    disabled={isSaving}
                   />
                   <p className="text-xs text-muted-foreground">
-                    El email no se puede modificar
+                    Puedes modificar tu email cuando lo necesites.
                   </p>
                 </div>
 

@@ -2,12 +2,13 @@ import api from './api';
 import { useAuthStore } from '@/store/authStore';
 
 interface LoginCredentials {
-  email: string;
+  emailOrUsername: string;
   password: string;
 }
 
 interface RegisterData {
   email: string;
+  username: string;
   password: string;
   firstName: string;
   lastName: string;
@@ -56,7 +57,12 @@ export const authService = {
     return response.data;
   },
 
-  async updateProfile(data: { firstName: string; lastName: string }) {
+  async updateProfile(data: {
+    firstName: string;
+    lastName: string;
+    email?: string;
+    username?: string;
+  }) {
     const response = await api.patch('/auth/profile', data);
     return response.data;
   },

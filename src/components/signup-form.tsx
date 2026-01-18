@@ -21,6 +21,7 @@ export function SignupForm({
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +34,7 @@ export function SignupForm({
 
     const trimmedFirstName = firstName.trim();
     const trimmedLastName = lastName.trim();
+    const trimmedUsername = username.trim();
 
     if (!trimmedFirstName) {
       setError('Por favor, ingresa tu nombre');
@@ -64,6 +66,29 @@ export function SignupForm({
       return;
     }
 
+    if (!trimmedUsername) {
+      setError('Por favor, ingresa un nombre de usuario');
+      return;
+    }
+
+    if (trimmedUsername.length < 3) {
+      setError('El nombre de usuario debe tener al menos 3 caracteres');
+      return;
+    }
+
+    if (trimmedUsername.length > 30) {
+      setError('El nombre de usuario no puede tener más de 30 caracteres');
+      return;
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(trimmedUsername)) {
+      setError(
+        'El nombre de usuario solo puede contener letras, números y guiones bajos',
+      );
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
@@ -92,6 +117,7 @@ export function SignupForm({
     try {
       await authService.register({
         email,
+        username: trimmedUsername,
         password,
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
@@ -148,6 +174,21 @@ export function SignupForm({
                   required
                   disabled={isLoading}
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="username">Nombre de Usuario</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="nombre_usuario"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+                <p className="text-sm text-muted-foreground">
+                  De 3 a 30 caracteres. Solo letras, números y guiones bajos.
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
