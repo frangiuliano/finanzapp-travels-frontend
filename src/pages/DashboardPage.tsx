@@ -129,13 +129,15 @@ export default function DashboardPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="p-4 min-w-0 transition-all duration-200 ease-linear">
+      <SidebarInset className="p-2 sm:p-4 min-w-0 transition-all duration-200 ease-linear">
         <SiteHeader />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="px-4 pt-4 lg:px-6">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold">{activeTrip.name}</h1>
-              <p className="text-muted-foreground">
+        <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 pt-0">
+          <div className="px-2 sm:px-4 pt-4 lg:px-6">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-xl sm:text-2xl font-bold">
+                {activeTrip.name}
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Dashboard del viaje seleccionado
               </p>
             </div>
@@ -149,7 +151,7 @@ export default function DashboardPage() {
             />
           </div>
           <Separator />
-          <div className="px-4 pb-4 lg:px-6">
+          <div className="px-2 sm:px-4 pb-4 lg:px-6">
             <RecentExpensesTable
               tripId={activeTrip._id}
               refreshTrigger={refreshTrigger}
@@ -157,10 +159,10 @@ export default function DashboardPage() {
             />
           </div>
           <Separator />
-          <div className="px-4 pt-4 lg:px-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Estadísticas</h2>
-              <p className="text-muted-foreground">
+          <div className="px-2 sm:px-4 pt-4 lg:px-6">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold">Estadísticas</h2>
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Análisis detallado de gastos y deudas
               </p>
             </div>
