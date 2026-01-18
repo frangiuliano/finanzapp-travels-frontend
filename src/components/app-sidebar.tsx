@@ -42,8 +42,8 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navSecondary = [
     {
-      title: 'Configuración',
-      url: '/settings',
+      title: 'Cuenta',
+      url: '/account',
       icon: SettingsIcon,
     },
   ];

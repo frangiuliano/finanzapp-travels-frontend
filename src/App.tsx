@@ -9,7 +9,6 @@ import DashboardPage from '@/pages/DashboardPage';
 import InvitationPage from '@/pages/InvitationPage';
 import TripsPage from '@/pages/TripsPage';
 import SettingsPage from '@/pages/SettingsPage';
-import AccountPage from '@/pages/AccountPage';
 import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 
@@ -114,25 +113,11 @@ function App() {
           }
         />
         <Route
-          path="/settings"
-          element={
-            isAuthenticated ? (
-              user?.emailVerified ? (
-                <SettingsPage />
-              ) : (
-                <Navigate to="/verify-email" replace />
-              )
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
           path="/account"
           element={
             isAuthenticated ? (
               user?.emailVerified ? (
-                <AccountPage />
+                <SettingsPage />
               ) : (
                 <Navigate to="/verify-email" replace />
               )

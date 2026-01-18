@@ -1,11 +1,9 @@
-import { LogOutIcon, MoreVerticalIcon, UserCircleIcon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LogOutIcon, MoreVerticalIcon } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -30,7 +28,6 @@ export function NavUser({
   onLogout?: () => void;
 }) {
   const { isMobile } = useSidebar();
-  const navigate = useNavigate();
 
   const getInitials = (name: string) => {
     return name
@@ -87,13 +84,6 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => navigate('/account')}>
-                <UserCircleIcon />
-                Cuenta
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLogout}>
               <LogOutIcon />
