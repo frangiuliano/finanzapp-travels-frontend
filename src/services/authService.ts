@@ -55,4 +55,9 @@ export const authService = {
     });
     return response.data;
   },
+
+  async updateProfile(data: { firstName: string; lastName: string }) {
+    const response = await api.patch('/auth/profile', data);
+    return response.data;
+  },
 };
