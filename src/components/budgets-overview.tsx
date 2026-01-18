@@ -193,12 +193,12 @@ export function BudgetsOverview({
       </CardContent>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">
               Gastos del presupuesto: {selectedBudget?.name}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               Lista de gastos asociados a este presupuesto
             </DialogDescription>
           </DialogHeader>
@@ -209,29 +209,53 @@ export function BudgetsOverview({
               </p>
             </div>
           ) : (
-            <div className="mt-4">
+            <div className="mt-4 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Pagado por</TableHead>
-                    <TableHead>Método de pago</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead className="min-w-[120px]">Descripción</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Fecha
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Pagado por
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Método de pago
+                    </TableHead>
+                    <TableHead className="min-w-[80px]">Estado</TableHead>
+                    <TableHead className="text-right min-w-[100px]">
+                      Monto
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {budgetExpenses.map((expense) => (
                     <TableRow key={expense._id}>
                       <TableCell className="font-medium">
-                        {expense.description}
+                        <div className="flex flex-col gap-1">
+                          <span>{expense.description}</span>
+                          <span className="text-xs text-muted-foreground sm:hidden">
+                            {formatDate(
+                              expense.expenseDate || expense.createdAt,
+                            )}
+                          </span>
+                          <span className="text-xs text-muted-foreground md:hidden">
+                            {getParticipantName(expense)}
+                          </span>
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {formatDate(expense.expenseDate || expense.createdAt)}
                       </TableCell>
-                      <TableCell>{getParticipantName(expense)}</TableCell>
-                      <TableCell>{getPaymentMethodLabel(expense)}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {getParticipantName(expense)}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <span className="text-xs">
+                          {getPaymentMethodLabel(expense)}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -239,6 +263,7 @@ export function BudgetsOverview({
                               ? 'default'
                               : 'secondary'
                           }
+                          className="text-xs"
                         >
                           {expense.status === ExpenseStatus.PAID
                             ? 'Pagado'
