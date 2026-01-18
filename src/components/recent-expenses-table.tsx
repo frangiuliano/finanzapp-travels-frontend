@@ -88,185 +88,194 @@ const createColumns = (
   onEdit?: (expense: Expense) => void,
   onDelete?: (expenseId: string) => void,
   onRefresh?: () => void,
-): ColumnDef<Expense>[] => [
-  {
-    accessorKey: 'description',
-    header: 'Descripción',
-    cell: ({ row }) => (
-      <div className="font-medium">{row.original.description}</div>
-    ),
-    enableHiding: false,
-  },
-  {
-    accessorKey: 'budget',
-    header: 'Presupuesto',
-    cell: ({ row }) => {
-      const budget = row.original.budget;
-      return (
-        <div className="text-muted-foreground">
-          {budget?.name || 'Sin presupuesto'}
-        </div>
-      );
+): ColumnDef<Expense>[] => {
+  const baseColumns: ColumnDef<Expense>[] = [
+    {
+      accessorKey: 'description',
+      header: 'Descripción',
+      cell: ({ row }) => (
+        <div className="font-medium">{row.original.description}</div>
+      ),
+      enableHiding: false,
     },
-  },
-  {
-    accessorKey: 'paidBy',
-    header: 'Pagado por',
-    cell: ({ row }) => {
-      const expense = row.original;
-      if (expense.paidByParticipant) {
-        const participant = expense.paidByParticipant;
-        const name =
-          participant.guestName ||
-          (participant.userId
-            ? `${participant.userId.firstName} ${participant.userId.lastName}`
-            : 'Usuario');
-        return <div className="text-muted-foreground">{name}</div>;
-      }
-      return <div className="text-muted-foreground">-</div>;
+    {
+      accessorKey: 'budget',
+      header: 'Presupuesto',
+      cell: ({ row }) => {
+        const budget = row.original.budget;
+        return (
+          <div className="text-muted-foreground">
+            {budget?.name || 'Sin presupuesto'}
+          </div>
+        );
+      },
     },
-  },
-  {
-    accessorKey: 'paymentMethod',
-    header: 'Método de pago',
-    cell: ({ row }) => {
-      const expense = row.original;
-      if (!expense.paymentMethod) {
-        return <div className="text-muted-foreground">-</div>;
-      }
-      if (expense.paymentMethod === PaymentMethod.CASH) {
-        return <div className="text-muted-foreground">Efectivo</div>;
-      }
-      if (expense.paymentMethod === PaymentMethod.CARD) {
-        if (expense.card) {
-          const getCardTypeLabel = (type: CardType): string => {
-            const labels: Record<CardType, string> = {
-              [CardType.VISA]: 'Visa',
-              [CardType.MASTERCARD]: 'Mastercard',
-              [CardType.AMEX]: 'American Express',
-              [CardType.OTHER]: 'Otra',
-            };
-            return labels[type] || 'Otra';
-          };
-
-          return (
-            <div className="text-muted-foreground">
-              {expense.card.name}
-              {expense.card.lastFourDigits && (
-                <span className="ml-1 text-xs">
-                  (****{expense.card.lastFourDigits}
-                  {expense.card.type &&
-                    ` - ${getCardTypeLabel(expense.card.type as CardType)}`}
-                  )
-                </span>
-              )}
-            </div>
-          );
+    {
+      accessorKey: 'paidBy',
+      header: 'Pagado por',
+      cell: ({ row }) => {
+        const expense = row.original;
+        if (expense.paidByParticipant) {
+          const participant = expense.paidByParticipant;
+          const name =
+            participant.guestName ||
+            (participant.userId
+              ? `${participant.userId.firstName} ${participant.userId.lastName}`
+              : 'Usuario');
+          return <div className="text-muted-foreground">{name}</div>;
         }
-        return <div className="text-muted-foreground">Tarjeta</div>;
-      }
-      return <div className="text-muted-foreground">-</div>;
+        return <div className="text-muted-foreground">-</div>;
+      },
     },
-  },
-  {
-    accessorKey: 'status',
-    header: 'Estado',
-    cell: ({ row }) => {
-      const status = row.original.status;
-      return (
-        <Badge
-          variant={status === ExpenseStatus.PAID ? 'default' : 'secondary'}
-        >
-          {status === ExpenseStatus.PAID ? 'Pagado' : 'Pendiente'}
-        </Badge>
-      );
+    {
+      accessorKey: 'paymentMethod',
+      header: 'Método de pago',
+      cell: ({ row }) => {
+        const expense = row.original;
+        if (!expense.paymentMethod) {
+          return <div className="text-muted-foreground">-</div>;
+        }
+        if (expense.paymentMethod === PaymentMethod.CASH) {
+          return <div className="text-muted-foreground">Efectivo</div>;
+        }
+        if (expense.paymentMethod === PaymentMethod.CARD) {
+          if (expense.card) {
+            const getCardTypeLabel = (type: CardType): string => {
+              const labels: Record<CardType, string> = {
+                [CardType.VISA]: 'Visa',
+                [CardType.MASTERCARD]: 'Mastercard',
+                [CardType.AMEX]: 'American Express',
+                [CardType.OTHER]: 'Otra',
+              };
+              return labels[type] || 'Otra';
+            };
+
+            return (
+              <div className="text-muted-foreground">
+                {expense.card.name}
+                {expense.card.lastFourDigits && (
+                  <span className="ml-1 text-xs">
+                    (****{expense.card.lastFourDigits}
+                    {expense.card.type &&
+                      ` - ${getCardTypeLabel(expense.card.type as CardType)}`}
+                    )
+                  </span>
+                )}
+              </div>
+            );
+          }
+          return <div className="text-muted-foreground">Tarjeta</div>;
+        }
+        return <div className="text-muted-foreground">-</div>;
+      },
     },
-  },
-  {
-    accessorKey: 'amount',
-    header: () => <div className="w-full text-right">Monto</div>,
-    cell: ({ row }) => {
-      const amount = row.original.amount;
-      const currency = row.original.currency || DEFAULT_CURRENCY;
-      return (
-        <div className="text-right font-medium">
-          {new Intl.NumberFormat('es-ES', {
-            style: 'currency',
-            currency: currency,
-          }).format(amount)}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'expenseDate',
-    header: () => <div className="w-full text-right">Fecha</div>,
-    cell: ({ row }) => {
-      const date = new Date(row.original.expenseDate || row.original.createdAt);
-      return (
-        <div className="text-right text-muted-foreground">
-          {date.toLocaleDateString('es-ES', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
-            size="icon"
+    {
+      accessorKey: 'status',
+      header: 'Estado',
+      cell: ({ row }) => {
+        const status = row.original.status;
+        return (
+          <Badge
+            variant={status === ExpenseStatus.PAID ? 'default' : 'secondary'}
           >
-            <MoreVerticalIcon />
-            <span className="sr-only">Abrir menú</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          {onEdit && (
-            <DropdownMenuItem onClick={() => onEdit(row.original)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar
-            </DropdownMenuItem>
-          )}
-          {row.original.status === ExpenseStatus.PENDING && (
-            <DropdownMenuItem
-              onClick={async () => {
-                try {
-                  await expensesService.settleExpense(row.original._id);
-                  toast.success('Gasto marcado como pagado');
-                  onRefresh?.();
-                } catch {
-                  toast.error('Error al marcar el gasto como pagado');
-                }
-              }}
+            {status === ExpenseStatus.PAID ? 'Pagado' : 'Pendiente'}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: 'amount',
+      header: () => <div className="w-full text-right">Monto</div>,
+      cell: ({ row }) => {
+        const amount = row.original.amount;
+        const currency = row.original.currency || DEFAULT_CURRENCY;
+        return (
+          <div className="text-right font-medium">
+            {new Intl.NumberFormat('es-ES', {
+              style: 'currency',
+              currency: currency,
+            }).format(amount)}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'expenseDate',
+      header: () => <div className="w-full text-right">Fecha</div>,
+      cell: ({ row }) => {
+        const date = new Date(
+          row.original.expenseDate || row.original.createdAt,
+        );
+        return (
+          <div className="text-right text-muted-foreground">
+            {date.toLocaleDateString('es-ES', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </div>
+        );
+      },
+    },
+  ];
+
+  if (onEdit || onDelete) {
+    baseColumns.push({
+      id: 'actions',
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
+              size="icon"
             >
-              Marcar como pagado
-            </DropdownMenuItem>
-          )}
-          {onDelete && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete(row.original._id)}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
+              <MoreVerticalIcon />
+              <span className="sr-only">Abrir menú</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            {onEdit && (
+              <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
               </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-];
+            )}
+            {row.original.status === ExpenseStatus.PENDING && onRefresh && (
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    await expensesService.settleExpense(row.original._id);
+                    toast.success('Gasto marcado como pagado');
+                    onRefresh();
+                  } catch {
+                    toast.error('Error al marcar el gasto como pagado');
+                  }
+                }}
+              >
+                Marcar como pagado
+              </DropdownMenuItem>
+            )}
+            {onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onDelete(row.original._id)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    });
+  }
+
+  return baseColumns;
+};
 
 interface RecentExpensesTableProps {
   tripId: string;
