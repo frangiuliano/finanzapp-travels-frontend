@@ -104,7 +104,7 @@ export function CreateExpenseDialog({
 
   useEffect(() => {
     if (expense) {
-      setBudgetId(expense.budgetId || '');
+      setBudgetId(expense.budgetId || 'none');
       setAmount(expense.amount.toString());
       setDescription(expense.description);
       setMerchantName(expense.merchantName || '');
@@ -246,6 +246,10 @@ export function CreateExpenseDialog({
       newErrors.description = 'La descripción debe tener al menos 3 caracteres';
     }
 
+    if (!budgetId) {
+      newErrors.budgetId = 'Debes seleccionar un presupuesto';
+    }
+
     if (!paidByParticipantId) {
       newErrors.paidBy = 'Debes seleccionar quién pagó';
     }
@@ -325,7 +329,7 @@ export function CreateExpenseDialog({
         : undefined;
 
       const baseData = {
-        budgetId: budgetId || undefined,
+        budgetId: budgetId && budgetId !== 'none' ? budgetId : undefined,
         amount: numAmount,
         currency: DEFAULT_CURRENCY,
         description: description.trim(),
@@ -467,7 +471,7 @@ export function CreateExpenseDialog({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {expense ? 'Editar Gasto' : 'Crear Nuevo Gasto'}
+            {expense ? 'Editar gasto' : 'Crear nuevo gasto'}
           </DialogTitle>
           <DialogDescription>
             {expense
@@ -479,16 +483,14 @@ export function CreateExpenseDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budgetId">Presupuesto </Label>
+              <Label htmlFor="budgetId">Presupuesto *</Label>
               <Select
-                value={budgetId || 'none'}
-                onValueChange={(value) =>
-                  setBudgetId(value === 'none' ? '' : value)
-                }
+                value={budgetId || (expense ? 'none' : undefined)}
+                onValueChange={setBudgetId}
                 disabled={isLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sin presupuesto (opcional)" />
+                  <SelectValue placeholder="Elegí un presupuesto" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin presupuesto</SelectItem>
