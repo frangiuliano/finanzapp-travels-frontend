@@ -254,6 +254,10 @@ export function CreateExpenseDialog({
       newErrors.paidBy = 'Debes seleccionar quién pagó';
     }
 
+    if (!merchantName.trim()) {
+      newErrors.merchantName = 'El nombre del comercio es obligatorio';
+    }
+
     if (paymentMethod === PaymentMethod.CARD && !cardId) {
       newErrors.cardId = 'Debes seleccionar una tarjeta';
     }
@@ -333,7 +337,7 @@ export function CreateExpenseDialog({
         amount: numAmount,
         currency: DEFAULT_CURRENCY,
         description: description.trim(),
-        merchantName: merchantName.trim() || undefined,
+        merchantName: merchantName.trim(),
         category: category.trim() || undefined,
         tags: tags.trim()
           ? tags
@@ -542,7 +546,7 @@ export function CreateExpenseDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="merchantName">Nombre del Comercio</Label>
+              <Label htmlFor="merchantName">Nombre del Comercio *</Label>
               <Input
                 id="merchantName"
                 value={merchantName}
@@ -550,6 +554,11 @@ export function CreateExpenseDialog({
                 placeholder="Ej: Restaurante XYZ"
                 disabled={isLoading}
               />
+              {errors.merchantName && (
+                <p className="text-sm text-destructive">
+                  {errors.merchantName}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
