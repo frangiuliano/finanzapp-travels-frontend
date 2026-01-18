@@ -151,6 +151,7 @@ export function BudgetsOverview({
               <TableHead>Nombre</TableHead>
               <TableHead>Presupuesto</TableHead>
               <TableHead>Gastado</TableHead>
+              <TableHead>Pendiente</TableHead>
               <TableHead>Progreso</TableHead>
             </TableRow>
           </TableHeader>
@@ -158,6 +159,7 @@ export function BudgetsOverview({
             {budgets.map((budget) => {
               const spent = getBudgetSpent(budget._id);
               const usage = getBudgetUsage(budget);
+              const remaining = budget.amount - spent;
 
               return (
                 <TableRow
@@ -171,6 +173,9 @@ export function BudgetsOverview({
                   </TableCell>
                   <TableCell>
                     {formatCurrency(spent, budget.currency)}
+                  </TableCell>
+                  <TableCell>
+                    {formatCurrency(remaining, budget.currency)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
