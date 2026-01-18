@@ -188,12 +188,6 @@ export default function DashboardPage() {
           </div>
           <Separator />
           <div className="px-2 sm:px-4 pt-4 lg:px-6">
-            <div className="mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Estadísticas</h2>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Análisis detallado de gastos y deudas
-              </p>
-            </div>
             <StatisticsCards />
           </div>
         </div>
