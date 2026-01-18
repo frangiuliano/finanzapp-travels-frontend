@@ -1,27 +1,41 @@
 import { useMemo, useEffect, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  LabelList,
+} from 'recharts';
 import { CreditCardIcon, ArrowRightIcon, StoreIcon } from 'lucide-react';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { ChartConfig, ChartContainer } from '@/components/ui/chart';
 import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { useTripsStore } from '@/store/tripsStore';
 import { expensesService } from '@/services/expensesService';
 import type { Expense, ParticipantDebt } from '@/types/expense';
 
 const chartConfig = {
-  amount: {
-    label: 'Monto',
+  total: {
+    label: 'Total',
     color: 'hsl(var(--chart-1))',
+  },
+  label: {
+    color: 'var(--background)',
   },
 } satisfies ChartConfig;
 
@@ -30,6 +44,7 @@ export function StatisticsCards() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [allDebts, setAllDebts] = useState<ParticipantDebt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAllMerchants, setShowAllMerchants] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,7 +82,7 @@ export function StatisticsCards() {
     fetchData();
   }, [currentTrip]);
 
-  const merchantsData = useMemo(() => {
+  const allMerchantsData = useMemo(() => {
     const merchantMap = new Map<string, number>();
 
     allExpenses.forEach((expense) => {
@@ -78,10 +93,13 @@ export function StatisticsCards() {
     });
 
     return Array.from(merchantMap.entries())
-      .map(([name, total]) => ({ name, total }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
+      .map(([name, total]) => ({ merchant: name, total }))
+      .sort((a, b) => b.total - a.total);
   }, [allExpenses]);
+
+  const merchantsData = useMemo(() => {
+    return allMerchantsData.slice(0, 5);
+  }, [allMerchantsData]);
 
   const cardsData = useMemo(() => {
     const cardMap = new Map<string, { name: string; total: number }>();
@@ -117,98 +135,152 @@ export function StatisticsCards() {
     );
   }
 
+  const renderChart = (data: typeof merchantsData, isDialog = false) => (
+    <ChartContainer
+      config={chartConfig}
+      className={`w-full overflow-x-hidden aspect-auto ${isDialog ? 'h-[500px] sm:h-[600px]' : 'h-[300px] sm:h-[400px]'}`}
+    >
+      <BarChart
+        accessibilityLayer
+        data={data}
+        layout="vertical"
+        barCategoryGap={4}
+        margin={{
+          right: 16,
+        }}
+      >
+        <CartesianGrid horizontal={false} />
+        <YAxis
+          dataKey="merchant"
+          type="category"
+          tickLine={false}
+          tickMargin={10}
+          axisLine={false}
+          tickFormatter={(value) => value.slice(0, 15)}
+          hide
+          width={0}
+        />
+        <XAxis dataKey="total" type="number" hide />
+        <Bar
+          dataKey="total"
+          layout="vertical"
+          fill="var(--color-total)"
+          radius={4}
+        >
+          <LabelList
+            dataKey="merchant"
+            position="insideLeft"
+            offset={8}
+            className="text-xs fill-[var(--color-label)]"
+            fontSize={12}
+          />
+          <LabelList
+            dataKey="total"
+            position="right"
+            offset={8}
+            className="text-xs fill-foreground"
+            fontSize={12}
+            formatter={(value: number) =>
+              `$${value.toLocaleString('es-ES', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}`
+            }
+          />
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  );
+
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4 sm:gap-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 sm:px-6">
           <div className="flex items-center gap-2">
             <StoreIcon className="size-5" />
-            <CardTitle>Gastos por Local</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">
+              Gastos por Local
+            </CardTitle>
           </div>
-          <CardDescription>
-            Locales donde más se ha gastado (ordenados de mayor a menor)
+          <CardDescription className="text-sm">
+            Top 5 locales donde más se ha gastado
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-6">
           {merchantsData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[400px] w-full">
-              <BarChart
-                data={merchantsData}
-                margin={{ left: 20, right: 20, top: 20, bottom: 60 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  tick={{ fontSize: 12 }}
-                />
-                <YAxis
-                  type="number"
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) =>
-                    `$${value.toLocaleString('es-ES', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}`
-                  }
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => [
-                        `$${Number(value).toLocaleString('es-ES', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}`,
-                        'Total',
-                      ]}
-                    />
-                  }
-                />
-                <Bar
-                  dataKey="total"
-                  fill="var(--color-amount)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+            renderChart(merchantsData)
           ) : (
-            <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+            <div className="flex h-[300px] sm:h-[400px] items-center justify-center text-muted-foreground">
               No hay datos de locales disponibles
             </div>
           )}
         </CardContent>
+        {allMerchantsData.length > 5 && (
+          <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <Button
+              variant="outline"
+              onClick={() => setShowAllMerchants(true)}
+              className="w-full"
+            >
+              Ver todos ({allMerchantsData.length})
+            </Button>
+          </CardFooter>
+        )}
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <Dialog open={showAllMerchants} onOpenChange={setShowAllMerchants}>
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle>Gastos por Local - Todos</DialogTitle>
+            <DialogDescription>
+              Todos los locales donde se ha gastado (ordenados de mayor a menor)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 w-full overflow-x-hidden">
+            {allMerchantsData.length > 0 ? (
+              <div className="w-full overflow-x-hidden">
+                {renderChart(allMerchantsData, true)}
+              </div>
+            ) : (
+              <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+                No hay datos de locales disponibles
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 sm:px-6">
             <div className="flex items-center gap-2">
               <CreditCardIcon className="size-5" />
-              <CardTitle>Tarjetas</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">Tarjetas</CardTitle>
             </div>
-            <CardDescription>Total gastado con cada tarjeta</CardDescription>
+            <CardDescription className="text-sm">
+              Total gastado con cada tarjeta
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             {cardsData.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {cardsData.map((card, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between rounded-lg border p-3"
+                    className="flex items-center justify-between rounded-lg border p-3 gap-2"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
-                        <CreditCardIcon className="size-5 text-primary" />
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <div className="flex size-8 sm:size-10 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
+                        <CreditCardIcon className="size-4 sm:size-5 text-primary" />
                       </div>
-                      <div>
-                        <p className="font-medium">{card.name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm sm:text-base truncate">
+                          {card.name}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold">
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-base sm:text-lg font-semibold">
                         $
                         {card.total.toLocaleString('es-ES', {
                           minimumFractionDigits: 2,
@@ -228,21 +300,25 @@ export function StatisticsCards() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 sm:px-6">
             <div className="flex items-center gap-2">
               <ArrowRightIcon className="size-5" />
-              <CardTitle>Deudas entre Participantes</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Deudas entre Participantes
+              </CardTitle>
             </div>
-            <CardDescription>Resumen de deudas pendientes</CardDescription>
+            <CardDescription className="text-sm">
+              Resumen de deudas pendientes
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             {allDebts.length > 0 ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
-                  <div className="text-sm font-medium">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50 gap-2">
+                  <div className="text-xs sm:text-sm font-medium">
                     Total de deudas pendientes
                   </div>
-                  <div className="text-lg font-semibold">
+                  <div className="text-base sm:text-lg font-semibold flex-shrink-0">
                     $
                     {totalDebts.toLocaleString('es-ES', {
                       minimumFractionDigits: 2,
@@ -254,14 +330,14 @@ export function StatisticsCards() {
                   {allDebts.map((debt, index) => (
                     <div
                       key={`${debt.fromParticipantId}-${debt.toParticipantId}-${index}`}
-                      className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors gap-2"
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="flex size-8 items-center justify-center rounded-full bg-red-500/10">
-                          <ArrowRightIcon className="size-4 text-red-500" />
+                        <div className="flex size-7 sm:size-8 items-center justify-center rounded-full bg-red-500/10 flex-shrink-0">
+                          <ArrowRightIcon className="size-3 sm:size-4 text-red-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
+                          <p className="text-xs sm:text-sm font-medium truncate">
                             {debt.fromParticipantName}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
@@ -269,8 +345,8 @@ export function StatisticsCards() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right ml-2">
-                        <p className="text-sm font-semibold">
+                      <div className="text-right ml-2 flex-shrink-0">
+                        <p className="text-xs sm:text-sm font-semibold">
                           $
                           {debt.amount.toLocaleString('es-ES', {
                             minimumFractionDigits: 2,
