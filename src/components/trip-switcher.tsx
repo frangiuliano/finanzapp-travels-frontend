@@ -26,7 +26,10 @@ import {
 import { useSidebar } from '@/components/ui/sidebar-context';
 import { CreateTripDialog } from '@/components/create-trip-dialog';
 import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
-import { useTripsStore } from '@/store/tripsStore';
+import {
+  useTripsStore,
+  getLastInteractedTripIdFromStorage,
+} from '@/store/tripsStore';
 import { tripsService } from '@/services/tripsService';
 import { toast } from 'sonner';
 
@@ -44,13 +47,25 @@ export function TripSwitcher() {
   React.useEffect(() => {
     if (trips.length > 0) {
       if (!currentTrip) {
-        setCurrentTrip(trips[0]);
+        const lastInteractedTripId = getLastInteractedTripIdFromStorage();
+        const lastTrip = lastInteractedTripId
+          ? trips.find((t) => t._id === lastInteractedTripId)
+          : null;
+
+        const tripToSelect = lastTrip || trips[0];
+        setCurrentTrip(tripToSelect);
       } else {
         const currentTripExists = trips.some(
           (trip) => trip._id === currentTrip._id,
         );
         if (!currentTripExists) {
-          setCurrentTrip(trips[0]);
+          const lastInteractedTripId = getLastInteractedTripIdFromStorage();
+          const lastTrip = lastInteractedTripId
+            ? trips.find((t) => t._id === lastInteractedTripId)
+            : null;
+
+          const tripToSelect = lastTrip || trips[0];
+          setCurrentTrip(tripToSelect);
         }
       }
     }

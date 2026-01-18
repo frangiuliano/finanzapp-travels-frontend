@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Trip } from '@/services/tripsService';
 
+const LAST_INTERACTED_TRIP_KEY = 'lastInteractedTripId';
+
 interface TripsState {
   trips: Trip[];
   currentTrip: Trip | null;
@@ -12,6 +14,20 @@ interface TripsState {
   setCurrentTrip: (trip: Trip | null) => void;
   setIsLoading: (isLoading: boolean) => void;
 }
+
+const saveLastInteractedTripId = (tripId: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (tripId) {
+    localStorage.setItem(LAST_INTERACTED_TRIP_KEY, tripId);
+  } else {
+    localStorage.removeItem(LAST_INTERACTED_TRIP_KEY);
+  }
+};
+
+export const getLastInteractedTripIdFromStorage = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(LAST_INTERACTED_TRIP_KEY);
+};
 
 export const useTripsStore = create<TripsState>((set) => ({
   trips: [],
@@ -39,8 +55,14 @@ export const useTripsStore = create<TripsState>((set) => ({
       const newTrips = state.trips.filter((trip) => trip._id !== tripId);
       const newCurrentTrip =
         state.currentTrip?._id === tripId ? null : state.currentTrip;
+      if (newCurrentTrip?._id === tripId) {
+        saveLastInteractedTripId(null);
+      }
       return { trips: newTrips, currentTrip: newCurrentTrip };
     }),
-  setCurrentTrip: (trip) => set({ currentTrip: trip }),
+  setCurrentTrip: (trip) => {
+    saveLastInteractedTripId(trip?._id || null);
+    set({ currentTrip: trip });
+  },
   setIsLoading: (isLoading) => set({ isLoading }),
 }));

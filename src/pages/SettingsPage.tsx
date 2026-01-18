@@ -16,7 +16,10 @@ import { Separator } from '@/components/ui/separator';
 import { MessageSquare, Copy, Check, ExternalLink } from 'lucide-react';
 import { botService } from '@/services/botService';
 import { tripsService } from '@/services/tripsService';
-import { useTripsStore } from '@/store/tripsStore';
+import {
+  useTripsStore,
+  getLastInteractedTripIdFromStorage,
+} from '@/store/tripsStore';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 
@@ -36,14 +39,29 @@ export default function SettingsPage() {
           const { trips: fetchedTrips } = await tripsService.getAllTrips();
           setTrips(fetchedTrips);
 
-          if (!currentTrip && fetchedTrips.length > 0) {
-            setCurrentTrip(fetchedTrips[0]);
-          } else if (currentTrip && fetchedTrips.length > 0) {
-            const currentTripExists = fetchedTrips.some(
-              (trip) => trip._id === currentTrip._id,
-            );
-            if (!currentTripExists) {
-              setCurrentTrip(fetchedTrips[0]);
+          if (fetchedTrips.length > 0) {
+            if (!currentTrip) {
+              const lastInteractedTripId = getLastInteractedTripIdFromStorage();
+              const lastTrip = lastInteractedTripId
+                ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
+                : null;
+
+              const tripToSelect = lastTrip || fetchedTrips[0];
+              setCurrentTrip(tripToSelect);
+            } else if (currentTrip) {
+              const currentTripExists = fetchedTrips.some(
+                (trip) => trip._id === currentTrip._id,
+              );
+              if (!currentTripExists) {
+                const lastInteractedTripId =
+                  getLastInteractedTripIdFromStorage();
+                const lastTrip = lastInteractedTripId
+                  ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
+                  : null;
+
+                const tripToSelect = lastTrip || fetchedTrips[0];
+                setCurrentTrip(tripToSelect);
+              }
             }
           }
         } catch (error) {

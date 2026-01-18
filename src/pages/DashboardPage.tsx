@@ -13,7 +13,10 @@ import { PlaneIcon } from 'lucide-react';
 import { tripsService } from '@/services/tripsService';
 import { budgetsService } from '@/services/budgetsService';
 import { expensesService } from '@/services/expensesService';
-import { useTripsStore } from '@/store/tripsStore';
+import {
+  useTripsStore,
+  getLastInteractedTripIdFromStorage,
+} from '@/store/tripsStore';
 import { Budget } from '@/types/budget';
 import { Expense } from '@/types/expense';
 
@@ -40,9 +43,16 @@ export default function DashboardPage() {
         const { trips: fetchedTrips } = await tripsService.getAllTrips();
         setTrips(fetchedTrips);
 
-        // Si no hay viaje actual pero hay viajes, seleccionar el primero
-        if (!currentTrip && fetchedTrips.length > 0) {
-          setCurrentTrip(fetchedTrips[0]);
+        if (fetchedTrips.length > 0) {
+          if (!currentTrip) {
+            const lastInteractedTripId = getLastInteractedTripIdFromStorage();
+            const lastTrip = lastInteractedTripId
+              ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
+              : null;
+
+            const tripToSelect = lastTrip || fetchedTrips[0];
+            setCurrentTrip(tripToSelect);
+          }
         }
       } catch (error) {
         console.error('Error al cargar viajes:', error);

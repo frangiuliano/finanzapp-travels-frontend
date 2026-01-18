@@ -32,7 +32,10 @@ import { InviteParticipantDialog } from '@/components/invite-participant-dialog'
 import { AddGuestDialog } from '@/components/add-guest-dialog';
 import { InviteGuestDialog } from '@/components/invite-guest-dialog';
 import { TripExpensesSection } from '@/components/trip-expenses-section';
-import { useTripsStore } from '@/store/tripsStore';
+import {
+  useTripsStore,
+  getLastInteractedTripIdFromStorage,
+} from '@/store/tripsStore';
 import { toast } from 'sonner';
 import {
   Pencil,
@@ -131,14 +134,28 @@ export default function TripsPage() {
       setTrips(fetchedTrips);
       setTripsStore(fetchedTrips);
 
-      if (!currentTrip && fetchedTrips.length > 0) {
-        setCurrentTrip(fetchedTrips[0]);
-      } else if (currentTrip && fetchedTrips.length > 0) {
-        const currentTripExists = fetchedTrips.some(
-          (trip) => trip._id === currentTrip._id,
-        );
-        if (!currentTripExists) {
-          setCurrentTrip(fetchedTrips[0]);
+      if (fetchedTrips.length > 0) {
+        if (!currentTrip) {
+          const lastInteractedTripId = getLastInteractedTripIdFromStorage();
+          const lastTrip = lastInteractedTripId
+            ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
+            : null;
+
+          const tripToSelect = lastTrip || fetchedTrips[0];
+          setCurrentTrip(tripToSelect);
+        } else {
+          const currentTripExists = fetchedTrips.some(
+            (trip) => trip._id === currentTrip._id,
+          );
+          if (!currentTripExists) {
+            const lastInteractedTripId = getLastInteractedTripIdFromStorage();
+            const lastTrip = lastInteractedTripId
+              ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
+              : null;
+
+            const tripToSelect = lastTrip || fetchedTrips[0];
+            setCurrentTrip(tripToSelect);
+          }
         }
       }
     } catch (error) {
