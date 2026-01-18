@@ -214,6 +214,9 @@ export function BudgetsOverview({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[120px]">Descripción</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Comercio
+                    </TableHead>
                     <TableHead className="hidden sm:table-cell">
                       Fecha
                     </TableHead>
@@ -240,10 +243,18 @@ export function BudgetsOverview({
                               expense.expenseDate || expense.createdAt,
                             )}
                           </span>
+                          {expense.merchantName && (
+                            <span className="text-xs text-muted-foreground md:hidden">
+                              {expense.merchantName}
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground md:hidden">
                             {getParticipantName(expense)}
                           </span>
                         </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {expense.merchantName || '-'}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {formatDate(expense.expenseDate || expense.createdAt)}
