@@ -65,6 +65,7 @@ import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/utils';
 
 const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
   const header = column.columnDef.header;
@@ -202,20 +203,11 @@ const createColumns = (
     {
       accessorKey: 'expenseDate',
       header: () => <div className="w-full text-right">Fecha</div>,
-      cell: ({ row }) => {
-        const date = new Date(
-          row.original.expenseDate || row.original.createdAt,
-        );
-        return (
-          <div className="text-right text-muted-foreground">
-            {date.toLocaleDateString('es-ES', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <div className="text-right text-muted-foreground">
+          {formatDate(row.original.expenseDate || row.original.createdAt)}
+        </div>
+      ),
     },
   ];
 

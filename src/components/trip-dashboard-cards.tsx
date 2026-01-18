@@ -33,6 +33,7 @@ import { Budget } from '@/types/budget';
 import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
+import { formatDate } from '@/lib/utils';
 
 interface TripDashboardCardsProps {
   tripName: string;
@@ -82,15 +83,6 @@ export function TripDashboardCards({
       style: 'currency',
       currency: expenseCurrency || currency,
     }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   };
 
   const getUnbudgetedExpenses = () => {

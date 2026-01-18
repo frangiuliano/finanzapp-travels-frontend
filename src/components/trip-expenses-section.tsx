@@ -50,6 +50,7 @@ import { CreateExpenseDialog } from './create-expense-dialog';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
+import { formatDate } from '@/lib/utils';
 
 interface TripExpensesSectionProps {
   tripId: string;
@@ -109,15 +110,6 @@ export function TripExpensesSection({
       style: 'currency',
       currency: currency,
     }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   };
 
   const getParticipantName = (participant?: {

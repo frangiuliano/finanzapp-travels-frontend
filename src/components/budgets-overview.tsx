@@ -27,6 +27,7 @@ import { Budget } from '@/types/budget';
 import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
+import { formatDate } from '@/lib/utils';
 
 interface BudgetsOverviewProps {
   tripName: string;
@@ -47,15 +48,6 @@ export function BudgetsOverview({
       style: 'currency',
       currency: budgetCurrency,
     }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   };
 
   const getBudgetSpent = (budgetId: string) => {
