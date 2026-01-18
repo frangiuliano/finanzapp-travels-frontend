@@ -104,7 +104,7 @@ export default function SettingsPage() {
     try {
       const response = await botService.generateLinkToken();
       setToken(response.token);
-      toast.success('Token generado exitosamente');
+      toast.success('Token generado exitosamente', { duration: 3000 });
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -121,7 +121,7 @@ export default function SettingsPage() {
     try {
       await navigator.clipboard.writeText(token);
       setCopied(true);
-      toast.success('Token copiado al portapapeles');
+      toast.success('Token copiado al portapapeles', { duration: 3000 });
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Error al copiar el token');
