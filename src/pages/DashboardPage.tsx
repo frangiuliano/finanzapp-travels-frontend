@@ -5,6 +5,7 @@ import { SiteHeader } from '@/components/site-header';
 import { TripDashboardCards } from '@/components/trip-dashboard-cards';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
 import { StatisticsCards } from '@/components/statistics-cards';
+import { BudgetsOverview } from '@/components/budgets-overview';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { budgetsService } from '@/services/budgetsService';
 import { expensesService } from '@/services/expensesService';
 import { useTripsStore } from '@/store/tripsStore';
 import { Budget } from '@/types/budget';
+import { Expense } from '@/types/expense';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ export default function DashboardPage() {
   const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
   const setIsLoading = useTripsStore((state) => state.setIsLoading);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalBudgetedExpenses, setTotalBudgetedExpenses] = useState(0);
   const [totalUnbudgetedExpenses, setTotalUnbudgetedExpenses] = useState(0);
@@ -55,6 +58,7 @@ export default function DashboardPage() {
     const fetchData = async () => {
       if (!activeTrip) {
         setBudgets([]);
+        setExpenses([]);
         setTotalExpenses(0);
         setTotalBudgetedExpenses(0);
         setTotalUnbudgetedExpenses(0);
@@ -74,6 +78,7 @@ export default function DashboardPage() {
         ]);
 
         setBudgets(budgetsResult);
+        setExpenses(expensesResult);
 
         const total = expensesResult.reduce(
           (sum, expense) => sum + expense.amount,
@@ -93,6 +98,7 @@ export default function DashboardPage() {
       } catch (error) {
         console.error('Error al cargar datos:', error);
         setBudgets([]);
+        setExpenses([]);
         setTotalExpenses(0);
         setTotalBudgetedExpenses(0);
         setTotalUnbudgetedExpenses(0);
@@ -150,6 +156,18 @@ export default function DashboardPage() {
               currency={activeTrip.baseCurrency}
             />
           </div>
+          {budgets.length > 0 && (
+            <>
+              <Separator />
+              <div className="px-4 lg:px-6">
+                <BudgetsOverview
+                  tripName={activeTrip.name}
+                  budgets={budgets}
+                  expenses={expenses}
+                />
+              </div>
+            </>
+          )}
           <Separator />
           <div className="px-2 sm:px-4 pb-4 lg:px-6">
             <RecentExpensesTable
