@@ -24,7 +24,13 @@ import { AddGuestDialog } from '@/components/add-guest-dialog';
 import { InviteGuestDialog } from '@/components/invite-guest-dialog';
 import { TripExpensesSection } from '@/components/trip-expenses-section';
 import { useTripsStore } from '@/store/tripsStore';
-import { removeBoardAndTrip, syncBoardsFromTrips } from '@/lib/board-trip-sync';
+import { useBoardsStore } from '@/store/boardsStore';
+import {
+  boardToTrip,
+  removeBoardAndTrip,
+  syncBoardsFromTrips,
+} from '@/lib/board-trip-sync';
+import { isBoardMocksEnabled, boardsService } from '@/services/boardsService';
 import { toast } from 'sonner';
 import {
   Pencil,
@@ -75,8 +81,13 @@ export default function TripsPage() {
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
 
   const currentTrip = useTripsStore((state) => state.currentTrip);
+  const boards = useBoardsStore((state) => state.boards);
+  const mocksEnabled = isBoardMocksEnabled();
 
   const fetchTripData = useCallback(async (tripId: string) => {
+    if (tripId.startsWith('mock-')) {
+      return;
+    }
     try {
       const [budgetsResult, participantsResult] = await Promise.all([
         budgetsService
@@ -117,6 +128,12 @@ export default function TripsPage() {
   const fetchTrips = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (isBoardMocksEnabled()) {
+        const { boards: mockBoards } = await boardsService.getAllBoards();
+        setTrips(mockBoards.map(boardToTrip));
+        return;
+      }
+
       const { trips: fetchedTrips } = await tripsService.getAllTrips();
       setTrips(fetchedTrips);
 
@@ -303,11 +320,21 @@ export default function TripsPage() {
               Gestioná tableros cotidianos y de viaje
             </p>
           </div>
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            {!mocksEnabled && (
+              <Button
+                onClick={() => setIsCreateTripDialogOpen(true)}
+                className="w-full md:w-auto"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo tablero
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setIsCardsDialogOpen(true)}
               className="w-full md:w-auto"
+              disabled={mocksEnabled || !currentTrip}
             >
               <CreditCard className="mr-2 h-4 w-4" />
               Gestionar Tarjetas
@@ -315,7 +342,8 @@ export default function TripsPage() {
             <Button
               onClick={() => setIsExpenseDialogOpen(true)}
               className="w-full md:w-auto"
-              disabled={!currentTrip}
+              disabled={mocksEnabled || !currentTrip}
+              variant={mocksEnabled ? 'outline' : 'default'}
             >
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Gasto
@@ -324,15 +352,51 @@ export default function TripsPage() {
         </div>
         <Separator />
 
+        {mocksEnabled && (
+          <div className="mx-2 sm:mx-4 lg:mx-6 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+            Modo mocks activo (`VITE_BOARD_MOCKS=true`). Los tableros son
+            locales; el selector no se pisa al entrar acá. Creación real = API /
+            wizard (próximo issue).
+          </div>
+        )}
+
         {isLoading ? (
           <div className="px-2 sm:px-4 py-8 text-center lg:px-6">
             <p>Cargando viajes...</p>
           </div>
         ) : !currentTrip ? (
-          <div className="px-2 sm:px-4 py-8 text-center lg:px-6">
+          <div className="px-2 sm:px-4 py-8 text-center lg:px-6 space-y-4">
             <p className="text-muted-foreground">
-              No tienes viajes aún. ¡Crea tu primer viaje!
+              No tenés tableros aún. Creá el primero para empezar.
             </p>
+            {!mocksEnabled && (
+              <Button onClick={() => setIsCreateTripDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo tablero
+              </Button>
+            )}
+          </div>
+        ) : mocksEnabled ? (
+          <div className="px-2 sm:px-4 pb-4 lg:px-6 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Tableros mock ({boards.length}). Cambiá el activo desde el
+              selector.
+            </p>
+            <ul className="space-y-2">
+              {boards.map((board) => (
+                <li
+                  key={board._id}
+                  className="rounded-xl border bg-card px-4 py-3 text-sm"
+                >
+                  <span className="font-medium">{board.name}</span>
+                  <span className="text-muted-foreground">
+                    {' '}
+                    · {board.type} · {board.baseCurrency}
+                    {board._id === currentTrip._id ? ' · Activo' : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : (
           <div className="px-2 sm:px-4 pb-4 lg:px-6 space-y-6">

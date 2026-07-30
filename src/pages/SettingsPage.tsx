@@ -21,6 +21,7 @@ import { botService } from '@/services/botService';
 import { tripsService } from '@/services/tripsService';
 import { useTripsStore } from '@/store/tripsStore';
 import { syncBoardsFromTrips } from '@/lib/board-trip-sync';
+import { isBoardMocksEnabled } from '@/services/boardsService';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
@@ -53,6 +54,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (trips.length === 0) {
+      if (isBoardMocksEnabled()) {
+        return;
+      }
+
       const fetchTrips = async () => {
         try {
           const { trips: fetchedTrips } = await tripsService.getAllTrips();

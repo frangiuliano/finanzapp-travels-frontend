@@ -38,6 +38,8 @@ function isBoardMocksEnabled(): boolean {
   return import.meta.env.DEV && import.meta.env.VITE_BOARD_MOCKS === 'true';
 }
 
+export { isBoardMocksEnabled };
+
 export const boardsService = {
   async getAllBoards(): Promise<{ boards: Board[] }> {
     if (isBoardMocksEnabled()) {
