@@ -1,5 +1,11 @@
 import { ComponentProps } from 'react';
-import { PlaneIcon, BarChartIcon, SettingsIcon } from 'lucide-react';
+import {
+  BarChart3,
+  Home,
+  LayoutGrid,
+  PlusCircle,
+  SettingsIcon,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavMain } from '@/components/nav-main';
 import { NavSecondary } from '@/components/nav-secondary';
@@ -12,7 +18,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/authService';
-import { TripSwitcher } from './trip-switcher';
+import { BoardSwitcher } from './board-switcher';
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -29,14 +35,24 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navMain = [
     {
-      title: 'Dashboard',
-      url: '/dashboard',
-      icon: BarChartIcon,
+      title: 'Home',
+      url: '/home',
+      icon: Home,
     },
     {
-      title: 'Gestión de viaje',
-      url: '/trips',
-      icon: PlaneIcon,
+      title: 'Captura',
+      url: '/capture',
+      icon: PlusCircle,
+    },
+    {
+      title: 'Reportes',
+      url: '/reports',
+      icon: BarChart3,
+    },
+    {
+      title: 'Tableros',
+      url: '/boards',
+      icon: LayoutGrid,
     },
   ];
 
@@ -64,7 +80,12 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TripSwitcher />
+        <div className="px-2 pt-2 pb-1">
+          <p className="font-display text-sm font-bold tracking-tight text-primary">
+            FinanzApp
+          </p>
+        </div>
+        <BoardSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={navMain} />

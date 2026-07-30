@@ -54,7 +54,7 @@ export default function EmailVerificationPage() {
           }
           setTimeout(() => {
             if (isAuthenticated) {
-              navigate('/dashboard');
+              navigate('/home');
             } else {
               navigate('/login');
             }
@@ -80,7 +80,7 @@ export default function EmailVerificationPage() {
           }
           setTimeout(() => {
             if (isAuthenticated) {
-              navigate('/dashboard');
+              navigate('/home');
             } else {
               navigate('/login');
             }
@@ -98,7 +98,7 @@ export default function EmailVerificationPage() {
                   useAuthStore.getState().accessToken!,
                 );
               setTimeout(() => {
-                navigate('/dashboard');
+                navigate('/home');
               }, 2000);
             } else {
               setVerificationStatus('error');

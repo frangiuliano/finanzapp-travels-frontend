@@ -9,16 +9,37 @@ import DashboardPage from '@/pages/DashboardPage';
 import InvitationPage from '@/pages/InvitationPage';
 import TripsPage from '@/pages/TripsPage';
 import SettingsPage from '@/pages/SettingsPage';
+import CapturePage from '@/pages/CapturePage';
+import ReportsPage from '@/pages/ReportsPage';
+import OnboardingPage from '@/pages/OnboardingPage';
 import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
+import { AppShellLayout } from '@/components/app-shell-layout';
+import { ReactNode } from 'react';
+
+function ProtectedApp({ children }: { children: ReactNode }) {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user?.emailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center">
-        <div>Cargando...</div>
+      <div className="flex min-h-svh flex-col items-center justify-center bg-background">
+        <div className="font-display text-lg text-muted-foreground">
+          Cargando…
+        </div>
       </div>
     );
   }
@@ -32,7 +53,7 @@ function App() {
           path="/"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to="/home" replace />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -42,7 +63,7 @@ function App() {
           path="/login"
           element={
             isAuthenticated && user?.emailVerified ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to="/home" replace />
             ) : (
               <LoginPage />
             )
@@ -51,11 +72,7 @@ function App() {
         <Route
           path="/signup"
           element={
-            isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <SignupPage />
-            )
+            isAuthenticated ? <Navigate to="/home" replace /> : <SignupPage />
           }
         />
         <Route
@@ -67,7 +84,7 @@ function App() {
           path="/forgot-password"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to="/home" replace />
             ) : (
               <ForgotPasswordPage />
             )
@@ -77,7 +94,7 @@ function App() {
           path="/auth/reset-password"
           element={
             isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
+              <Navigate to="/home" replace />
             ) : (
               <ResetPasswordPage />
             )
@@ -85,47 +102,21 @@ function App() {
         />
         <Route path="/trips/invitation/:token" element={<InvitationPage />} />
         <Route
-          path="/dashboard"
           element={
-            isAuthenticated ? (
-              user?.emailVerified ? (
-                <DashboardPage />
-              ) : (
-                <Navigate to="/verify-email" replace />
-              )
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            <ProtectedApp>
+              <AppShellLayout />
+            </ProtectedApp>
           }
-        />
-        <Route
-          path="/trips"
-          element={
-            isAuthenticated ? (
-              user?.emailVerified ? (
-                <TripsPage />
-              ) : (
-                <Navigate to="/verify-email" replace />
-              )
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/account"
-          element={
-            isAuthenticated ? (
-              user?.emailVerified ? (
-                <SettingsPage />
-              ) : (
-                <Navigate to="/verify-email" replace />
-              )
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        >
+          <Route path="/home" element={<DashboardPage />} />
+          <Route path="/capture" element={<CapturePage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/boards" element={<TripsPage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/account" element={<SettingsPage />} />
+        </Route>
+        <Route path="/dashboard" element={<Navigate to="/home" replace />} />
+        <Route path="/trips" element={<Navigate to="/boards" replace />} />
       </Routes>
     </BrowserRouter>
   );
