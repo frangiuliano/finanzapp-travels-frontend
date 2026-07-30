@@ -1,0 +1,14 @@
+---
+description: Frontend React/Next — use vercel-react skill on demand (not FULL_GUIDE)
+globs: "**/*.{tsx,jsx,ts,js}"
+alwaysApply: false
+---
+
+# React performance skill
+
+When writing or refactoring React/UI code in this repo:
+
+1. Use the project skill `vercel-react-best-practices` (`SKILL.md`).
+2. Read only the relevant files under `rules/` for the patterns you need.
+3. Do **not** load `FULL_GUIDE.md` unless doing a broad performance audit.
+4. For new screens / visual work, also consider `frontend-design` and `web-design-guidelines`.

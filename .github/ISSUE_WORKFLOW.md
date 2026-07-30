@@ -8,7 +8,7 @@ Este proyecto sigue el estándar definido en
 - **Scope activo:** `scope:mvp` para shell mobile-first, tableros, captura, reportes e ingresos; `scope:v1` para polish PWA, branding rename, offline.
 - **Tipos usados:** `type:foundation` para design system/onboarding shell, `type:feature` para pantallas, `type:chore` para skills/tooling.
 - **Repo pareja:** APIs en `frangiuliano/finanzapp-travels-backend`. Referenciar dependencias cross-repo en el body (`backend#N`).
-- **UI:** Shadcn + Tailwind; mobile-first / PWA. Usar skills en `.cursor/skills/` (`frontend-design`, `web-design-guidelines`, `vercel-react-best-practices`) al implementar pantallas nuevas.
+- **UI:** Shadcn + Tailwind; mobile-first / PWA. Usar skills en `.cursor/skills/` (`frontend-design`, `web-design-guidelines`, `vercel-react-best-practices` → `SKILL.md` + `rules/` bajo demanda; no cargar `FULL_GUIDE.md` salvo auditoría amplia) al implementar pantallas nuevas.
 - **Decisión de producto:** selector de **tablero** (individual/compartido; `everyday` | `travel`); viajes = complemento.
 
 ## GLOBAL_BACKLOG (multi-repo) — obligatorio para `/dev siguiente`

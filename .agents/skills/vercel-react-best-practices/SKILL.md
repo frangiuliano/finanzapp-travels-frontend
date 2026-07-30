@@ -132,7 +132,8 @@ Reference these guidelines when:
 
 ## How to Use
 
-Read individual rule files for detailed explanations and code examples:
+Prefer this `SKILL.md` index + individual rule files. Do **not** load the full
+compiled guide unless a specific rule file is missing or you need a broad audit.
 
 ```
 rules/async-parallel.md
@@ -148,4 +149,7 @@ Each rule file contains:
 
 ## Full Compiled Document
 
-For the complete guide with all rules expanded: `AGENTS.md`
+Optional deep reference (on demand only): `FULL_GUIDE.md`.
+
+**Do not name that file `AGENTS.md`.** Cursor treats any nested `AGENTS.md` as
+an always-applied rule and injects the whole guide into every chat.
