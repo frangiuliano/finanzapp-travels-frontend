@@ -19,10 +19,8 @@ import {
 } from 'lucide-react';
 import { botService } from '@/services/botService';
 import { tripsService } from '@/services/tripsService';
-import {
-  useTripsStore,
-  getLastInteractedTripIdFromStorage,
-} from '@/store/tripsStore';
+import { useTripsStore } from '@/store/tripsStore';
+import { syncBoardsFromTrips } from '@/lib/board-trip-sync';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
@@ -35,8 +33,6 @@ export default function SettingsPage() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const trips = useTripsStore((state) => state.trips);
   const currentTrip = useTripsStore((state) => state.currentTrip);
-  const setTrips = useTripsStore((state) => state.setTrips);
-  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
   const [token, setToken] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -60,41 +56,18 @@ export default function SettingsPage() {
       const fetchTrips = async () => {
         try {
           const { trips: fetchedTrips } = await tripsService.getAllTrips();
-          setTrips(fetchedTrips);
-
-          if (fetchedTrips.length > 0) {
-            if (!currentTrip) {
-              const lastInteractedTripId = getLastInteractedTripIdFromStorage();
-              const lastTrip = lastInteractedTripId
-                ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
-                : null;
-
-              const tripToSelect = lastTrip || fetchedTrips[0];
-              setCurrentTrip(tripToSelect);
-            } else if (currentTrip) {
-              const currentTripExists = fetchedTrips.some(
-                (trip) => trip._id === currentTrip._id,
-              );
-              if (!currentTripExists) {
-                const lastInteractedTripId =
-                  getLastInteractedTripIdFromStorage();
-                const lastTrip = lastInteractedTripId
-                  ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
-                  : null;
-
-                const tripToSelect = lastTrip || fetchedTrips[0];
-                setCurrentTrip(tripToSelect);
-              }
-            }
-          }
+          const stillValid =
+            !!currentTrip &&
+            fetchedTrips.some((trip) => trip._id === currentTrip._id);
+          syncBoardsFromTrips(fetchedTrips, stillValid ? currentTrip : null);
         } catch (error) {
           console.error('Error al cargar viajes:', error);
         }
       };
 
-      fetchTrips();
+      void fetchTrips();
     }
-  }, [trips.length, currentTrip, setTrips, setCurrentTrip]);
+  }, [trips.length, currentTrip]);
 
   const handleGenerateToken = async () => {
     setIsGenerating(true);

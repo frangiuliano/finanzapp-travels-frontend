@@ -35,7 +35,7 @@ function mapBoard(record: BoardApiRecord): Board {
 }
 
 function isBoardMocksEnabled(): boolean {
-  return import.meta.env.VITE_BOARD_MOCKS === 'true';
+  return import.meta.env.DEV && import.meta.env.VITE_BOARD_MOCKS === 'true';
 }
 
 export const boardsService = {

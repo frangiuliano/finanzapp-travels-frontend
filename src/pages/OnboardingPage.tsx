@@ -17,7 +17,8 @@ export default function OnboardingPage() {
       </h2>
       <p className="text-sm text-muted-foreground leading-relaxed">
         El wizard de onboarding (tipo cotidiano/viaje, moneda, compartido) llega
-        en el próximo issue. Por ahora podés explorar el shell o usar mocks con{' '}
+        en el próximo issue. Por ahora podés explorar el shell o, en desarrollo,
+        usar mocks con{' '}
         <code className="rounded bg-muted px-1">VITE_BOARD_MOCKS=true</code>.
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2">

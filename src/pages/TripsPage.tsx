@@ -23,10 +23,8 @@ import { InviteParticipantDialog } from '@/components/invite-participant-dialog'
 import { AddGuestDialog } from '@/components/add-guest-dialog';
 import { InviteGuestDialog } from '@/components/invite-guest-dialog';
 import { TripExpensesSection } from '@/components/trip-expenses-section';
-import {
-  useTripsStore,
-  getLastInteractedTripIdFromStorage,
-} from '@/store/tripsStore';
+import { useTripsStore } from '@/store/tripsStore';
+import { removeBoardAndTrip, syncBoardsFromTrips } from '@/lib/board-trip-sync';
 import { toast } from 'sonner';
 import {
   Pencil,
@@ -76,10 +74,7 @@ export default function TripsPage() {
   const [isCardsDialogOpen, setIsCardsDialogOpen] = useState(false);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
 
-  const removeTrip = useTripsStore((state) => state.removeTrip);
-  const setTripsStore = useTripsStore((state) => state.setTrips);
   const currentTrip = useTripsStore((state) => state.currentTrip);
-  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
 
   const fetchTripData = useCallback(async (tripId: string) => {
     try {
@@ -124,39 +119,18 @@ export default function TripsPage() {
     try {
       const { trips: fetchedTrips } = await tripsService.getAllTrips();
       setTrips(fetchedTrips);
-      setTripsStore(fetchedTrips);
 
-      if (fetchedTrips.length > 0) {
-        if (!currentTrip) {
-          const lastInteractedTripId = getLastInteractedTripIdFromStorage();
-          const lastTrip = lastInteractedTripId
-            ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
-            : null;
-
-          const tripToSelect = lastTrip || fetchedTrips[0];
-          setCurrentTrip(tripToSelect);
-        } else {
-          const currentTripExists = fetchedTrips.some(
-            (trip) => trip._id === currentTrip._id,
-          );
-          if (!currentTripExists) {
-            const lastInteractedTripId = getLastInteractedTripIdFromStorage();
-            const lastTrip = lastInteractedTripId
-              ? fetchedTrips.find((t) => t._id === lastInteractedTripId)
-              : null;
-
-            const tripToSelect = lastTrip || fetchedTrips[0];
-            setCurrentTrip(tripToSelect);
-          }
-        }
-      }
+      const stillValid =
+        !!currentTrip &&
+        fetchedTrips.some((trip) => trip._id === currentTrip._id);
+      syncBoardsFromTrips(fetchedTrips, stillValid ? currentTrip : null);
     } catch (error) {
       console.error('Error al cargar viajes:', error);
       toast.error('Error al cargar los viajes');
     } finally {
       setIsLoading(false);
     }
-  }, [currentTrip, setCurrentTrip, setTripsStore]);
+  }, [currentTrip]);
 
   useEffect(() => {
     fetchTrips();
@@ -186,8 +160,8 @@ export default function TripsPage() {
     try {
       await tripsService.deleteTrip(trip._id);
       toast.success('Viaje eliminado exitosamente');
-      removeTrip(trip._id);
-      fetchTrips(); // Recargar la lista completa
+      removeBoardAndTrip(trip._id);
+      fetchTrips();
     } catch (error) {
       console.error('Error al eliminar viaje:', error);
       toast.error('Error al eliminar el viaje');

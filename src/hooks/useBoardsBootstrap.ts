@@ -1,30 +1,11 @@
 import { useEffect } from 'react';
 import { boardsService } from '@/services/boardsService';
 import {
-  getLastActiveBoardIdFromStorage,
-  useBoardsStore,
-} from '@/store/boardsStore';
-import { useTripsStore } from '@/store/tripsStore';
-import { Trip } from '@/services/tripsService';
-import { Board } from '@/types/board';
-
-function boardToTrip(board: Board): Trip {
-  return {
-    _id: board._id,
-    name: board.name,
-    baseCurrency: board.baseCurrency,
-    createdAt: board.createdAt,
-    userRole: board.userRole,
-    createdBy: board.createdBy,
-  };
-}
-
-function syncTripsStore(boards: Board[], currentBoard: Board | null) {
-  const setTrips = useTripsStore.getState().setTrips;
-  const setCurrentTrip = useTripsStore.getState().setCurrentTrip;
-  setTrips(boards.map(boardToTrip));
-  setCurrentTrip(currentBoard ? boardToTrip(currentBoard) : null);
-}
+  pickInitialBoard,
+  selectActiveBoard,
+  syncTripsFromBoards,
+} from '@/lib/board-trip-sync';
+import { useBoardsStore } from '@/store/boardsStore';
 
 export function useBoardsBootstrap() {
   const setBoards = useBoardsStore((state) => state.setBoards);
@@ -43,31 +24,24 @@ export function useBoardsBootstrap() {
 
         setBoards(boards);
 
-        let nextCurrent: Board | null = null;
+        let nextCurrent = null;
         if (boards.length > 0) {
-          const lastId = getLastActiveBoardIdFromStorage();
-          const lastBoard = lastId
-            ? boards.find((board) => board._id === lastId)
-            : null;
           const stillValid =
             currentBoard &&
             boards.some((board) => board._id === currentBoard._id);
           nextCurrent = stillValid
-            ? (boards.find((board) => board._id === currentBoard._id) ?? null)
-            : lastBoard || boards[0];
+            ? (boards.find((board) => board._id === currentBoard!._id) ?? null)
+            : pickInitialBoard(boards);
           setCurrentBoard(nextCurrent);
         } else {
           setCurrentBoard(null);
+          nextCurrent = null;
         }
 
-        syncTripsStore(boards, nextCurrent);
+        syncTripsFromBoards(boards, nextCurrent);
       } catch (error) {
         console.error('Error al cargar tableros:', error);
-        if (!cancelled) {
-          setBoards([]);
-          setCurrentBoard(null);
-          syncTripsStore([], null);
-        }
+        // Keep existing trips/boards stores; only clear loading flag.
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -85,7 +59,4 @@ export function useBoardsBootstrap() {
   }, [setBoards, setCurrentBoard, setIsLoading]);
 }
 
-export function selectBoard(board: Board | null) {
-  useBoardsStore.getState().setCurrentBoard(board);
-  useTripsStore.getState().setCurrentTrip(board ? boardToTrip(board) : null);
-}
+export { selectActiveBoard as selectBoard };
