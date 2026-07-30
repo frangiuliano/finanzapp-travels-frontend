@@ -85,7 +85,7 @@ export default function InvitationPage() {
       if (result.success) {
         setPageState('success');
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/home');
         }, 2000);
       }
     } catch (err: unknown) {

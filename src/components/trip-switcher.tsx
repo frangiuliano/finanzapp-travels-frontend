@@ -26,10 +26,12 @@ import {
 import { useSidebar } from '@/components/ui/sidebar-context';
 import { CreateTripDialog } from '@/components/create-trip-dialog';
 import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
+import { useTripsStore } from '@/store/tripsStore';
 import {
-  useTripsStore,
-  getLastInteractedTripIdFromStorage,
-} from '@/store/tripsStore';
+  removeBoardAndTrip,
+  selectActiveBoard,
+  tripToBoard,
+} from '@/lib/board-trip-sync';
 import { tripsService } from '@/services/tripsService';
 import { toast } from 'sonner';
 
@@ -37,39 +39,16 @@ export function TripSwitcher() {
   const { isMobile } = useSidebar();
   const trips = useTripsStore((state) => state.trips);
   const currentTrip = useTripsStore((state) => state.currentTrip);
-  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
-  const removeTrip = useTripsStore((state) => state.removeTrip);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = React.useState(false);
 
   const activeTrip = currentTrip || trips[0];
 
   React.useEffect(() => {
-    if (trips.length > 0) {
-      if (!currentTrip) {
-        const lastInteractedTripId = getLastInteractedTripIdFromStorage();
-        const lastTrip = lastInteractedTripId
-          ? trips.find((t) => t._id === lastInteractedTripId)
-          : null;
-
-        const tripToSelect = lastTrip || trips[0];
-        setCurrentTrip(tripToSelect);
-      } else {
-        const currentTripExists = trips.some(
-          (trip) => trip._id === currentTrip._id,
-        );
-        if (!currentTripExists) {
-          const lastInteractedTripId = getLastInteractedTripIdFromStorage();
-          const lastTrip = lastInteractedTripId
-            ? trips.find((t) => t._id === lastInteractedTripId)
-            : null;
-
-          const tripToSelect = lastTrip || trips[0];
-          setCurrentTrip(tripToSelect);
-        }
-      }
+    if (trips.length > 0 && !currentTrip) {
+      selectActiveBoard(tripToBoard(trips[0]));
     }
-  }, [trips, currentTrip, setCurrentTrip]);
+  }, [trips, currentTrip]);
 
   const handleDeleteTrip = async (
     e: React.MouseEvent,
@@ -88,16 +67,7 @@ export function TripSwitcher() {
     try {
       await tripsService.deleteTrip(trip._id);
       toast.success('Viaje eliminado exitosamente');
-      removeTrip(trip._id);
-
-      if (currentTrip?._id === trip._id) {
-        const remainingTrips = trips.filter((t) => t._id !== trip._id);
-        if (remainingTrips.length > 0) {
-          setCurrentTrip(remainingTrips[0]);
-        } else {
-          setCurrentTrip(null);
-        }
-      }
+      removeBoardAndTrip(trip._id);
     } catch (error) {
       console.error('Error al eliminar viaje:', error);
       toast.error('Error al eliminar el viaje');
@@ -165,7 +135,7 @@ export function TripSwitcher() {
             {trips.map((trip, index) => (
               <DropdownMenuItem
                 key={trip._id}
-                onClick={() => setCurrentTrip(trip)}
+                onClick={() => selectActiveBoard(tripToBoard(trip))}
                 className="gap-2 p-2 relative"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">

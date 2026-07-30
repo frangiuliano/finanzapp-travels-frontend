@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { tripsService } from '@/services/tripsService';
-import { useTripsStore } from '@/store/tripsStore';
+import { addBoardFromTrip } from '@/lib/board-trip-sync';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import {
@@ -43,10 +43,6 @@ export function CreateTripDialog({
   const [baseCurrency, setBaseCurrency] = useState(DEFAULT_CURRENCY);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string }>({});
-
-  const addTrip = useTripsStore((state) => state.addTrip);
-  const setCurrentTrip = useTripsStore((state) => state.setCurrentTrip);
-  const currentTrip = useTripsStore((state) => state.currentTrip);
 
   const validateForm = () => {
     const newErrors: { name?: string } = {};
@@ -78,11 +74,7 @@ export function CreateTripDialog({
 
       toast.success(result.message || 'Viaje creado exitosamente');
 
-      addTrip(result.trip);
-
-      if (!currentTrip) {
-        setCurrentTrip(result.trip);
-      }
+      addBoardFromTrip(result.trip, { type: 'travel', isShared: false });
 
       setName('');
       setBaseCurrency(DEFAULT_CURRENCY);

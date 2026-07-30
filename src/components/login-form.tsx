@@ -67,7 +67,7 @@ export function LoginForm({
         // Si no se puede verificar, asumir que está verificado y continuar
       }
 
-      navigate('/dashboard');
+      navigate('/home');
     } catch (err: unknown) {
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.message
