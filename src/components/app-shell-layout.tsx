@@ -4,9 +4,11 @@ import { SiteHeader } from '@/components/site-header';
 import { BottomNav } from '@/components/bottom-nav';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useBoardsBootstrap } from '@/hooks/useBoardsBootstrap';
+import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 
 export function AppShellLayout() {
   useBoardsBootstrap();
+  useOnboardingRedirect();
 
   return (
     <SidebarProvider>
