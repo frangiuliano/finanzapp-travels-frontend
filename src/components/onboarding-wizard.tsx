@@ -49,6 +49,16 @@ function defaultNameForType(type: BoardType): string {
   return type === 'everyday' ? 'Casa' : 'Mi viaje';
 }
 
+function validateInviteEmail(email: string): string | null {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) return null;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmed)) {
+    return 'Ingresá un email válido o usá Omitir';
+  }
+  return null;
+}
+
 interface TypeOptionProps {
   type: BoardType;
   selected: boolean;
@@ -143,6 +153,15 @@ export function OnboardingWizard() {
 
   const finishWizard = async (sendInvite: boolean) => {
     setInviteError(null);
+
+    if (sendInvite) {
+      const emailValidationError = validateInviteEmail(inviteEmail);
+      if (emailValidationError) {
+        setInviteError(emailValidationError);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -157,13 +176,6 @@ export function OnboardingWizard() {
 
       if (sendInvite) {
         const email = inviteEmail.trim().toLowerCase();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          setInviteError('Ingresá un email válido o usá Omitir');
-          setIsSubmitting(false);
-          return;
-        }
-
         try {
           await participantsService.inviteParticipant(board._id, email);
           toast.success(`Invitación enviada a ${email}`);

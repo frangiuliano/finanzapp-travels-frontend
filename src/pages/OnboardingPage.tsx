@@ -4,9 +4,13 @@ import { isBoardMocksEnabled } from '@/services/boardsService';
 
 export default function OnboardingPage() {
   const boards = useBoardsStore((state) => state.boards);
-  const isLoading = useBoardsStore((state) => state.isLoading);
+  const bootstrapStatus = useBoardsStore((state) => state.bootstrapStatus);
 
-  if (isLoading && boards.length === 0 && !isBoardMocksEnabled()) {
+  if (
+    bootstrapStatus !== 'ready' &&
+    boards.length === 0 &&
+    !isBoardMocksEnabled()
+  ) {
     return (
       <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">
         Cargando…
