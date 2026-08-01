@@ -21,7 +21,7 @@ export function PWAUpdatePrompt() {
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-background p-4 shadow-lg border">
+    <div className="fixed inset-x-3 bottom-20 z-50 rounded-lg border bg-background p-4 shadow-lg md:inset-x-auto md:bottom-4 md:right-4 md:max-w-sm">
       <p className="mb-2 text-sm">Hay una nueva versión disponible</p>
       <div className="flex gap-2">
         <Button onClick={() => updateServiceWorker(true)} size="sm">

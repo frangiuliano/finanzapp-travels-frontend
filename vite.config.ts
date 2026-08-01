@@ -32,12 +32,12 @@ export default defineConfig({
         name: 'FinanzApp Travels',
         short_name: 'FinanzApp',
         description: 'Aplicación de gestión de viajes y finanzas',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#1F7A6C',
+        background_color: '#F7FAF9',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
-        start_url: '/',
+        start_url: '/home',
         icons: [
           {
             src: 'web-app-manifest-192x192.png',
@@ -62,21 +62,9 @@ export default defineConfig({
           process.env.NODE_ENV === 'development'
             ? []
             : ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        ...(process.env.NODE_ENV === 'production' && {
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/api\./i,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-cache',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24,
-                },
-              },
-            },
-          ],
-        }),
+        // Do not cache API responses: auth tokens and user data must stay fresh.
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
