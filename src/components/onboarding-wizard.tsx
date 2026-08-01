@@ -13,6 +13,8 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { glassBar } from '@/lib/glass';
+import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -32,7 +34,6 @@ import { addBoardToStores, selectActiveBoard } from '@/lib/board-trip-sync';
 import { boardsService } from '@/services/boardsService';
 import { participantsService } from '@/services/participantsService';
 import { BoardType } from '@/types/board';
-import { cn } from '@/lib/utils';
 
 type WizardStep = 'type' | 'name' | 'currency' | 'invite';
 
@@ -353,62 +354,69 @@ export function OnboardingWizard() {
         )}
       </div>
 
-      <div className="sticky bottom-20 z-10 -mx-4 border-t border-border/60 bg-background/90 px-4 py-4 backdrop-blur-md md:bottom-0">
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            className="rounded-xl"
-            onClick={goBack}
-            disabled={stepIndex === 0 || isSubmitting}
-          >
-            <ArrowLeft className="mr-2 size-4" />
-            Atrás
-          </Button>
-
-          {step !== 'invite' ? (
+      <div className="pointer-events-none sticky bottom-[var(--mobile-nav-total)] z-10 px-3 md:bottom-0 md:px-0">
+        <div
+          className={cn(
+            glassBar,
+            'pointer-events-auto px-4 py-4 md:rounded-none md:border-t md:border-border/60 md:bg-background/90 md:shadow-none md:backdrop-blur-md',
+          )}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <Button
               type="button"
+              variant="ghost"
               className="rounded-xl"
-              onClick={goNext}
-              disabled={isSubmitting}
+              onClick={goBack}
+              disabled={stepIndex === 0 || isSubmitting}
             >
-              Continuar
-              <ArrowRight className="ml-2 size-4" />
+              <ArrowLeft className="mr-2 size-4" />
+              Atrás
             </Button>
-          ) : (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl"
-                onClick={() => void finishWizard(false)}
-                disabled={isSubmitting}
-              >
-                Omitir por ahora
-              </Button>
+
+            {step !== 'invite' ? (
               <Button
                 type="button"
                 className="rounded-xl"
-                onClick={() => void finishWizard(Boolean(inviteEmail.trim()))}
+                onClick={goNext}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  'Creando…'
-                ) : inviteEmail.trim() ? (
-                  <>
-                    Crear e invitar
-                    <Check className="ml-2 size-4" />
-                  </>
-                ) : (
-                  <>
-                    Crear tablero
-                    <Check className="ml-2 size-4" />
-                  </>
-                )}
+                Continuar
+                <ArrowRight className="ml-2 size-4" />
               </Button>
-            </div>
-          )}
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => void finishWizard(false)}
+                  disabled={isSubmitting}
+                >
+                  Omitir por ahora
+                </Button>
+                <Button
+                  type="button"
+                  className="rounded-xl"
+                  onClick={() => void finishWizard(Boolean(inviteEmail.trim()))}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    'Creando…'
+                  ) : inviteEmail.trim() ? (
+                    <>
+                      Crear e invitar
+                      <Check className="ml-2 size-4" />
+                    </>
+                  ) : (
+                    <>
+                      Crear tablero
+                      <Check className="ml-2 size-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

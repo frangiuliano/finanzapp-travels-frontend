@@ -1,5 +1,7 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Button } from '@/components/ui/button';
+import { glassCard } from '@/lib/glass';
+import { cn } from '@/lib/utils';
 
 export function PWAUpdatePrompt() {
   const {
@@ -21,7 +23,12 @@ export function PWAUpdatePrompt() {
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-20 z-50 rounded-lg border bg-background p-4 shadow-lg md:inset-x-auto md:bottom-4 md:right-4 md:max-w-sm">
+    <div
+      className={cn(
+        glassCard,
+        'fixed inset-x-3 bottom-[calc(var(--mobile-nav-total)+0.5rem)] z-50 p-4 md:inset-x-auto md:bottom-4 md:right-4 md:max-w-sm',
+      )}
+    >
       <p className="mb-2 text-sm">Hay una nueva versión disponible</p>
       <div className="flex gap-2">
         <Button onClick={() => updateServiceWorker(true)} size="sm">

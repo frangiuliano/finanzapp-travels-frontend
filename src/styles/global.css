@@ -88,6 +88,30 @@
 }
 
 :root {
+  --glass-blur: 24px;
+  --glass-bg: color-mix(in oklab, var(--card) 58%, transparent);
+  --glass-border: color-mix(in oklab, white 38%, transparent);
+  --glass-shadow:
+    0 8px 32px color-mix(in oklab, var(--ink) 14%, transparent),
+    0 1px 0 color-mix(in oklab, white 42%, transparent) inset;
+  --glass-highlight: color-mix(in oklab, white 55%, transparent);
+
+  --mobile-nav-height: 3.5rem;
+  --mobile-nav-height-minimized: 2.75rem;
+  --mobile-nav-margin: 0.75rem;
+  --mobile-nav-bottom: calc(
+    env(safe-area-inset-bottom, 0px) + var(--mobile-nav-margin)
+  );
+  --mobile-nav-total: calc(
+    var(--mobile-nav-height) + var(--mobile-nav-bottom) +
+      var(--mobile-nav-margin)
+  );
+
+  --mobile-header-margin: 0.75rem;
+  --mobile-header-top: calc(
+    env(safe-area-inset-top, 0px) + var(--mobile-header-margin)
+  );
+
   --radius: 0.75rem;
   --ink: #0e2a2a;
   --lagoon: #1f7a6c;
@@ -129,7 +153,20 @@
   --sidebar-ring: #1f7a6c;
 }
 
+html[data-nav-minimized='true'] {
+  --mobile-nav-height: var(--mobile-nav-height-minimized);
+  --mobile-nav-total: calc(
+    var(--mobile-nav-height) + var(--mobile-nav-bottom) +
+      var(--mobile-nav-margin)
+  );
+}
+
 .dark {
+  --glass-bg: color-mix(in oklab, var(--card) 48%, transparent);
+  --glass-border: color-mix(in oklab, white 10%, transparent);
+  --glass-shadow: 0 8px 32px color-mix(in oklab, black 38%, transparent);
+  --glass-highlight: color-mix(in oklab, white 12%, transparent);
+
   --background: #0a1a1a;
   --foreground: #eaf1f0;
   --card: #122424;
@@ -167,6 +204,57 @@
   --chalk: #0a1a1a;
   --signal: #f0a202;
   --fog: #9bb0ac;
+}
+
+@layer components {
+  .glass-surface {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-surface-pill {
+    border-radius: 9999px;
+  }
+
+  .glass-surface-bar {
+    border-radius: 1.25rem;
+  }
+
+  .glass-surface-card {
+    border-radius: 1rem;
+  }
+
+  .glass-surface-panel {
+    border-radius: 1.25rem;
+  }
+
+  .glass-nav-active {
+    background: color-mix(in oklab, var(--primary) 14%, transparent);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+  }
+
+  .glass-overlay {
+    background: color-mix(in oklab, var(--ink) 28%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-surface {
+    background: var(--card) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .glass-overlay {
+    background: color-mix(in oklab, var(--ink) 55%, transparent) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -25,6 +25,7 @@ import { useBoardsStore } from '@/store/boardsStore';
 import { boardSharingLabel, boardTypeLabel, type Board } from '@/types/board';
 import { ParticipantRole } from '@/services/tripsService';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
+import { glassCard } from '@/lib/glass';
 import { cn } from '@/lib/utils';
 
 function BoardIcon({ type }: { type: Board['type'] }) {
@@ -125,9 +126,10 @@ export function BoardSwitcher({
       <DropdownMenuTrigger asChild>
         {variant === 'header' ? (
           <Button
-            variant="outline"
+            variant="ghost"
             className={cn(
-              'h-11 w-full justify-start gap-2 rounded-xl border-border/80 bg-card/80 px-2 shadow-sm backdrop-blur-sm',
+              glassCard,
+              'h-11 w-full justify-start gap-2 px-2 hover:bg-card/80',
               className,
             )}
           >

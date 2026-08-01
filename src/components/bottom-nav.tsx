@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { BarChart3, Home, Plane, PlusCircle, UserRound } from 'lucide-react';
+import { glassPill } from '@/lib/glass';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -10,57 +11,89 @@ const items = [
   { to: '/account', label: 'Cuenta', icon: UserRound },
 ] as const;
 
-export function BottomNav() {
+interface BottomNavProps {
+  minimized?: boolean;
+}
+
+export function BottomNav({ minimized = false }: BottomNavProps) {
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 backdrop-blur-md md:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="pointer-events-none fixed inset-x-3 z-40 transition-[bottom] duration-300 ease-out md:hidden"
+      style={{ bottom: 'var(--mobile-nav-bottom)' }}
     >
-      <ul className="mx-auto flex h-16 max-w-lg items-stretch justify-between px-1">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const emphasis = 'emphasis' in item && item.emphasis;
+      <div
+        className={cn(
+          glassPill,
+          'pointer-events-auto mx-auto flex max-w-lg items-center transition-all duration-300 ease-out',
+          minimized ? 'h-11 px-1' : 'h-14 px-1.5',
+        )}
+      >
+        <ul className="flex w-full items-center justify-between">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const emphasis = 'emphasis' in item && item.emphasis;
 
-          return (
-            <li key={item.to} className="flex flex-1">
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors',
-                    isActive
-                      ? 'text-primary'
-                      : 'text-muted-foreground hover:text-foreground',
-                    emphasis && '-mt-3',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className={cn(
-                        'flex items-center justify-center rounded-2xl transition-transform',
-                        emphasis &&
-                          'size-12 bg-[var(--signal)] text-white shadow-lg shadow-[0_10px_24px_color-mix(in_oklab,var(--signal)_35%,transparent)]',
-                        emphasis && isActive && 'scale-105',
-                        !emphasis && 'size-8',
-                        !emphasis && isActive && 'bg-primary/10',
+            return (
+              <li key={item.to} className="flex flex-1">
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-medium transition-all duration-300',
+                      isActive
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && !emphasis && (
+                        <span
+                          aria-hidden
+                          className="glass-nav-active absolute inset-x-0.5 inset-y-0 rounded-full"
+                        />
                       )}
-                    >
-                      <Icon
-                        className={cn(emphasis ? 'size-6' : 'size-5')}
-                        strokeWidth={isActive ? 2.4 : 2}
-                      />
-                    </span>
-                    <span>{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            </li>
-          );
-        })}
-      </ul>
+                      <span
+                        className={cn(
+                          'relative z-10 flex items-center justify-center rounded-full transition-all duration-300',
+                          emphasis &&
+                            'bg-[var(--signal)] text-white shadow-[0_6px_18px_color-mix(in_oklab,var(--signal)_32%,transparent)]',
+                          emphasis && (minimized ? 'size-8' : 'size-10'),
+                          emphasis && isActive && 'ring-2 ring-white/35',
+                          !emphasis && (minimized ? 'size-7' : 'size-8'),
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            emphasis
+                              ? minimized
+                                ? 'size-4'
+                                : 'size-5'
+                              : 'size-[1.15rem]',
+                          )}
+                          strokeWidth={isActive ? 2.4 : 2}
+                        />
+                      </span>
+                      <span
+                        className={cn(
+                          'relative z-10 leading-none transition-all duration-300',
+                          minimized
+                            ? 'max-h-0 overflow-hidden opacity-0'
+                            : 'max-h-4 opacity-100',
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </nav>
   );
 }

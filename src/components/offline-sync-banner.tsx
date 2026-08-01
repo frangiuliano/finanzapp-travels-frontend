@@ -1,4 +1,5 @@
 import { CloudOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface OfflineSyncBannerProps {
   pendingCount: number;
@@ -12,7 +13,11 @@ export function OfflineSyncBanner({ pendingCount }: OfflineSyncBannerProps) {
   return (
     <div
       role="status"
-      className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-950 dark:text-amber-100"
+      className={cn(
+        'glass-surface mx-3 mt-2 flex items-center gap-2 rounded-xl px-4 py-2 text-sm',
+        'border-amber-500/25 bg-amber-500/12 text-amber-950 dark:text-amber-100',
+        'md:mx-0 md:mt-0 md:rounded-none md:border-x-0 md:border-t-0',
+      )}
     >
       <CloudOff className="size-4 shrink-0" aria-hidden />
       <span>

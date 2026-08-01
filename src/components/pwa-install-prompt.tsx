@@ -1,6 +1,8 @@
 import { Download, Share, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
+import { glassCard } from '@/lib/glass';
+import { cn } from '@/lib/utils';
 
 export function PWAInstallPrompt() {
   const { dismiss, install, showIosHint, showPrompt } = usePwaInstall();
@@ -10,11 +12,11 @@ export function PWAInstallPrompt() {
   return (
     <div
       aria-live="polite"
-      className="fixed inset-x-0 bottom-16 z-50 mx-auto max-w-lg px-3 md:bottom-4 md:right-4 md:left-auto md:max-w-sm md:px-0"
+      className="fixed inset-x-0 bottom-[calc(var(--mobile-nav-total)+0.5rem)] z-50 mx-auto max-w-lg px-3 md:bottom-4 md:right-4 md:left-auto md:max-w-sm md:px-0"
       role="region"
       aria-label="Instalar aplicación"
     >
-      <div className="rounded-xl border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur-md">
+      <div className={cn(glassCard, 'p-4')}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
             <p className="font-display text-sm font-semibold">
