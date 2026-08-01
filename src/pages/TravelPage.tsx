@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { tripsService, Trip, ParticipantRole } from '@/services/tripsService';
+import { Trip, ParticipantRole } from '@/services/tripsService';
 import { budgetsService } from '@/services/budgetsService';
 import { participantsService } from '@/services/participantsService';
 import { Budget } from '@/types/budget';
@@ -27,9 +27,10 @@ import { TripExpensesSection } from '@/components/trip-expenses-section';
 import { useBoardsStore } from '@/store/boardsStore';
 import {
   boardToTrip,
-  removeBoardAndTrip,
   selectActiveBoard,
+  tripToBoard,
 } from '@/lib/board-trip-sync';
+import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { isBoardMocksEnabled } from '@/services/boardsService';
 import { toast } from 'sonner';
 import {
@@ -171,22 +172,11 @@ export default function TravelPage() {
   };
 
   const handleDeleteTrip = async (trip: Trip) => {
-    if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el viaje "${trip.name}"? Esta acción eliminará todos los presupuestos, participantes e invitaciones asociadas y no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await tripsService.deleteTrip(trip._id);
-      toast.success('Viaje eliminado exitosamente');
-      removeBoardAndTrip(trip._id);
+    const board =
+      travelBoards.find((item) => item._id === trip._id) ?? tripToBoard(trip);
+    const deleted = await deleteBoardWithConfirm(board);
+    if (deleted) {
       setSelectedBoardId(null);
-    } catch (error) {
-      console.error('Error al eliminar viaje:', error);
-      toast.error('Error al eliminar el viaje');
     }
   };
 

@@ -126,7 +126,7 @@ export default function DashboardPage() {
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground">
             {isEverydayBoard
-              ? 'Resumen del mes calendario'
+              ? 'Resumen y proyección mensual'
               : 'Home del tablero activo'}
           </p>
         </div>
