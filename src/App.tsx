@@ -12,6 +12,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import CapturePage from '@/pages/CapturePage';
 import ReportsPage from '@/pages/ReportsPage';
 import OnboardingPage from '@/pages/OnboardingPage';
+import BoardSettingsPage from '@/pages/BoardSettingsPage';
 import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 import { AppShellLayout } from '@/components/app-shell-layout';
@@ -112,6 +113,7 @@ function App() {
           <Route path="/capture" element={<CapturePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/boards" element={<TripsPage />} />
+          <Route path="/boards/settings" element={<BoardSettingsPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/account" element={<SettingsPage />} />
         </Route>

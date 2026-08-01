@@ -4,6 +4,7 @@ import {
   Home,
   LayoutGrid,
   PlusCircle,
+  Settings2,
   SettingsIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -57,6 +58,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   ];
 
   const navSecondary = [
+    {
+      title: 'Config. tablero',
+      url: '/boards/settings',
+      icon: Settings2,
+    },
     {
       title: 'Cuenta',
       url: '/account',
