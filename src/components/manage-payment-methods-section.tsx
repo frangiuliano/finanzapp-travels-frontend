@@ -22,6 +22,7 @@ import {
   PaymentMethod,
   PaymentMethodKind,
   PaymentMethodOwnerType,
+  UpdatePaymentMethodDto,
 } from '@/types/payment-method';
 
 interface ManagePaymentMethodsSectionProps {
@@ -63,6 +64,43 @@ function getOwnerLabel(method: PaymentMethod): string {
   }
 
   return 'Personal';
+}
+
+function formStateFromMethod(method: PaymentMethod): PaymentMethodFormState {
+  return {
+    ownerType: method.ownerType,
+    kind: method.kind,
+    name: method.name,
+    lastFourDigits: method.lastFourDigits || '',
+    brand: method.brand || '',
+    closingDay: method.closingDay ? String(method.closingDay) : '',
+    dueDay: method.dueDay ? String(method.dueDay) : '',
+  };
+}
+
+function buildUpdatePayload(
+  formData: PaymentMethodFormState,
+): UpdatePaymentMethodDto {
+  const updatePayload: UpdatePaymentMethodDto = {
+    name: formData.name.trim(),
+    brand: formData.brand.trim() || undefined,
+  };
+
+  if (formData.kind === 'debit' || formData.kind === 'credit') {
+    updatePayload.lastFourDigits = formData.lastFourDigits.trim();
+  }
+
+  if (formData.kind === 'credit') {
+    updatePayload.closingDay = formData.closingDay.trim()
+      ? Number(formData.closingDay)
+      : undefined;
+  }
+
+  updatePayload.dueDay = formData.dueDay.trim()
+    ? Number(formData.dueDay)
+    : undefined;
+
+  return updatePayload;
 }
 
 function formatMethodSummary(method: PaymentMethod): string {
@@ -136,15 +174,7 @@ export function ManagePaymentMethodsSection({
 
   const openEdit = (method: PaymentMethod) => {
     setEditingMethod(method);
-    setFormData({
-      ownerType: method.ownerType,
-      kind: method.kind,
-      name: method.name,
-      lastFourDigits: method.lastFourDigits || '',
-      brand: method.brand || '',
-      closingDay: method.closingDay ? String(method.closingDay) : '',
-      dueDay: method.dueDay ? String(method.dueDay) : '',
-    });
+    setFormData(formStateFromMethod(method));
     setShowClosingDayWarning(false);
     setSheetOpen(true);
   };
@@ -207,50 +237,41 @@ export function ManagePaymentMethodsSection({
     }
 
     setIsSaving(true);
+    const wasPendingClosingDay = showClosingDayWarning;
     try {
       if (editingMethod) {
-        const updatePayload: Record<string, unknown> = {
-          name: formData.name.trim(),
-          brand: formData.brand.trim() || undefined,
-        };
-
-        if (formData.kind === 'debit' || formData.kind === 'credit') {
-          updatePayload.lastFourDigits = formData.lastFourDigits.trim();
-        }
-
-        if (formData.kind === 'credit') {
-          updatePayload.closingDay = formData.closingDay.trim()
-            ? Number(formData.closingDay)
-            : undefined;
-        }
-
-        updatePayload.dueDay = formData.dueDay.trim()
-          ? Number(formData.dueDay)
-          : undefined;
-
-        await paymentMethodsService.update(editingMethod._id, updatePayload);
+        await paymentMethodsService.update(
+          editingMethod._id,
+          buildUpdatePayload(formData),
+        );
         toast.success('Medio de pago actualizado');
+        await fetchMethods();
+
+        if (!wasPendingClosingDay || formData.closingDay.trim()) {
+          setSheetOpen(false);
+          setEditingMethod(null);
+          setShowClosingDayWarning(false);
+          setFormData(defaultForm);
+        }
       } else {
         const payload = buildPayload();
-        await paymentMethodsService.create(payload);
+        const { paymentMethod } = await paymentMethodsService.create(payload);
 
         if (payload.kind === 'credit' && !payload.closingDay) {
+          setEditingMethod(paymentMethod);
+          setFormData(formStateFromMethod(paymentMethod));
           setShowClosingDayWarning(true);
           toast.success(
-            'Medio creado. Podés agregar el día de cierre después.',
+            'Medio creado. Podés agregar el día de cierre ahora o cerrar.',
           );
         } else {
           toast.success('Medio de pago creado');
           setSheetOpen(false);
+          setEditingMethod(null);
+          setFormData(defaultForm);
         }
-      }
 
-      await fetchMethods();
-
-      if (editingMethod) {
-        setSheetOpen(false);
-        setEditingMethod(null);
-        setFormData(defaultForm);
+        await fetchMethods();
       }
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -419,8 +440,18 @@ export function ManagePaymentMethodsSection({
             setFormData(defaultForm);
           }
         }}
-        title={editingMethod ? 'Editar medio de pago' : 'Nuevo medio de pago'}
-        description="Los medios personales se comparten entre tableros; los del tablero solo en este."
+        title={
+          showClosingDayWarning && editingMethod
+            ? 'Agregar día de cierre'
+            : editingMethod
+              ? 'Editar medio de pago'
+              : 'Nuevo medio de pago'
+        }
+        description={
+          showClosingDayWarning && editingMethod
+            ? 'El medio ya fue creado. Completá el día de cierre o cerrá para hacerlo después.'
+            : 'Los medios personales se comparten entre tableros; los del tablero solo en este.'
+        }
       >
         <div className="space-y-4">
           {!editingMethod ? (
@@ -568,8 +599,8 @@ export function ManagePaymentMethodsSection({
 
           {showClosingDayWarning ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-              Guardado sin día de cierre. Editá el medio cuando quieras para
-              habilitar reportes por ciclo.
+              Guardado sin día de cierre. Completá el campo de abajo y guardá, o
+              cerrá para configurarlo más tarde.
             </div>
           ) : null}
 
@@ -578,9 +609,14 @@ export function ManagePaymentMethodsSection({
               type="button"
               className="flex-1"
               onClick={() => {
-                if (showClosingDayWarning) {
+                if (showClosingDayWarning && editingMethod) {
+                  if (formData.closingDay.trim()) {
+                    void handleSubmit();
+                    return;
+                  }
                   setSheetOpen(false);
                   setShowClosingDayWarning(false);
+                  setEditingMethod(null);
                   setFormData(defaultForm);
                   return;
                 }
@@ -590,10 +626,12 @@ export function ManagePaymentMethodsSection({
             >
               {isSaving
                 ? 'Guardando…'
-                : editingMethod
-                  ? 'Actualizar'
-                  : showClosingDayWarning
-                    ? 'Cerrar'
+                : showClosingDayWarning && editingMethod
+                  ? formData.closingDay.trim()
+                    ? 'Guardar cierre'
+                    : 'Cerrar'
+                  : editingMethod
+                    ? 'Actualizar'
                     : 'Crear'}
             </Button>
             <Button

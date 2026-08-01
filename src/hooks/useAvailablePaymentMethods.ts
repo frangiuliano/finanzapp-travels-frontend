@@ -8,36 +8,60 @@ export function useAvailablePaymentMethods(boardId: string | undefined) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchPaymentMethods = useCallback(async () => {
+  const loadPaymentMethods = useCallback(
+    async (targetBoardId: string, cancelled: () => boolean) => {
+      setIsLoading(true);
+      try {
+        const { paymentMethods: methods } =
+          await paymentMethodsService.getAvailableForBoard(targetBoardId);
+        if (!cancelled()) {
+          setPaymentMethods(methods.filter((method) => method.isActive));
+        }
+      } catch (error) {
+        if (!cancelled()) {
+          const axiosError = error as AxiosError<{ message?: string }>;
+          toast.error(
+            axiosError.response?.data?.message ||
+              'Error al cargar medios de pago disponibles',
+          );
+          setPaymentMethods([]);
+        }
+      } finally {
+        if (!cancelled()) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!boardId) {
+      setPaymentMethods([]);
+      setIsLoading(false);
+      return;
+    }
+
+    let stale = false;
+    void loadPaymentMethods(boardId, () => stale);
+
+    return () => {
+      stale = true;
+    };
+  }, [boardId, loadPaymentMethods]);
+
+  const refetch = useCallback(async () => {
     if (!boardId) {
       setPaymentMethods([]);
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const { paymentMethods: methods } =
-        await paymentMethodsService.getAvailableForBoard(boardId);
-      setPaymentMethods(methods.filter((method) => method.isActive));
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      toast.error(
-        axiosError.response?.data?.message ||
-          'Error al cargar medios de pago disponibles',
-      );
-      setPaymentMethods([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [boardId]);
-
-  useEffect(() => {
-    void fetchPaymentMethods();
-  }, [fetchPaymentMethods]);
+    await loadPaymentMethods(boardId, () => false);
+  }, [boardId, loadPaymentMethods]);
 
   return {
     paymentMethods,
     isLoading,
-    refetch: fetchPaymentMethods,
+    refetch,
   };
 }
