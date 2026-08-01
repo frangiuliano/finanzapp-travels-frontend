@@ -6,6 +6,7 @@ const DB_VERSION = 1;
 
 export interface QueuedExpenseEntry {
   clientRequestId: string;
+  userId: string;
   payload: CreateExpenseDto;
   enqueuedAt: string;
   retryCount: number;
@@ -26,6 +27,7 @@ function openDatabase(): Promise<IDBDatabase> {
           keyPath: 'clientRequestId',
         });
         store.createIndex('enqueuedAt', 'enqueuedAt', { unique: false });
+        store.createIndex('userId', 'userId', { unique: false });
       }
     };
   });
@@ -42,10 +44,17 @@ function runTransaction<T>(
         const store = tx.objectStore(STORE_NAME);
         const request = fn(store);
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result as T);
+        let result: T;
 
-        tx.oncomplete = () => db.close();
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          result = request.result as T;
+        };
+
+        tx.oncomplete = () => {
+          db.close();
+          resolve(result);
+        };
         tx.onerror = () => {
           db.close();
           reject(tx.error);
@@ -60,12 +69,16 @@ export const offlineExpenseQueue = {
     notifyQueueListeners();
   },
 
-  async getAll(): Promise<QueuedExpenseEntry[]> {
-    return runTransaction('readonly', (store) => store.getAll());
+  async getAllForUser(userId: string): Promise<QueuedExpenseEntry[]> {
+    const entries = await runTransaction<QueuedExpenseEntry[]>(
+      'readonly',
+      (store) => store.getAll(),
+    );
+    return entries.filter((entry) => entry.userId === userId);
   },
 
-  async count(): Promise<number> {
-    const entries = await this.getAll();
+  async countForUser(userId: string): Promise<number> {
+    const entries = await this.getAllForUser(userId);
     return entries.length;
   },
 
@@ -74,12 +87,22 @@ export const offlineExpenseQueue = {
     notifyQueueListeners();
   },
 
+  async clearForUser(userId: string): Promise<void> {
+    const entries = await this.getAllForUser(userId);
+    await Promise.all(
+      entries.map((entry) => this.remove(entry.clientRequestId)),
+    );
+  },
+
   async markFailed(
     clientRequestId: string,
     lastError: string,
     retryCount: number,
   ): Promise<void> {
-    const entries = await this.getAll();
+    const entries = await runTransaction<QueuedExpenseEntry[]>(
+      'readonly',
+      (store) => store.getAll(),
+    );
     const entry = entries.find(
       (item) => item.clientRequestId === clientRequestId,
     );
@@ -95,16 +118,24 @@ export const offlineExpenseQueue = {
 
 type QueueListener = (count: number) => void;
 const queueListeners = new Set<QueueListener>();
+let activeUserId: string | null = null;
 
 function notifyQueueListeners(): void {
-  void offlineExpenseQueue.count().then((count) => {
+  if (!activeUserId) return;
+  void offlineExpenseQueue.countForUser(activeUserId).then((count) => {
     queueListeners.forEach((listener) => listener(count));
   });
 }
 
-export function subscribeOfflineQueue(listener: QueueListener): () => void {
+export function subscribeOfflineQueue(
+  userId: string,
+  listener: QueueListener,
+): () => void {
+  activeUserId = userId;
   queueListeners.add(listener);
-  void offlineExpenseQueue.count().then((count) => listener(count));
+  void offlineExpenseQueue
+    .countForUser(userId)
+    .then((count) => listener(count));
 
   return () => {
     queueListeners.delete(listener);

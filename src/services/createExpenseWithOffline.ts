@@ -1,6 +1,7 @@
 import { AxiosError } from 'axios';
 import { expensesService } from '@/services/expensesService';
 import { offlineExpenseQueue } from '@/services/offlineExpenseQueue';
+import { useAuthStore } from '@/store/authStore';
 import type { CreateExpenseDto, Expense } from '@/types/expense';
 
 export type CreateExpenseResult =
@@ -19,10 +20,19 @@ export function isRetryableNetworkError(error: unknown): boolean {
   return false;
 }
 
+function getCurrentUserId(): string {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) {
+    throw new Error('Usuario no autenticado');
+  }
+  return userId;
+}
+
 export async function createExpenseWithOffline(
   data: CreateExpenseDto,
 ): Promise<CreateExpenseResult> {
   const clientRequestId = crypto.randomUUID();
+  const userId = getCurrentUserId();
   const payload: CreateExpenseDto = { ...data, clientRequestId };
 
   if (navigator.onLine) {
@@ -41,10 +51,15 @@ export async function createExpenseWithOffline(
 
   await offlineExpenseQueue.enqueue({
     clientRequestId,
+    userId,
     payload,
     enqueuedAt: new Date().toISOString(),
     retryCount: 0,
   });
+
+  if (navigator.onLine) {
+    await processOfflineExpenseQueue();
+  }
 
   return { mode: 'queued', clientRequestId };
 }
@@ -54,7 +69,12 @@ export async function processOfflineExpenseQueue(): Promise<number> {
     return 0;
   }
 
-  const entries = await offlineExpenseQueue.getAll();
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) {
+    return 0;
+  }
+
+  const entries = await offlineExpenseQueue.getAllForUser(userId);
   const sorted = [...entries].sort((a, b) =>
     a.enqueuedAt.localeCompare(b.enqueuedAt),
   );

@@ -1,20 +1,28 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { notifyExpensesChanged } from '@/lib/expense-events';
 import { processOfflineExpenseQueue } from '@/services/createExpenseWithOffline';
 import {
   offlineExpenseQueue,
   subscribeOfflineQueue,
 } from '@/services/offlineExpenseQueue';
+import { useAuthStore } from '@/store/authStore';
 
 export function useOfflineExpenseSync(): number {
+  const userId = useAuthStore((state) => state.user?.id);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = subscribeOfflineQueue(setPendingCount);
+    if (!userId) {
+      return;
+    }
+
+    const unsubscribe = subscribeOfflineQueue(userId, setPendingCount);
 
     const sync = async () => {
       const synced = await processOfflineExpenseQueue();
       if (synced > 0) {
+        notifyExpensesChanged();
         toast.success(
           synced === 1
             ? '1 gasto sincronizado'
@@ -23,7 +31,7 @@ export function useOfflineExpenseSync(): number {
       }
     };
 
-    void offlineExpenseQueue.count().then(setPendingCount);
+    void offlineExpenseQueue.countForUser(userId).then(setPendingCount);
     void sync();
 
     window.addEventListener('online', sync);
@@ -31,7 +39,7 @@ export function useOfflineExpenseSync(): number {
       window.removeEventListener('online', sync);
       unsubscribe();
     };
-  }, []);
+  }, [userId]);
 
-  return pendingCount;
+  return userId ? pendingCount : 0;
 }
