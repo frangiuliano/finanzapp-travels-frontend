@@ -3,16 +3,20 @@ import { Board } from '@/types/board';
 
 const LAST_ACTIVE_BOARD_KEY = 'lastActiveBoardId';
 
+export type BootstrapStatus = 'pending' | 'loading' | 'ready' | 'error';
+
 interface BoardsState {
   boards: Board[];
   currentBoard: Board | null;
   isLoading: boolean;
+  bootstrapStatus: BootstrapStatus;
   setBoards: (boards: Board[]) => void;
   addBoard: (board: Board) => void;
   updateBoard: (board: Board) => void;
   removeBoard: (boardId: string) => void;
   setCurrentBoard: (board: Board | null) => void;
   setIsLoading: (isLoading: boolean) => void;
+  setBootstrapStatus: (status: BootstrapStatus) => void;
 }
 
 const saveLastActiveBoardId = (boardId: string | null) => {
@@ -32,7 +36,8 @@ export const getLastActiveBoardIdFromStorage = (): string | null => {
 export const useBoardsStore = create<BoardsState>((set) => ({
   boards: [],
   currentBoard: null,
-  isLoading: false,
+  isLoading: true,
+  bootstrapStatus: 'pending',
   setBoards: (boards) => set({ boards }),
   addBoard: (board) =>
     set((state) => ({
@@ -64,4 +69,5 @@ export const useBoardsStore = create<BoardsState>((set) => ({
     set({ currentBoard: board });
   },
   setIsLoading: (isLoading) => set({ isLoading }),
+  setBootstrapStatus: (bootstrapStatus) => set({ bootstrapStatus }),
 }));

@@ -103,13 +103,17 @@ export function addBoardFromTrip(
     type: meta?.type ?? 'travel',
     isShared: meta?.isShared ?? false,
   });
-  useBoardsStore.getState().addBoard(board);
-  useTripsStore.getState().addTrip(trip);
+  addBoardToStores(board);
 
   const currentBoard = useBoardsStore.getState().currentBoard;
   if (!currentBoard) {
     selectActiveBoard(board);
   }
+}
+
+export function addBoardToStores(board: Board) {
+  useBoardsStore.getState().addBoard(board);
+  useTripsStore.getState().addTrip(boardToTrip(board));
 }
 
 export function updateBoardFromTrip(trip: Trip) {

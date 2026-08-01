@@ -40,7 +40,44 @@ function isBoardMocksEnabled(): boolean {
 
 export { isBoardMocksEnabled };
 
+export interface CreateBoardInput {
+  name: string;
+  baseCurrency?: string;
+  type?: BoardType;
+}
+
 export const boardsService = {
+  async createBoard(
+    data: CreateBoardInput,
+  ): Promise<{ message: string; board: Board }> {
+    if (isBoardMocksEnabled()) {
+      const board: Board = {
+        _id: `mock-${Date.now()}`,
+        name: data.name,
+        baseCurrency: data.baseCurrency ?? 'USD',
+        type: data.type ?? 'everyday',
+        isShared: false,
+        createdAt: new Date().toISOString(),
+        userRole: ParticipantRole.OWNER,
+      };
+      return { message: 'Tablero creado (mock)', board };
+    }
+
+    const response = await api.post<{
+      message?: string;
+      board?: BoardApiRecord;
+      trip?: BoardApiRecord;
+    }>('/boards', data);
+    const record = response.data.board ?? response.data.trip;
+    if (!record) {
+      throw new Error('Respuesta inválida al crear tablero');
+    }
+    return {
+      message: response.data.message ?? 'Tablero creado exitosamente',
+      board: mapBoard(record),
+    };
+  },
+
   async getAllBoards(): Promise<{ boards: Board[] }> {
     if (isBoardMocksEnabled()) {
       return { boards: MOCK_BOARDS };
