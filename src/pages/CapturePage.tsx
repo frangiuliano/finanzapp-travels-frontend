@@ -49,7 +49,7 @@ export default function CapturePage() {
           <PlusCircle className="size-6" />
         </div>
         <h2 className="font-display text-xl font-bold sm:text-2xl">
-          Captura rápida
+          Nuevo gasto
         </h2>
         <p className="text-muted-foreground text-sm leading-relaxed">
           Tablero activo:{' '}

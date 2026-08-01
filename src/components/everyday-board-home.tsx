@@ -149,9 +149,6 @@ export function EverydayBoardHome({
           <Button asChild variant="outline" className="rounded-xl">
             <Link to="/boards/settings">Config. tablero</Link>
           </Button>
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link to="/reports">Reportes</Link>
-          </Button>
         </div>
       </div>
 
@@ -192,7 +189,7 @@ export function EverydayBoardHome({
               <Link to="/boards/settings">Config. tablero</Link>
             </Button>
             <Button asChild size="sm" variant="outline" className="rounded-xl">
-              <Link to="/capture">Capturar gasto</Link>
+              <Link to="/capture">Nuevo gasto</Link>
             </Button>
           </CardContent>
         </Card>

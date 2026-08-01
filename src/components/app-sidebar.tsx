@@ -41,7 +41,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       icon: Home,
     },
     {
-      title: 'Captura',
+      title: 'Nuevo gasto',
       url: '/capture',
       icon: PlusCircle,
     },

@@ -203,7 +203,7 @@ export default function ReportsPage() {
                     </CardHeader>
                     <CardContent>
                       <Button asChild size="sm" className="rounded-xl">
-                        <Link to="/capture">Capturar gasto</Link>
+                        <Link to="/capture">Nuevo gasto</Link>
                       </Button>
                     </CardContent>
                   </Card>

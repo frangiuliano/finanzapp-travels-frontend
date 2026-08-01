@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 const items = [
   { to: '/home', label: 'Home', icon: Home },
   { to: '/reports', label: 'Reportes', icon: BarChart3 },
-  { to: '/capture', label: 'Captura', icon: PlusCircle, emphasis: true },
+  { to: '/capture', label: 'Nuevo gasto', icon: PlusCircle },
   { to: '/travel', label: 'Viajes', icon: Plane },
   { to: '/account', label: 'Cuenta', icon: UserRound },
 ] as const;
