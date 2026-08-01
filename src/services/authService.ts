@@ -1,5 +1,6 @@
 import api from './api';
 import { useAuthStore } from '@/store/authStore';
+import { offlineExpenseQueue } from '@/services/offlineExpenseQueue';
 
 interface LoginCredentials {
   emailOrUsername: string;
@@ -39,6 +40,10 @@ export const authService = {
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     } finally {
+      const userId = useAuthStore.getState().user?.id;
+      if (userId) {
+        await offlineExpenseQueue.clearForUser(userId);
+      }
       useAuthStore.getState().clearAuth();
     }
   },

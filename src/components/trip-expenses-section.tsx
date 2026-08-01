@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { EXPENSES_CHANGED_EVENT } from '@/lib/expense-events';
 import {
   Plus,
   Pencil,
@@ -104,6 +105,13 @@ export function TripExpensesSection({
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses, refreshTrigger]);
+
+  useEffect(() => {
+    const onExpensesChanged = () => setRefreshTrigger((prev) => prev + 1);
+    window.addEventListener(EXPENSES_CHANGED_EVENT, onExpensesChanged);
+    return () =>
+      window.removeEventListener(EXPENSES_CHANGED_EVENT, onExpensesChanged);
+  }, []);
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('es-ES', {

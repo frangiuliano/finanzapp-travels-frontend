@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { EXPENSES_CHANGED_EVENT } from '@/lib/expense-events';
 import { EmptyBoardState } from '@/components/empty-board-state';
 import { EverydayBoardHome } from '@/components/everyday-board-home';
 import { TripDashboardCards } from '@/components/trip-dashboard-cards';
@@ -94,6 +95,13 @@ export default function DashboardPage() {
       stale = true;
     };
   }, [activeBoard, refreshTrigger, isEverydayBoard]);
+
+  useEffect(() => {
+    const onExpensesChanged = () => setRefreshTrigger((prev) => prev + 1);
+    window.addEventListener(EXPENSES_CHANGED_EVENT, onExpensesChanged);
+    return () =>
+      window.removeEventListener(EXPENSES_CHANGED_EVENT, onExpensesChanged);
+  }, []);
 
   if (!isLoadingBoards && !activeBoard) {
     return <EmptyBoardState />;

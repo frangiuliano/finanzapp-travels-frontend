@@ -17,7 +17,7 @@ import {
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { budgetsService } from '@/services/budgetsService';
-import { expensesService } from '@/services/expensesService';
+import { createExpenseWithOffline } from '@/services/createExpenseWithOffline';
 import { participantsService } from '@/services/participantsService';
 import { useAuthStore } from '@/store/authStore';
 import { Budget } from '@/types/budget';
@@ -301,8 +301,12 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
         }
       }
 
-      await expensesService.createExpense(payload);
-      toast.success('Gasto registrado');
+      const result = await createExpenseWithOffline(payload);
+      if (result.mode === 'queued') {
+        toast.success('Gasto guardado. Se sincronizará al volver la conexión.');
+      } else {
+        toast.success('Gasto registrado');
+      }
       resetForm();
       onSuccess?.();
     } catch (error) {

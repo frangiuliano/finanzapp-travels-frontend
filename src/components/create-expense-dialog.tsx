@@ -29,6 +29,7 @@ import {
   PaymentMethod,
 } from '@/types/expense';
 import { expensesService } from '@/services/expensesService';
+import { createExpenseWithOffline } from '@/services/createExpenseWithOffline';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
@@ -366,8 +367,14 @@ export function CreateExpenseDialog({
           ...baseData,
           tripId,
         };
-        await expensesService.createExpense(createData);
-        toast.success('Gasto creado exitosamente');
+        const result = await createExpenseWithOffline(createData);
+        if (result.mode === 'queued') {
+          toast.success(
+            'Gasto guardado. Se sincronizará al volver la conexión.',
+          );
+        } else {
+          toast.success('Gasto creado exitosamente');
+        }
       }
 
       onSuccess?.();
