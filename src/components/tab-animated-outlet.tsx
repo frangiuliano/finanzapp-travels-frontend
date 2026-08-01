@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react';
-import { flushSync } from 'react-dom';
+import { useEffect, useState, type ComponentType } from 'react';
 import { useLocation, useOutlet } from 'react-router-dom';
 import CapturePage from '@/pages/CapturePage';
 import DashboardPage from '@/pages/DashboardPage';
@@ -56,81 +55,72 @@ function useIsMobile() {
   return isMobile;
 }
 
-function scheduleTabUpdate(
-  path: string,
-  animate: boolean,
-  onUpdate: () => void,
-) {
-  if (animate && 'startViewTransition' in document) {
-    document.startViewTransition(() => {
-      flushSync(onUpdate);
-    });
-    return;
-  }
-
-  requestAnimationFrame(onUpdate);
-}
-
 export function TabAnimatedOutlet() {
   const location = useLocation();
   const outlet = useOutlet();
   const isMobile = useIsMobile();
   const path = location.pathname;
-
-  const [renderPath, setRenderPath] = useState(path);
   const [visitedTabs, setVisitedTabs] = useState<Set<MobileTabPath>>(
     getInitialVisitedTabs,
   );
-  const previousPath = useRef(path);
 
   useEffect(() => {
-    if (path === previousPath.current) {
+    if (!isMobileTabPath(path)) {
       return;
     }
 
-    const tabSwitch =
-      isMobileTabPath(path) && isMobileTabPath(previousPath.current);
-
-    scheduleTabUpdate(path, tabSwitch, () => {
-      previousPath.current = path;
-      setRenderPath(path);
-      if (isMobileTabPath(path)) {
-        setVisitedTabs((current) => new Set(current).add(path));
-      }
+    const frame = requestAnimationFrame(() => {
+      setVisitedTabs((current) => {
+        if (current.has(path)) {
+          return current;
+        }
+        return new Set(current).add(path);
+      });
     });
+
+    return () => cancelAnimationFrame(frame);
   }, [path]);
 
   const showPreservedTabs =
-    isMobile && (isMobileTabPath(renderPath) || visitedTabs.size > 0);
+    isMobile && (isMobileTabPath(path) || visitedTabs.size > 0);
 
   if (showPreservedTabs) {
     return (
-      <div className="tab-content-view relative flex flex-1 flex-col">
+      <div className="tab-content-stack relative z-0 flex min-h-0 flex-1 flex-col">
         {MOBILE_TAB_PATHS.map((tabPath) => {
           if (!visitedTabs.has(tabPath)) {
             return null;
           }
 
           const Page = TAB_PAGES[tabPath];
-          const isVisible = renderPath === tabPath;
+          const isActive = path === tabPath;
 
           return (
             <div
               key={tabPath}
-              className={cn('flex flex-1 flex-col', !isVisible && 'hidden')}
-              aria-hidden={!isVisible}
+              className={cn(
+                'tab-content-panel absolute inset-0 flex flex-col overflow-y-auto overscroll-y-contain',
+                isActive
+                  ? 'z-[1] opacity-100'
+                  : 'pointer-events-none z-0 opacity-0',
+              )}
+              aria-hidden={!isActive}
             >
               <Page />
             </div>
           );
         })}
 
-        {!isMobileTabPath(renderPath) && (
-          <div className="flex flex-1 flex-col">{outlet}</div>
+        {!isMobileTabPath(path) && (
+          <div className="relative z-[1] flex flex-1 flex-col">{outlet}</div>
         )}
       </div>
     );
   }
 
-  return <div className="tab-content-view flex flex-1 flex-col">{outlet}</div>;
+  return (
+    <div className="tab-content-stack relative z-0 flex flex-1 flex-col">
+      {outlet}
+    </div>
+  );
 }

@@ -248,46 +248,18 @@ html[data-nav-minimized='true'] {
     z-index: 0;
   }
 
-  .tab-content-view {
-    view-transition-name: tab-content;
+  .tab-content-stack {
+    isolation: isolate;
+  }
+
+  .tab-content-panel {
+    transition: opacity 160ms ease-out;
   }
 
   .glass-overlay {
     background: color-mix(in oklab, var(--ink) 28%, transparent);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-  }
-}
-
-@keyframes tab-content-fade-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
-@keyframes tab-content-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  ::view-transition-old(tab-content) {
-    animation: tab-content-fade-out 180ms ease-out both;
-  }
-
-  ::view-transition-new(tab-content) {
-    animation: tab-content-fade-in 240ms ease-out both;
   }
 }
 

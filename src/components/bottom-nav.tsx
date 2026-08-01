@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
 import { BarChart3, Home, Plane, PlusCircle, UserRound } from 'lucide-react';
 import { glassPill } from '@/lib/glass';
@@ -25,6 +32,11 @@ function triggerTabHaptic() {
 
 export function BottomNav({ minimized = false }: BottomNavProps) {
   const location = useLocation();
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const listRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
   const [indicator, setIndicator] = useState({
@@ -84,10 +96,14 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
     return () => window.removeEventListener('resize', onResize);
   }, [activeIndex, minimized]);
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <nav
       aria-label="Navegación principal"
-      className="pointer-events-none fixed inset-x-3 z-40 md:hidden"
+      className="pointer-events-none fixed inset-x-3 z-[100] md:hidden"
       style={{ bottom: 'var(--mobile-nav-bottom)' }}
     >
       <div
@@ -181,6 +197,7 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
           })}
         </ul>
       </div>
-    </nav>
+    </nav>,
+    document.body,
   );
 }
