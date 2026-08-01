@@ -296,9 +296,7 @@ html[data-nav-minimized='true'] {
   }
 
   .glass-overlay {
-    background: color-mix(in oklab, var(--ink) 28%, transparent);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: color-mix(in oklab, var(--ink) 55%, transparent);
   }
 }
 
