@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings2, Trash2 } from 'lucide-react';
+import { Settings2, Trash2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,12 +18,14 @@ import { ManageInstallmentPlansSection } from '@/components/manage-installment-p
 import { useBoardsStore } from '@/store/boardsStore';
 import { ParticipantRole } from '@/services/tripsService';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
+import { leaveBoardWithConfirm } from '@/lib/leave-board';
 
 export default function BoardSettingsPage() {
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const boards = useBoardsStore((state) => state.boards);
   const activeBoard = currentBoard || boards[0] || null;
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   if (!activeBoard) {
     return (
@@ -124,6 +126,37 @@ export default function BoardSettingsPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {activeBoard.userRole === ParticipantRole.MEMBER ? (
+        <Card className="rounded-2xl border-border/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg">
+              Abandonar tablero
+            </CardTitle>
+            <CardDescription>
+              Dejás de ver este tablero en tu cuenta. No se borran los datos
+              para el propietario ni los demás participantes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              disabled={isLeaving}
+              onClick={async () => {
+                setIsLeaving(true);
+                try {
+                  await leaveBoardWithConfirm(activeBoard);
+                } finally {
+                  setIsLeaving(false);
+                }
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              {isLeaving ? 'Saliendo…' : 'Abandonar tablero'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {activeBoard.userRole === ParticipantRole.OWNER ? (
         <Card className="rounded-2xl border-destructive/30 shadow-sm">

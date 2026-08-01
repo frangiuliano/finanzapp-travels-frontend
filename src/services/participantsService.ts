@@ -57,6 +57,11 @@ export const participantsService = {
     );
   },
 
+  async leaveBoard(boardId: string): Promise<{ message: string }> {
+    const response = await api.post(`/participants/board/${boardId}/leave`);
+    return response.data;
+  },
+
   async addGuestParticipant(
     tripId: string,
     guestName: string,

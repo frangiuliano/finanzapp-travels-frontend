@@ -1,7 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Plane, Plus, Home, Trash2 } from 'lucide-react';
+import {
+  ChevronsUpDown,
+  Plane,
+  Plus,
+  Home,
+  Trash2,
+  LogOut,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -25,6 +32,7 @@ import { useBoardsStore } from '@/store/boardsStore';
 import { boardSharingLabel, boardTypeLabel, type Board } from '@/types/board';
 import { ParticipantRole } from '@/services/tripsService';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
+import { leaveBoardWithConfirm } from '@/lib/leave-board';
 import { glassCard } from '@/lib/glass';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +64,12 @@ export function BoardSwitcher({
     e.stopPropagation();
     e.preventDefault();
     await deleteBoardWithConfirm(board);
+  };
+
+  const handleLeaveBoard = async (e: React.MouseEvent, board: Board) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await leaveBoardWithConfirm(board);
   };
 
   if (isLoading && boards.length === 0) {
@@ -183,6 +197,15 @@ export function BoardSwitcher({
                   title="Eliminar tablero"
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
+                </button>
+              ) : board.userRole === ParticipantRole.MEMBER ? (
+                <button
+                  type="button"
+                  onClick={(e) => void handleLeaveBoard(e, board)}
+                  className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  title="Abandonar tablero"
+                >
+                  <LogOut className="h-4 w-4 text-muted-foreground" />
                 </button>
               ) : null}
             </div>

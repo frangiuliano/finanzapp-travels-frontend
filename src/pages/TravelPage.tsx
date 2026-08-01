@@ -31,6 +31,7 @@ import {
   tripToBoard,
 } from '@/lib/board-trip-sync';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
+import { leaveBoardWithConfirm } from '@/lib/leave-board';
 import { isBoardMocksEnabled } from '@/services/boardsService';
 import { toast } from 'sonner';
 import {
@@ -42,6 +43,7 @@ import {
   Mail,
   CreditCard,
   BarChart3,
+  LogOut,
   Plane,
 } from 'lucide-react';
 import { ManageCardsDialog } from '@/components/manage-cards-dialog';
@@ -176,6 +178,15 @@ export default function TravelPage() {
       travelBoards.find((item) => item._id === trip._id) ?? tripToBoard(trip);
     const deleted = await deleteBoardWithConfirm(board);
     if (deleted) {
+      setSelectedBoardId(null);
+    }
+  };
+
+  const handleLeaveTrip = async (trip: Trip) => {
+    const board =
+      travelBoards.find((item) => item._id === trip._id) ?? tripToBoard(trip);
+    const left = await leaveBoardWithConfirm(board);
+    if (left) {
       setSelectedBoardId(null);
     }
   };
@@ -467,6 +478,19 @@ export default function TravelPage() {
                           )}
                         </p>
                       </div>
+                      {trip.userRole === ParticipantRole.MEMBER && (
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLeaveTrip(trip)}
+                            className="flex-1 md:flex-none"
+                          >
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Abandonar
+                          </Button>
+                        </div>
+                      )}
                       {trip.userRole === ParticipantRole.OWNER && (
                         <div className="flex gap-2 shrink-0">
                           <Button
