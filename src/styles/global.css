@@ -98,6 +98,12 @@
   --glass-saturate: 1.8;
   --glass-brightness: 1.05;
 
+  --glass-tab-bg: rgba(255, 255, 255, 0.16);
+  --glass-tab-border: rgba(255, 255, 255, 0.55);
+  --glass-tab-shadow: 0 10px 40px rgba(14, 42, 42, 0.1);
+  --glass-tab-indicator: rgba(255, 255, 255, 0.5);
+  --glass-tab-blur: 50px;
+
   --mobile-nav-height: 3.5rem;
   --mobile-nav-height-minimized: 2.75rem;
   --mobile-nav-margin: 0.75rem;
@@ -171,6 +177,11 @@ html[data-nav-minimized='true'] {
     inset 0 1px 0 color-mix(in oklab, white 18%, transparent);
   --glass-highlight: color-mix(in oklab, white 16%, transparent);
 
+  --glass-tab-bg: rgba(18, 36, 36, 0.34);
+  --glass-tab-border: rgba(255, 255, 255, 0.12);
+  --glass-tab-shadow: 0 10px 40px rgba(0, 0, 0, 0.38);
+  --glass-tab-indicator: rgba(255, 255, 255, 0.14);
+
   --background: #0a1a1a;
   --foreground: #eaf1f0;
   --card: #122424;
@@ -238,14 +249,27 @@ html[data-nav-minimized='true'] {
     border-radius: 1.25rem;
   }
 
-  .glass-nav-active,
-  .glass-nav-indicator {
+  .glass-nav-active {
     background: color-mix(in oklab, var(--primary) 16%, transparent);
     box-shadow: inset 0 1px 0 var(--glass-highlight);
   }
 
+  .glass-tab-bar {
+    border-radius: 9999px;
+    background: var(--glass-tab-bg);
+    backdrop-filter: blur(var(--glass-tab-blur)) saturate(1.9) brightness(1.06);
+    -webkit-backdrop-filter: blur(var(--glass-tab-blur)) saturate(1.9)
+      brightness(1.06);
+    border: 0.5px solid var(--glass-tab-border);
+    box-shadow: var(--glass-tab-shadow);
+  }
+
   .glass-nav-indicator {
     z-index: 0;
+    background: var(--glass-tab-indicator);
+    box-shadow:
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.72),
+      0 1px 2px rgba(14, 42, 42, 0.05);
   }
 
   .tab-content-stack {
@@ -264,8 +288,9 @@ html[data-nav-minimized='true'] {
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .glass-surface {
-    background: var(--card) !important;
+  .glass-surface,
+  .glass-tab-bar {
+    background: color-mix(in oklab, var(--card) 92%, transparent) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }

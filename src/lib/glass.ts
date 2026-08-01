@@ -4,6 +4,9 @@ import { cn } from '@/lib/utils';
 /** Base Liquid Glass material — blur, translucency, specular border */
 export const glassBase = 'glass-surface';
 
+/** Floating tab bar — extra translucent, no isolation (preserves backdrop-filter on iOS) */
+export const glassTabBar = 'glass-tab-bar';
+
 /** Floating capsule (tab bar, compact controls) */
 export const glassPill = 'glass-surface glass-surface-pill';
 

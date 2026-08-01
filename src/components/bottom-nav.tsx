@@ -8,7 +8,7 @@ import {
 import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
 import { BarChart3, Home, Plane, PlusCircle, UserRound } from 'lucide-react';
-import { glassPill } from '@/lib/glass';
+import { glassTabBar } from '@/lib/glass';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -103,13 +103,13 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
   return createPortal(
     <nav
       aria-label="Navegación principal"
-      className="pointer-events-none fixed inset-x-3 z-[100] md:hidden"
+      className="pointer-events-none fixed inset-x-4 z-[100] md:hidden"
       style={{ bottom: 'var(--mobile-nav-bottom)' }}
     >
       <div
         className={cn(
-          glassPill,
-          'pointer-events-auto mx-auto flex max-w-lg items-center transition-[height,padding] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+          glassTabBar,
+          'pointer-events-auto mx-auto flex max-w-md items-center transition-[height,padding] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
           minimized ? 'h-11 px-1' : 'h-14 px-1.5',
         )}
       >

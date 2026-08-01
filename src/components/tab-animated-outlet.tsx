@@ -99,7 +99,7 @@ export function TabAnimatedOutlet() {
             <div
               key={tabPath}
               className={cn(
-                'tab-content-panel absolute inset-0 flex flex-col overflow-y-auto overscroll-y-contain',
+                'tab-content-panel absolute inset-0 flex flex-col overflow-y-auto overscroll-y-contain pb-[var(--mobile-nav-total)]',
                 isActive
                   ? 'z-[1] opacity-100'
                   : 'pointer-events-none z-0 opacity-0',
@@ -112,14 +112,16 @@ export function TabAnimatedOutlet() {
         })}
 
         {!isMobileTabPath(path) && (
-          <div className="relative z-[1] flex flex-1 flex-col">{outlet}</div>
+          <div className="relative z-[1] flex flex-1 flex-col pb-[var(--mobile-nav-total)] md:pb-0">
+            {outlet}
+          </div>
         )}
       </div>
     );
   }
 
   return (
-    <div className="tab-content-stack relative z-0 flex flex-1 flex-col">
+    <div className="tab-content-stack relative z-0 flex flex-1 flex-col max-md:pb-[var(--mobile-nav-total)]">
       {outlet}
     </div>
   );
