@@ -330,7 +330,7 @@ export function TripExpensesSection({
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Gastos del Viaje</CardTitle>
+              <CardTitle>Gastos del viaje</CardTitle>
               <CardDescription>
                 {expenses.length > 0
                   ? `${expenses.length} gasto${expenses.length !== 1 ? 's' : ''} • Total: ${formatCurrency(totalExpenses, DEFAULT_CURRENCY)}`

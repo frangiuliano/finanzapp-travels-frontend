@@ -60,7 +60,7 @@ export function InviteParticipantDialog({
     if (!validateForm()) return;
 
     if (!effectiveTripId) {
-      setError('No hay un viaje seleccionado');
+      setError('No hay un tablero de viaje seleccionado');
       return;
     }
 

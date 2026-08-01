@@ -355,7 +355,7 @@ export function RecentExpensesTable({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Gastos Recientes del Viaje</CardTitle>
+            <CardTitle>Gastos recientes</CardTitle>
             <CardDescription>
               Gastos recientes ordenados por fecha de creación
             </CardDescription>

@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { tripsService } from '@/services/tripsService';
-import { addBoardFromTrip } from '@/lib/board-trip-sync';
+import { boardsService } from '@/services/boardsService';
+import { addBoardToStores, selectActiveBoard } from '@/lib/board-trip-sync';
+import type { Board } from '@/types/board';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import {
@@ -31,7 +32,7 @@ import {
 interface CreateTripDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (board: Board) => void;
 }
 
 export function CreateTripDialog({
@@ -48,7 +49,7 @@ export function CreateTripDialog({
     const newErrors: { name?: string } = {};
 
     if (!name.trim()) {
-      newErrors.name = 'El nombre del viaje es obligatorio';
+      newErrors.name = 'El nombre del tablero de viaje es obligatorio';
     } else if (name.trim().length < 2) {
       newErrors.name = 'El nombre debe tener al menos 2 caracteres';
     } else if (name.trim().length > 100) {
@@ -67,20 +68,22 @@ export function CreateTripDialog({
     setIsLoading(true);
 
     try {
-      const result = await tripsService.createTrip({
+      const result = await boardsService.createBoard({
         name: name.trim(),
         baseCurrency,
+        type: 'travel',
       });
 
       toast.success(result.message || 'Viaje creado exitosamente');
 
-      addBoardFromTrip(result.trip, { type: 'travel', isShared: false });
+      addBoardToStores(result.board);
+      selectActiveBoard(result.board);
 
       setName('');
       setBaseCurrency(DEFAULT_CURRENCY);
       setErrors({});
 
-      onSuccess?.();
+      onSuccess?.(result.board);
       onOpenChange(false);
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -112,15 +115,15 @@ export function CreateTripDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Viaje</DialogTitle>
+          <DialogTitle>Nuevo tablero de viaje</DialogTitle>
           <DialogDescription>
-            Completa la información para crear un nuevo viaje.
+            Creá un tablero para dividir gastos con otros durante un viaje.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre del Viaje *</Label>
+            <Label htmlFor="name">Nombre del viaje *</Label>
             <Input
               id="name"
               value={name}
@@ -168,7 +171,7 @@ export function CreateTripDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creando...' : 'Crear Viaje'}
+              {isLoading ? 'Creando…' : 'Crear viaje'}
             </Button>
           </DialogFooter>
         </form>
