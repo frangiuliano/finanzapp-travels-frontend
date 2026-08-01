@@ -1,4 +1,5 @@
 import { Board, BoardType } from '@/types/board';
+import { syncTelegramActiveBoard } from '@/lib/sync-active-board';
 import {
   getLastActiveBoardIdFromStorage,
   useBoardsStore,
@@ -137,8 +138,22 @@ export function removeBoardAndTrip(boardId: string) {
 }
 
 export function selectActiveBoard(board: Board | null) {
+  const previousBoard = useBoardsStore.getState().currentBoard;
+  const previousTrip = useTripsStore.getState().currentTrip;
+
   useBoardsStore.getState().setCurrentBoard(board);
   useTripsStore.getState().setCurrentTrip(board ? boardToTrip(board) : null);
+
+  if (board) {
+    void syncTelegramActiveBoard(board._id).catch((error) => {
+      useBoardsStore.getState().setCurrentBoard(previousBoard);
+      useTripsStore.getState().setCurrentTrip(previousTrip);
+      console.error(
+        'Error al sincronizar tablero activo para Telegram:',
+        error,
+      );
+    });
+  }
 }
 
 export function pickInitialBoard(boards: Board[]): Board | null {

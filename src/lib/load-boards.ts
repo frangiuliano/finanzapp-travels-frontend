@@ -1,5 +1,6 @@
 import { boardsService } from '@/services/boardsService';
 import { pickInitialBoard, syncTripsFromBoards } from '@/lib/board-trip-sync';
+import { useAuthStore } from '@/store/authStore';
 import { useBoardsStore } from '@/store/boardsStore';
 
 export async function loadBoards(): Promise<void> {
@@ -18,9 +19,17 @@ export async function loadBoards(): Promise<void> {
     if (boards.length > 0) {
       const stillValid =
         currentBoard && boards.some((board) => board._id === currentBoard._id);
-      nextCurrent = stillValid
-        ? (boards.find((board) => board._id === currentBoard!._id) ?? null)
-        : pickInitialBoard(boards);
+      const profileBoardId =
+        useAuthStore.getState().user?.activeBoardId ?? null;
+      const preferredId = stillValid
+        ? currentBoard!._id
+        : profileBoardId || pickInitialBoard(boards)?._id || null;
+      nextCurrent = preferredId
+        ? (boards.find((board) => board._id === preferredId) ?? null)
+        : null;
+      if (!nextCurrent) {
+        nextCurrent = pickInitialBoard(boards);
+      }
       store.setCurrentBoard(nextCurrent);
     } else {
       store.setCurrentBoard(null);

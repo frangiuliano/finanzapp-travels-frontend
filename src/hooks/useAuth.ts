@@ -27,6 +27,12 @@ export const useAuth = () => {
             refreshRes.data;
           if (refreshedUser && newToken) {
             setAuth(refreshedUser, newToken);
+            try {
+              const profileRes = await api.get('/auth/me');
+              setAuth(profileRes.data, newToken);
+            } catch {
+              // keep partial user from refresh
+            }
             setLoading(false);
             return;
           }
@@ -58,6 +64,12 @@ export const useAuth = () => {
         const { accessToken, user: refreshedUser } = response.data;
         if (refreshedUser && accessToken) {
           setAuth(refreshedUser, accessToken);
+          try {
+            const profileRes = await api.get('/auth/me');
+            setAuth(profileRes.data, accessToken);
+          } catch {
+            // keep partial user from refresh
+          }
         } else {
           clearAuth();
         }

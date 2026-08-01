@@ -8,6 +8,7 @@ interface User {
   firstName: string;
   lastName: string;
   emailVerified: boolean;
+  activeBoardId?: string | null;
 }
 
 interface AuthState {

@@ -19,14 +19,18 @@ export const authService = {
     const response = await api.post('/auth/login', credentials);
     const { accessToken, user } = response.data;
     useAuthStore.getState().setAuth(user, accessToken);
-    return { user, accessToken };
+    const fullUser = await authService.getCurrentUser();
+    useAuthStore.getState().setAuth(fullUser, accessToken);
+    return { user: fullUser, accessToken };
   },
 
   async register(data: RegisterData) {
     const response = await api.post('/auth/register', data);
     const { accessToken, user } = response.data;
     useAuthStore.getState().setAuth(user, accessToken);
-    return { user, accessToken };
+    const fullUser = await authService.getCurrentUser();
+    useAuthStore.getState().setAuth(fullUser, accessToken);
+    return { user: fullUser, accessToken };
   },
 
   async logout() {
