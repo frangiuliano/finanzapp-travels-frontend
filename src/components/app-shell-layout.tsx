@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { TabAnimatedOutlet } from '@/components/tab-animated-outlet';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { BottomNav } from '@/components/bottom-nav';
@@ -26,7 +26,11 @@ export function AppShellLayout() {
         <SiteHeader />
         <OfflineSyncBanner pendingCount={pendingOfflineCount} />
         <div className="flex flex-1 flex-col pb-[var(--mobile-nav-total)] transition-[padding] duration-300 ease-out md:pb-4">
-          {bootstrapStatus === 'error' ? <BoardsBootstrapError /> : <Outlet />}
+          {bootstrapStatus === 'error' ? (
+            <BoardsBootstrapError />
+          ) : (
+            <TabAnimatedOutlet />
+          )}
         </div>
         <PWAInstallPrompt />
         <BottomNav minimized={navMinimized} />

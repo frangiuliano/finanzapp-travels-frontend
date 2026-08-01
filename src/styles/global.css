@@ -88,13 +88,15 @@
 }
 
 :root {
-  --glass-blur: 24px;
-  --glass-bg: color-mix(in oklab, var(--card) 58%, transparent);
-  --glass-border: color-mix(in oklab, white 38%, transparent);
+  --glass-blur: 40px;
+  --glass-bg: color-mix(in oklab, var(--card) 36%, transparent);
+  --glass-border: color-mix(in oklab, white 45%, transparent);
   --glass-shadow:
-    0 8px 32px color-mix(in oklab, var(--ink) 14%, transparent),
-    0 1px 0 color-mix(in oklab, white 42%, transparent) inset;
-  --glass-highlight: color-mix(in oklab, white 55%, transparent);
+    0 8px 32px color-mix(in oklab, var(--ink) 12%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 58%, transparent);
+  --glass-highlight: color-mix(in oklab, white 62%, transparent);
+  --glass-saturate: 1.8;
+  --glass-brightness: 1.05;
 
   --mobile-nav-height: 3.5rem;
   --mobile-nav-height-minimized: 2.75rem;
@@ -162,10 +164,12 @@ html[data-nav-minimized='true'] {
 }
 
 .dark {
-  --glass-bg: color-mix(in oklab, var(--card) 48%, transparent);
-  --glass-border: color-mix(in oklab, white 10%, transparent);
-  --glass-shadow: 0 8px 32px color-mix(in oklab, black 38%, transparent);
-  --glass-highlight: color-mix(in oklab, white 12%, transparent);
+  --glass-bg: color-mix(in oklab, var(--card) 32%, transparent);
+  --glass-border: color-mix(in oklab, white 14%, transparent);
+  --glass-shadow:
+    0 8px 32px color-mix(in oklab, black 34%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 18%, transparent);
+  --glass-highlight: color-mix(in oklab, white 16%, transparent);
 
   --background: #0a1a1a;
   --foreground: #eaf1f0;
@@ -209,10 +213,13 @@ html[data-nav-minimized='true'] {
 @layer components {
   .glass-surface {
     background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate))
+      brightness(var(--glass-brightness));
+    -webkit-backdrop-filter: blur(var(--glass-blur))
+      saturate(var(--glass-saturate)) brightness(var(--glass-brightness));
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+    isolation: isolate;
   }
 
   .glass-surface-pill {
@@ -231,15 +238,56 @@ html[data-nav-minimized='true'] {
     border-radius: 1.25rem;
   }
 
-  .glass-nav-active {
-    background: color-mix(in oklab, var(--primary) 14%, transparent);
+  .glass-nav-active,
+  .glass-nav-indicator {
+    background: color-mix(in oklab, var(--primary) 16%, transparent);
     box-shadow: inset 0 1px 0 var(--glass-highlight);
+  }
+
+  .glass-nav-indicator {
+    z-index: 0;
+  }
+
+  .tab-content-view {
+    view-transition-name: tab-content;
   }
 
   .glass-overlay {
     background: color-mix(in oklab, var(--ink) 28%, transparent);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+  }
+}
+
+@keyframes tab-content-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes tab-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(tab-content) {
+    animation: tab-content-fade-out 180ms ease-out both;
+  }
+
+  ::view-transition-new(tab-content) {
+    animation: tab-content-fade-in 240ms ease-out both;
   }
 }
 
