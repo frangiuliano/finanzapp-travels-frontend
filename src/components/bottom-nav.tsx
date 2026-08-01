@@ -134,7 +134,6 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
 
           {items.map((item, index) => {
             const Icon = item.icon;
-            const emphasis = 'emphasis' in item && item.emphasis;
 
             return (
               <li
@@ -161,24 +160,12 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
                       <span
                         className={cn(
                           'flex items-center justify-center rounded-full transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                          emphasis &&
-                            'bg-[var(--signal)] text-white shadow-[0_6px_18px_color-mix(in_oklab,var(--signal)_32%,transparent)]',
-                          emphasis && (minimized ? 'size-8' : 'size-10'),
-                          emphasis &&
-                            isActive &&
-                            'scale-105 ring-2 ring-white/35',
-                          !emphasis && (minimized ? 'size-7' : 'size-8'),
-                          !emphasis && isActive && 'scale-105',
+                          minimized ? 'size-7' : 'size-8',
+                          isActive && 'scale-105',
                         )}
                       >
                         <Icon
-                          className={cn(
-                            emphasis
-                              ? minimized
-                                ? 'size-4'
-                                : 'size-5'
-                              : 'size-[1.15rem]',
-                          )}
+                          className="size-[1.15rem]"
                           strokeWidth={isActive ? 2.4 : 2}
                         />
                       </span>
