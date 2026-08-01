@@ -1,4 +1,4 @@
-# FinanzApp Travels — Frontend
+# FinanzApp — Frontend
 
 PWA mobile-first para tableros de finanzas cotidianas y viajes compartidos.
 
