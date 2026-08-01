@@ -1,18 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import {
-  BarChart3,
-  Home,
-  LayoutGrid,
-  PlusCircle,
-  UserRound,
-} from 'lucide-react';
+import { BarChart3, Home, Plane, PlusCircle, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const items = [
   { to: '/home', label: 'Home', icon: Home },
   { to: '/reports', label: 'Reportes', icon: BarChart3 },
   { to: '/capture', label: 'Captura', icon: PlusCircle, emphasis: true },
-  { to: '/boards', label: 'Tableros', icon: LayoutGrid },
+  { to: '/travel', label: 'Viajes', icon: Plane },
   { to: '/account', label: 'Cuenta', icon: UserRound },
 ] as const;
 

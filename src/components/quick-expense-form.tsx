@@ -636,10 +636,10 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
                     Para splits manuales o más opciones, usa la gestión completa
                     en{' '}
                     <Link
-                      to="/boards"
+                      to="/travel"
                       className="text-primary underline-offset-4 hover:underline"
                     >
-                      Tableros
+                      Viajes
                     </Link>
                     .
                   </p>

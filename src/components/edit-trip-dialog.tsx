@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { tripsService, Trip } from '@/services/tripsService';
+import { updateBoardFromTrip } from '@/lib/board-trip-sync';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import {
@@ -83,6 +84,11 @@ export function EditTripDialog({
         name: name.trim(),
         baseCurrency,
       });
+      updateBoardFromTrip({
+        ...trip,
+        name: name.trim(),
+        baseCurrency,
+      });
       toast.success('Viaje actualizado exitosamente');
       onSuccess?.();
       onOpenChange(false);
@@ -118,15 +124,15 @@ export function EditTripDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar Viaje</DialogTitle>
+          <DialogTitle>Editar viaje</DialogTitle>
           <DialogDescription>
-            Modifica la información del viaje.
+            Modificá la información del tablero de viaje.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre del Viaje *</Label>
+            <Label htmlFor="name">Nombre del viaje *</Label>
             <Input
               id="name"
               value={name}

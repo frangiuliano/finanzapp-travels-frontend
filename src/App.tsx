@@ -7,7 +7,7 @@ import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DashboardPage from '@/pages/DashboardPage';
 import InvitationPage from '@/pages/InvitationPage';
-import TripsPage from '@/pages/TripsPage';
+import TravelPage from '@/pages/TravelPage';
 import SettingsPage from '@/pages/SettingsPage';
 import CapturePage from '@/pages/CapturePage';
 import ReportsPage from '@/pages/ReportsPage';
@@ -112,13 +112,14 @@ function App() {
           <Route path="/home" element={<DashboardPage />} />
           <Route path="/capture" element={<CapturePage />} />
           <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/boards" element={<TripsPage />} />
+          <Route path="/travel" element={<TravelPage />} />
+          <Route path="/boards" element={<Navigate to="/travel" replace />} />
           <Route path="/boards/settings" element={<BoardSettingsPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/account" element={<SettingsPage />} />
         </Route>
         <Route path="/dashboard" element={<Navigate to="/home" replace />} />
-        <Route path="/trips" element={<Navigate to="/boards" replace />} />
+        <Route path="/trips" element={<Navigate to="/travel" replace />} />
       </Routes>
     </BrowserRouter>
   );
