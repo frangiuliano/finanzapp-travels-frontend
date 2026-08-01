@@ -386,7 +386,10 @@ export default function SettingsPage() {
                 Instrucciones de vinculación
               </p>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Abre Telegram y busca el bot de FinanzApp Travels</li>
+                <li>
+                  Usá el botón «Abrir bot en Telegram» de arriba para abrir el
+                  chat
+                </li>
                 <li>
                   Envía el comando:{' '}
                   <code className="bg-background px-1 py-0.5 rounded font-mono">

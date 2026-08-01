@@ -29,9 +29,9 @@ export default defineConfig({
         type: 'module',
       },
       manifest: {
-        name: 'FinanzApp Travels',
+        name: 'FinanzApp',
         short_name: 'FinanzApp',
-        description: 'Aplicación de gestión de viajes y finanzas',
+        description: 'Finanzas cotidianas y tableros de viaje',
         theme_color: '#1F7A6C',
         background_color: '#F7FAF9',
         display: 'standalone',
