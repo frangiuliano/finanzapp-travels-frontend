@@ -33,6 +33,7 @@ export interface ExpenseSplit {
 export interface Expense {
   _id: string;
   tripId: string;
+  boardId?: string;
   budgetId?: string;
   budget?: {
     _id: string;
@@ -44,6 +45,7 @@ export interface Expense {
   merchantName?: string;
   tags?: string[];
   category?: string;
+  categoryId?: string;
   paidByParticipantId: string;
   paidByParticipant?: {
     _id: string;
@@ -58,6 +60,7 @@ export interface Expense {
   status: ExpenseStatus;
   paymentMethod: PaymentMethod;
   cardId?: string;
+  paymentMethodId?: string;
   card?: {
     _id: string;
     name: string;
@@ -83,7 +86,8 @@ export interface Expense {
 }
 
 export interface CreateExpenseDto {
-  tripId: string;
+  boardId?: string;
+  tripId?: string;
   budgetId?: string;
   amount: number;
   currency?: string;
@@ -91,10 +95,12 @@ export interface CreateExpenseDto {
   merchantName?: string;
   tags?: string[];
   category?: string;
-  paidByParticipantId: string;
+  categoryId?: string;
+  paidByParticipantId?: string;
   status?: ExpenseStatus;
   paymentMethod?: PaymentMethod;
   cardId?: string;
+  paymentMethodId?: string;
   isDivisible?: boolean;
   splitType?: SplitType;
   splits?: {
