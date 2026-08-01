@@ -54,7 +54,23 @@ function formatPaymentMethodLabel(method: PaymentMethod): string {
 }
 
 function todayIsoDate(): string {
-  return new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function localDateToIso(dateValue: string): string {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  if (!year || !month || !day) {
+    return new Date().toISOString();
+  }
+  return new Date(year, month - 1, day).toISOString();
+}
+
+function isSafeHexColor(color: string): boolean {
+  return /^#[0-9A-Fa-f]{6}$/.test(color);
 }
 
 export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
@@ -110,8 +126,20 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
     if (!isTravel) {
       setParticipants([]);
       setBudgets([]);
+      setPaidByParticipantId('');
+      setSplitParticipantIds([]);
+      setBudgetId('');
+      setIsDivisible(false);
+      setTravelDataLoading(false);
       return;
     }
+
+    setPaidByParticipantId('');
+    setSplitParticipantIds([]);
+    setParticipants([]);
+    setBudgets([]);
+    setBudgetId('');
+    setIsDivisible(false);
 
     let stale = false;
     setTravelDataLoading(true);
@@ -227,6 +255,14 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
     }
 
     setErrors(nextErrors);
+
+    if (nextErrors.note) {
+      setShowDetails(true);
+    }
+    if (nextErrors.paidBy || nextErrors.splits) {
+      setShowTravelOptions(true);
+    }
+
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -247,7 +283,7 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
         description,
         categoryId,
         paymentMethodId,
-        expenseDate: new Date(expenseDate).toISOString(),
+        expenseDate: localDateToIso(expenseDate),
       };
 
       if (isTravel) {
@@ -366,7 +402,7 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
                     : 'border-border bg-background text-muted-foreground hover:border-foreground/20',
                 )}
                 style={
-                  isSelected && category.color
+                  isSelected && category.color && isSafeHexColor(category.color)
                     ? {
                         borderColor: category.color,
                         backgroundColor: `color-mix(in oklab, ${category.color} 18%, transparent)`,
@@ -614,9 +650,17 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
         </div>
       ) : null}
 
+      {errors.note && !showDetails ? (
+        <p className="text-destructive text-xs">{errors.note}</p>
+      ) : null}
+
+      {isTravel && errors.paidBy && !showTravelOptions ? (
+        <p className="text-destructive text-xs">{errors.paidBy}</p>
+      ) : null}
+
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || (isTravel && travelDataLoading)}
         className="h-12 rounded-2xl bg-[var(--signal)] text-base font-semibold text-white hover:bg-[color-mix(in_oklab,var(--signal)_88%,black)]"
       >
         {isSubmitting ? (
