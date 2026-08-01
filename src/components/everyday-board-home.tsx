@@ -21,18 +21,17 @@ import { incomesService } from '@/services/incomesService';
 import type { Board } from '@/types/board';
 import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
 import type { Income, MonthlyBoardSummary } from '@/types/income';
-import { formatCurrency, formatDate, getCurrentYearMonth } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatDate,
+  getCurrentYearMonth,
+  isDateInYearMonth,
+} from '@/lib/utils';
 
 interface EverydayBoardHomeProps {
   board: Board;
   refreshTrigger: number;
   onRefresh: () => void;
-}
-
-function isIncomeInMonth(income: Income, yearMonth: string): boolean {
-  const date = new Date(income.incomeDate);
-  const incomeYearMonth = getCurrentYearMonth(date);
-  return incomeYearMonth === yearMonth;
 }
 
 export function EverydayBoardHome({
@@ -83,7 +82,7 @@ export function EverydayBoardHome({
         setBudgetProgress(progressResult);
         setMonthIncomes(
           incomesResult
-            .filter((income) => isIncomeInMonth(income, yearMonth))
+            .filter((income) => isDateInYearMonth(income.incomeDate, yearMonth))
             .sort(
               (a, b) =>
                 new Date(b.incomeDate).getTime() -

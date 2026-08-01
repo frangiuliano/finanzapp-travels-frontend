@@ -38,6 +38,12 @@ export default function DashboardPage() {
     let stale = false;
 
     const fetchData = async () => {
+      setBudgets([]);
+      setExpenses([]);
+      setTotalExpenses(0);
+      setTotalBudgetedExpenses(0);
+      setTotalUnbudgetedExpenses(0);
+
       try {
         const [budgetsResult, expensesResult] = await Promise.all([
           budgetsService

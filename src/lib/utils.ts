@@ -11,6 +11,22 @@ export function getCurrentYearMonth(date = new Date()): string {
   return `${year}-${month}`;
 }
 
+export function isDateInYearMonth(
+  dateValue: string | Date,
+  yearMonth: string,
+): boolean {
+  const date = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+  const [yearStr, monthStr] = yearMonth.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const from = new Date(Date.UTC(year, month - 1, 1));
+  const toExclusive =
+    month === 12
+      ? new Date(Date.UTC(year + 1, 0, 1))
+      : new Date(Date.UTC(year, month, 1));
+  return date >= from && date < toExclusive;
+}
+
 export function formatYearMonth(yearMonth: string): string {
   const [year, month] = yearMonth.split('-').map(Number);
   const date = new Date(year, month - 1, 1);

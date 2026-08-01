@@ -14,7 +14,8 @@ export const incomesService = {
   },
 
   async getIncomes(boardId: string): Promise<{ incomes: Income[] }> {
-    const response = await api.get(`/incomes?boardId=${boardId}`);
+    const params = new URLSearchParams({ boardId });
+    const response = await api.get(`/incomes?${params.toString()}`);
     return response.data;
   },
 
