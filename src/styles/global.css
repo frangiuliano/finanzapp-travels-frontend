@@ -98,11 +98,11 @@
   --glass-saturate: 1.8;
   --glass-brightness: 1.05;
 
-  --glass-tab-bg: rgba(255, 255, 255, 0.16);
-  --glass-tab-border: rgba(255, 255, 255, 0.55);
-  --glass-tab-shadow: 0 10px 40px rgba(14, 42, 42, 0.1);
-  --glass-tab-indicator: rgba(255, 255, 255, 0.5);
-  --glass-tab-blur: 50px;
+  --glass-tab-bg: rgba(255, 255, 255, 0.1);
+  --glass-tab-border: rgba(255, 255, 255, 0.62);
+  --glass-tab-shadow: 0 12px 44px rgba(14, 42, 42, 0.12);
+  --glass-tab-indicator: rgba(255, 255, 255, 0.55);
+  --glass-tab-blur: 60px;
 
   --mobile-nav-height: 3.5rem;
   --mobile-nav-height-minimized: 2.75rem;
@@ -177,10 +177,10 @@ html[data-nav-minimized='true'] {
     inset 0 1px 0 color-mix(in oklab, white 18%, transparent);
   --glass-highlight: color-mix(in oklab, white 16%, transparent);
 
-  --glass-tab-bg: rgba(18, 36, 36, 0.34);
-  --glass-tab-border: rgba(255, 255, 255, 0.12);
-  --glass-tab-shadow: 0 10px 40px rgba(0, 0, 0, 0.38);
-  --glass-tab-indicator: rgba(255, 255, 255, 0.14);
+  --glass-tab-bg: rgba(22, 40, 40, 0.28);
+  --glass-tab-border: rgba(255, 255, 255, 0.16);
+  --glass-tab-shadow: 0 12px 44px rgba(0, 0, 0, 0.42);
+  --glass-tab-indicator: rgba(255, 255, 255, 0.16);
 
   --background: #0a1a1a;
   --foreground: #eaf1f0;
@@ -256,12 +256,25 @@ html[data-nav-minimized='true'] {
 
   .glass-tab-bar {
     border-radius: 9999px;
-    background: var(--glass-tab-bg);
-    backdrop-filter: blur(var(--glass-tab-blur)) saturate(1.9) brightness(1.06);
-    -webkit-backdrop-filter: blur(var(--glass-tab-blur)) saturate(1.9)
-      brightness(1.06);
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.26) 0%,
+      var(--glass-tab-bg) 100%
+    );
+    backdrop-filter: blur(var(--glass-tab-blur)) saturate(2.05) brightness(1.08);
+    -webkit-backdrop-filter: blur(var(--glass-tab-blur)) saturate(2.05)
+      brightness(1.08);
     border: 0.5px solid var(--glass-tab-border);
     box-shadow: var(--glass-tab-shadow);
+    transform: translateZ(0);
+  }
+
+  .dark .glass-tab-bar {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      var(--glass-tab-bg) 100%
+    );
   }
 
   .glass-nav-indicator {
@@ -273,11 +286,13 @@ html[data-nav-minimized='true'] {
   }
 
   .tab-content-stack {
-    isolation: isolate;
+    min-height: 0;
   }
 
   .tab-content-panel {
     transition: opacity 160ms ease-out;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: var(--mobile-nav-total);
   }
 
   .glass-overlay {
@@ -293,6 +308,10 @@ html[data-nav-minimized='true'] {
     background: color-mix(in oklab, var(--card) 92%, transparent) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  .dark .glass-tab-bar {
+    background: color-mix(in oklab, var(--card) 92%, transparent) !important;
   }
 
   .glass-overlay {

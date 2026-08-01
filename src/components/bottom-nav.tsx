@@ -104,7 +104,10 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
     <nav
       aria-label="Navegación principal"
       className="pointer-events-none fixed inset-x-4 z-[100] md:hidden"
-      style={{ bottom: 'var(--mobile-nav-bottom)' }}
+      style={{
+        bottom: 'var(--mobile-nav-bottom)',
+        WebkitTransform: 'translateZ(0)',
+      }}
     >
       <div
         className={cn(

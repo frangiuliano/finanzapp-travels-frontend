@@ -22,10 +22,10 @@ export function AppShellLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="min-w-0 transition-all duration-200 ease-linear">
+      <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col transition-all duration-200 ease-linear">
         <SiteHeader />
         <OfflineSyncBanner pendingCount={pendingOfflineCount} />
-        <div className="relative z-0 flex min-h-0 flex-1 flex-col md:pb-4">
+        <div className="relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden md:overflow-visible md:pb-4">
           {bootstrapStatus === 'error' ? (
             <BoardsBootstrapError />
           ) : (

@@ -86,7 +86,7 @@ export function TabAnimatedOutlet() {
 
   if (showPreservedTabs) {
     return (
-      <div className="tab-content-stack relative z-0 flex min-h-0 flex-1 flex-col">
+      <div className="tab-content-stack relative z-0 flex min-h-0 w-full flex-1 flex-col">
         {MOBILE_TAB_PATHS.map((tabPath) => {
           if (!visitedTabs.has(tabPath)) {
             return null;
@@ -121,7 +121,7 @@ export function TabAnimatedOutlet() {
   }
 
   return (
-    <div className="tab-content-stack relative z-0 flex flex-1 flex-col max-md:pb-[var(--mobile-nav-total)]">
+    <div className="tab-content-stack relative z-0 flex min-h-0 flex-1 flex-col max-md:overflow-y-auto max-md:pb-[var(--mobile-nav-total)]">
       {outlet}
     </div>
   );
