@@ -2,7 +2,7 @@ import { ComponentProps } from 'react';
 import {
   BarChart3,
   Home,
-  LayoutGrid,
+  Plane,
   PlusCircle,
   Settings2,
   SettingsIcon,
@@ -51,9 +51,9 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       icon: BarChart3,
     },
     {
-      title: 'Tableros',
-      url: '/boards',
-      icon: LayoutGrid,
+      title: 'Viajes',
+      url: '/travel',
+      icon: Plane,
     },
   ];
 

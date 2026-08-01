@@ -27,15 +27,13 @@ import {
   Plane,
 } from 'lucide-react';
 import { botService } from '@/services/botService';
-import { tripsService } from '@/services/tripsService';
-import { useTripsStore } from '@/store/tripsStore';
-import { syncBoardsFromTrips, boardToTrip } from '@/lib/board-trip-sync';
+import { boardToTrip } from '@/lib/board-trip-sync';
 import { syncTelegramActiveBoard } from '@/lib/sync-active-board';
-import { isBoardMocksEnabled } from '@/services/boardsService';
 import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
 import { useBoardsStore } from '@/store/boardsStore';
+import { useTripsStore } from '@/store/tripsStore';
 import { boardTypeLabel, type Board } from '@/types/board';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
@@ -51,8 +49,6 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const setAuth = useAuthStore((state) => state.setAuth);
   const accessToken = useAuthStore((state) => state.accessToken);
-  const trips = useTripsStore((state) => state.trips);
-  const currentTrip = useTripsStore((state) => state.currentTrip);
   const [token, setToken] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -76,28 +72,6 @@ export default function SettingsPage() {
       setUsername(user.username || '');
     }
   }, [user]);
-
-  useEffect(() => {
-    if (trips.length === 0) {
-      if (isBoardMocksEnabled()) {
-        return;
-      }
-
-      const fetchTrips = async () => {
-        try {
-          const { trips: fetchedTrips } = await tripsService.getAllTrips();
-          const stillValid =
-            !!currentTrip &&
-            fetchedTrips.some((trip) => trip._id === currentTrip._id);
-          syncBoardsFromTrips(fetchedTrips, stillValid ? currentTrip : null);
-        } catch (error) {
-          console.error('Error al cargar viajes:', error);
-        }
-      };
-
-      void fetchTrips();
-    }
-  }, [trips.length, currentTrip]);
 
   const handleGenerateToken = async () => {
     setIsGenerating(true);
