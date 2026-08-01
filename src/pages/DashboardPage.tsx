@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { EmptyBoardState } from '@/components/empty-board-state';
+import { EverydayBoardHome } from '@/components/everyday-board-home';
 import { TripDashboardCards } from '@/components/trip-dashboard-cards';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
 import { StatisticsCards } from '@/components/statistics-cards';
@@ -23,29 +24,39 @@ export default function DashboardPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const activeBoard = currentBoard || boards[0];
+  const isEverydayBoard = activeBoard?.type === 'everyday';
 
   useEffect(() => {
+    if (
+      !activeBoard ||
+      activeBoard._id.startsWith('mock-') ||
+      isEverydayBoard
+    ) {
+      return;
+    }
+
+    let stale = false;
+
     const fetchData = async () => {
-      if (!activeBoard || activeBoard._id.startsWith('mock-')) {
-        setBudgets([]);
-        setExpenses([]);
-        setTotalExpenses(0);
-        setTotalBudgetedExpenses(0);
-        setTotalUnbudgetedExpenses(0);
-        return;
-      }
+      setBudgets([]);
+      setExpenses([]);
+      setTotalExpenses(0);
+      setTotalBudgetedExpenses(0);
+      setTotalUnbudgetedExpenses(0);
 
       try {
         const [budgetsResult, expensesResult] = await Promise.all([
           budgetsService
             .getAllBudgetsByTrip(activeBoard._id)
-            .then(({ budgets }) => budgets)
+            .then(({ budgets: items }) => items)
             .catch(() => []),
           expensesService
             .getExpenses(activeBoard._id)
-            .then(({ expenses }) => expenses)
+            .then(({ expenses: items }) => items)
             .catch(() => []),
         ]);
+
+        if (stale) return;
 
         setBudgets(budgetsResult);
         setExpenses(expensesResult);
@@ -66,17 +77,23 @@ export default function DashboardPage() {
           .reduce((sum, expense) => sum + expense.amount, 0);
         setTotalUnbudgetedExpenses(totalWithoutBudget);
       } catch (error) {
-        console.error('Error al cargar datos:', error);
-        setBudgets([]);
-        setExpenses([]);
-        setTotalExpenses(0);
-        setTotalBudgetedExpenses(0);
-        setTotalUnbudgetedExpenses(0);
+        if (!stale) {
+          console.error('Error al cargar datos:', error);
+          setBudgets([]);
+          setExpenses([]);
+          setTotalExpenses(0);
+          setTotalBudgetedExpenses(0);
+          setTotalUnbudgetedExpenses(0);
+        }
       }
     };
 
     void fetchData();
-  }, [activeBoard, refreshTrigger]);
+
+    return () => {
+      stale = true;
+    };
+  }, [activeBoard, refreshTrigger, isEverydayBoard]);
 
   if (!isLoadingBoards && !activeBoard) {
     return <EmptyBoardState />;
@@ -90,6 +107,8 @@ export default function DashboardPage() {
     );
   }
 
+  const handleRefresh = () => setRefreshTrigger((prev) => prev + 1);
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 pt-0">
       <div className="px-2 sm:px-4 pt-4 lg:px-6">
@@ -98,46 +117,63 @@ export default function DashboardPage() {
             {activeBoard.name}
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Home del tablero activo
+            {isEverydayBoard
+              ? 'Resumen del mes calendario'
+              : 'Home del tablero activo'}
           </p>
         </div>
-        {activeBoard._id.startsWith('mock-') ? (
-          <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-6 text-sm text-muted-foreground">
-            Estás viendo mocks locales. Cambiá el tablero activo desde el
-            selector para validar el shell.
-          </div>
-        ) : (
-          <TripDashboardCards
-            tripName={activeBoard.name}
-            budgets={budgets}
-            totalExpenses={totalExpenses}
-            totalBudgetedExpenses={totalBudgetedExpenses}
-            totalUnbudgetedExpenses={totalUnbudgetedExpenses}
-            currency={activeBoard.baseCurrency}
-            expenses={expenses}
+
+        {isEverydayBoard ? (
+          <EverydayBoardHome
+            board={activeBoard}
+            refreshTrigger={refreshTrigger}
+            onRefresh={handleRefresh}
           />
+        ) : (
+          <>
+            {activeBoard._id.startsWith('mock-') ? (
+              <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-6 text-sm text-muted-foreground">
+                Estás viendo mocks locales. Cambiá el tablero activo desde el
+                selector para validar el shell.
+              </div>
+            ) : (
+              <TripDashboardCards
+                tripName={activeBoard.name}
+                budgets={budgets}
+                totalExpenses={totalExpenses}
+                totalBudgetedExpenses={totalBudgetedExpenses}
+                totalUnbudgetedExpenses={totalUnbudgetedExpenses}
+                currency={activeBoard.baseCurrency}
+                expenses={expenses}
+              />
+            )}
+          </>
         )}
       </div>
-      {!activeBoard._id.startsWith('mock-') && budgets.length > 0 && (
-        <>
-          <Separator />
-          <div className="px-4 lg:px-6">
-            <BudgetsOverview
-              tripName={activeBoard.name}
-              budgets={budgets}
-              expenses={expenses}
-            />
-          </div>
-        </>
-      )}
-      {!activeBoard._id.startsWith('mock-') && (
+
+      {!isEverydayBoard &&
+        !activeBoard._id.startsWith('mock-') &&
+        budgets.length > 0 && (
+          <>
+            <Separator />
+            <div className="px-4 lg:px-6">
+              <BudgetsOverview
+                tripName={activeBoard.name}
+                budgets={budgets}
+                expenses={expenses}
+              />
+            </div>
+          </>
+        )}
+
+      {!isEverydayBoard && !activeBoard._id.startsWith('mock-') && (
         <>
           <Separator />
           <div className="px-2 sm:px-4 pb-4 lg:px-6">
             <RecentExpensesTable
               tripId={activeBoard._id}
               refreshTrigger={refreshTrigger}
-              onRefresh={() => setRefreshTrigger((prev) => prev + 1)}
+              onRefresh={handleRefresh}
             />
           </div>
           <Separator />
