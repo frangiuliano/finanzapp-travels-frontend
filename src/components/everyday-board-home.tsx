@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlusIcon } from 'lucide-react';
-import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
+import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
+import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { MonthBudgetsProgress } from '@/components/month-budgets-progress';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
+import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,10 +19,12 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
+import { forecastService } from '@/services/forecastService';
 import { incomesService } from '@/services/incomesService';
 import type { Board } from '@/types/board';
 import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
-import type { Income, MonthlyBoardSummary } from '@/types/income';
+import type { MonthlyForecast } from '@/types/forecast';
+import type { Income } from '@/types/income';
 import {
   formatCurrency,
   formatDate,
@@ -39,10 +43,10 @@ export function EverydayBoardHome({
   refreshTrigger,
   onRefresh,
 }: EverydayBoardHomeProps) {
-  const yearMonth = getCurrentYearMonth();
+  const [yearMonth, setYearMonth] = useState(getCurrentYearMonth());
   const { categories } = useBoardCategories(board._id);
 
-  const [summary, setSummary] = useState<MonthlyBoardSummary | null>(null);
+  const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
   const [budgetProgress, setBudgetProgress] = useState<
     BoardMonthBudgetProgress[]
   >([]);
@@ -60,11 +64,11 @@ export function EverydayBoardHome({
     const load = async () => {
       setIsLoading(true);
       try {
-        const [summaryResult, progressResult, incomesResult] =
+        const [forecastResult, progressResult, incomesResult] =
           await Promise.all([
-            incomesService
-              .getMonthlySummary(board._id, yearMonth)
-              .then(({ summary: s }) => s)
+            forecastService
+              .getMonthlyForecast(board._id, yearMonth)
+              .then(({ forecast: f }) => f)
               .catch(() => null),
             boardMonthBudgetsService
               .getProgress(board._id, yearMonth)
@@ -78,7 +82,7 @@ export function EverydayBoardHome({
 
         if (stale) return;
 
-        setSummary(summaryResult);
+        setForecast(forecastResult);
         setBudgetProgress(progressResult);
         setMonthIncomes(
           incomesResult
@@ -103,16 +107,18 @@ export function EverydayBoardHome({
     };
   }, [board._id, yearMonth, refreshTrigger]);
 
-  const currency = summary?.currency ?? board.baseCurrency;
+  const currency = forecast?.currency ?? board.baseCurrency;
 
   const emptyMonthState = useMemo(() => {
-    if (isLoading || !summary) return false;
+    if (isLoading || !forecast) return false;
     return (
-      summary.totalIncomes === 0 &&
-      summary.totalExpenses === 0 &&
+      forecast.actual.totalIncomes === 0 &&
+      forecast.actual.totalExpenses === 0 &&
+      forecast.planned.totalIncomes === 0 &&
+      forecast.planned.totalOutflows === 0 &&
       budgetProgress.length === 0
     );
-  }, [isLoading, summary, budgetProgress.length]);
+  }, [isLoading, forecast, budgetProgress.length]);
 
   const handleIncomeCreated = () => {
     onRefresh();
@@ -129,6 +135,8 @@ export function EverydayBoardHome({
 
   return (
     <div className="space-y-6">
+      <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <Button
@@ -139,7 +147,10 @@ export function EverydayBoardHome({
             Registrar ingreso
           </Button>
           <Button asChild variant="outline" className="rounded-xl">
-            <Link to="/reports?view=consolidated">Vista consolidada</Link>
+            <Link to="/boards/settings">Config. tablero</Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link to="/reports">Reportes</Link>
           </Button>
         </div>
       </div>
@@ -150,8 +161,8 @@ export function EverydayBoardHome({
           <Skeleton className="h-32 rounded-xl" />
           <Skeleton className="h-32 rounded-xl" />
         </div>
-      ) : summary ? (
-        <BoardMonthSummaryCards summary={summary} yearMonth={yearMonth} />
+      ) : forecast ? (
+        <MonthlyPlanningCards forecast={forecast} />
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
@@ -165,8 +176,8 @@ export function EverydayBoardHome({
           <CardHeader>
             <CardTitle className="text-base">Empezá el mes</CardTitle>
             <CardDescription>
-              Registrá tu primer ingreso o capturá un gasto para ver el restante
-              del mes.
+              Registrá ingresos puntuales o configurá recurrentes, gastos fijos
+              y cuotas para ver la proyección del mes.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
@@ -178,11 +189,24 @@ export function EverydayBoardHome({
               Registrar ingreso
             </Button>
             <Button asChild size="sm" variant="outline" className="rounded-xl">
+              <Link to="/boards/settings">Config. tablero</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline" className="rounded-xl">
               <Link to="/capture">Capturar gasto</Link>
             </Button>
           </CardContent>
         </Card>
       )}
+
+      {!isLoading && forecast ? (
+        <BoardForecastSection
+          incomes={forecast.planned.incomes}
+          fixedExpenses={forecast.planned.fixedExpenses}
+          installments={forecast.planned.installments}
+          currency={currency}
+          isFutureMonth={forecast.isFutureMonth}
+        />
+      ) : null}
 
       {!isLoading && (
         <MonthBudgetsProgress
@@ -194,9 +218,9 @@ export function EverydayBoardHome({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Ingresos del mes</CardTitle>
+          <CardTitle className="text-lg">Ingresos puntuales del mes</CardTitle>
           <CardDescription>
-            Movimientos registrados en {yearMonth}
+            Movimientos registrados manualmente en {yearMonth}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,8 +231,8 @@ export function EverydayBoardHome({
             </div>
           ) : monthIncomes.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              Sin ingresos este mes. Usá &quot;Registrar ingreso&quot; para
-              cargar tu sueldo u otros ingresos.
+              Sin ingresos puntuales este mes. Los recurrentes aparecen en la
+              planificación de arriba.
             </p>
           ) : (
             <ul className="divide-y">

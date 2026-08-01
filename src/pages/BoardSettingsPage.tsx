@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings2 } from 'lucide-react';
+import { Settings2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,12 +12,18 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ManageCategoriesSection } from '@/components/manage-categories-section';
 import { ManagePaymentMethodsSection } from '@/components/manage-payment-methods-section';
+import { ManageRecurringIncomesSection } from '@/components/manage-recurring-incomes-section';
+import { ManageRecurringExpensesSection } from '@/components/manage-recurring-expenses-section';
+import { ManageInstallmentPlansSection } from '@/components/manage-installment-plans-section';
 import { useBoardsStore } from '@/store/boardsStore';
+import { ParticipantRole } from '@/services/tripsService';
+import { deleteBoardWithConfirm } from '@/lib/delete-board';
 
 export default function BoardSettingsPage() {
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const boards = useBoardsStore((state) => state.boards);
   const activeBoard = currentBoard || boards[0] || null;
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!activeBoard) {
     return (
@@ -45,13 +52,54 @@ export default function BoardSettingsPage() {
           Configuración del tablero
         </h1>
         <p className="text-sm text-muted-foreground">
-          Categorías y medios de pago para{' '}
+          Organización y planificación para{' '}
           <span className="font-medium text-foreground">
             {activeBoard.name}
           </span>
           .
         </p>
       </div>
+
+      {activeBoard.type === 'everyday' ? (
+        <Card className="rounded-2xl border-border/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg">
+              Ingresos y compromisos recurrentes
+            </CardTitle>
+            <CardDescription>
+              Ingresos recurrentes, gastos fijos y cuotas para proyectar meses
+              futuros en el Home.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="recurring-incomes" className="w-full">
+              <TabsList className="mb-6 grid w-full grid-cols-3">
+                <TabsTrigger value="recurring-incomes">Ingresos</TabsTrigger>
+                <TabsTrigger value="fixed-expenses">Gastos fijos</TabsTrigger>
+                <TabsTrigger value="installments">Cuotas</TabsTrigger>
+              </TabsList>
+              <TabsContent value="recurring-incomes">
+                <ManageRecurringIncomesSection
+                  boardId={activeBoard._id}
+                  currency={activeBoard.baseCurrency}
+                />
+              </TabsContent>
+              <TabsContent value="fixed-expenses">
+                <ManageRecurringExpensesSection
+                  boardId={activeBoard._id}
+                  currency={activeBoard.baseCurrency}
+                />
+              </TabsContent>
+              <TabsContent value="installments">
+                <ManageInstallmentPlansSection
+                  boardId={activeBoard._id}
+                  currency={activeBoard.baseCurrency}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="rounded-2xl border-border/80 shadow-sm">
         <CardHeader className="pb-3">
@@ -76,6 +124,38 @@ export default function BoardSettingsPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {activeBoard.userRole === ParticipantRole.OWNER ? (
+        <Card className="rounded-2xl border-destructive/30 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg text-destructive">
+              Zona de peligro
+            </CardTitle>
+            <CardDescription>
+              Eliminá este tablero para empezar de cero. Esta acción es
+              permanente y no se puede deshacer.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={isDeleting}
+              onClick={async () => {
+                setIsDeleting(true);
+                try {
+                  await deleteBoardWithConfirm(activeBoard);
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isDeleting ? 'Eliminando…' : 'Eliminar tablero'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

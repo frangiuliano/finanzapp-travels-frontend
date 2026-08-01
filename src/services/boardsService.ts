@@ -110,4 +110,12 @@ export const boardsService = {
     }
     return { board: mapBoard(record) };
   },
+
+  async deleteBoard(id: string): Promise<void> {
+    if (isBoardMocksEnabled()) {
+      return;
+    }
+
+    await api.delete(`/boards/${id}`);
+  },
 };

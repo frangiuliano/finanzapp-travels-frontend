@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Plane, Plus, Home } from 'lucide-react';
+import { ChevronsUpDown, Plane, Plus, Home, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -23,6 +23,8 @@ import { Button } from '@/components/ui/button';
 import { selectBoard } from '@/hooks/useBoardsBootstrap';
 import { useBoardsStore } from '@/store/boardsStore';
 import { boardSharingLabel, boardTypeLabel, type Board } from '@/types/board';
+import { ParticipantRole } from '@/services/tripsService';
+import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { cn } from '@/lib/utils';
 
 function BoardIcon({ type }: { type: Board['type'] }) {
@@ -48,6 +50,12 @@ export function BoardSwitcher({
   const isLoading = useBoardsStore((state) => state.isLoading);
 
   const activeBoard = currentBoard ?? boards[0] ?? null;
+
+  const handleDeleteBoard = async (e: React.MouseEvent, board: Board) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await deleteBoardWithConfirm(board);
+  };
 
   if (isLoading && boards.length === 0) {
     return (
@@ -159,11 +167,23 @@ export function BoardSwitcher({
                 {boardSharingLabel(board.isShared)}
               </span>
             </div>
-            {board._id === activeBoard._id ? (
-              <Badge variant="secondary" className="shrink-0 text-[10px]">
-                Activo
-              </Badge>
-            ) : null}
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {board._id === activeBoard._id ? (
+                <Badge variant="secondary" className="text-[10px]">
+                  Activo
+                </Badge>
+              ) : null}
+              {board.userRole === ParticipantRole.OWNER ? (
+                <button
+                  type="button"
+                  onClick={(e) => void handleDeleteBoard(e, board)}
+                  className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  title="Eliminar tablero"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </button>
+              ) : null}
+            </div>
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />

@@ -59,7 +59,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navSecondary = [
     {
-      title: 'Config. tablero',
+      title: 'Configuración del tablero',
       url: '/boards/settings',
       icon: Settings2,
     },
