@@ -11,6 +11,12 @@ export function getCurrentYearMonth(date = new Date()): string {
   return `${year}-${month}`;
 }
 
+export function shiftYearMonth(yearMonth: string, deltaMonths: number): string {
+  const [yearStr, monthStr] = yearMonth.split('-');
+  const date = new Date(Number(yearStr), Number(monthStr) - 1 + deltaMonths, 1);
+  return getCurrentYearMonth(date);
+}
+
 export function isDateInYearMonth(
   dateValue: string | Date,
   yearMonth: string,

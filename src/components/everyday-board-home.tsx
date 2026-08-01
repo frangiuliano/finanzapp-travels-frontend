@@ -139,7 +139,7 @@ export function EverydayBoardHome({
             Registrar ingreso
           </Button>
           <Button asChild variant="outline" className="rounded-xl">
-            <Link to="/reports">Vista consolidada</Link>
+            <Link to="/reports?view=consolidated">Vista consolidada</Link>
           </Button>
         </div>
       </div>
