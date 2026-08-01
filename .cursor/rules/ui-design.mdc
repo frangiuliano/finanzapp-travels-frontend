@@ -1,0 +1,14 @@
+---
+description: UI design for FinanzApp Travels — app shell vs marketing surfaces
+globs: "**/*.{tsx,jsx,css}"
+alwaysApply: false
+---
+
+# UI design (this product)
+
+This is a mobile-first PWA (Shadcn + Tailwind), not a marketing landing by default.
+
+- **App / dashboard / boards:** preserve the existing design system and patterns. Prefer consistency over reinvention.
+- **New screens or visual identity work:** use skills `frontend-design` and `web-design-guidelines`.
+- **Marketing / promotional surfaces only:** distinctive brand-first composition; avoid generic AI template looks (purple gradients, cream+serif+terracotta defaults, fake newspaper layouts). One job per section; don't card-wash the UI.
+- Do not apply full landing-page hero rules to authenticated app chrome.
