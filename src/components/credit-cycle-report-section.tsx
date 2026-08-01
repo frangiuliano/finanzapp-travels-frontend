@@ -50,6 +50,12 @@ export function CreditCycleReportSection({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setSelectedMethodId('');
+    setSelectedCycle('current');
+    setReport(null);
+  }, [boardId]);
+
+  useEffect(() => {
     if (creditMethods.length === 0) {
       setSelectedMethodId('');
       return;
@@ -66,6 +72,13 @@ export function CreditCycleReportSection({
   useEffect(() => {
     if (!selectedMethodId || boardId.startsWith('mock-')) {
       setReport(null);
+      return;
+    }
+
+    const methodBelongsToBoard = creditMethods.some(
+      (method) => method._id === selectedMethodId,
+    );
+    if (!methodBelongsToBoard) {
       return;
     }
 
@@ -101,7 +114,7 @@ export function CreditCycleReportSection({
     return () => {
       stale = true;
     };
-  }, [boardId, selectedMethodId, selectedCycle]);
+  }, [boardId, selectedMethodId, selectedCycle, creditMethods]);
 
   useEffect(() => {
     if (report?.status === 'ok') {

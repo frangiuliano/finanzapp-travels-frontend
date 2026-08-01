@@ -30,9 +30,8 @@ export default function ReportsPage() {
   const activeBoard = currentBoard || boards[0];
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialView: ReportsView =
+  const activeView: ReportsView =
     searchParams.get('view') === 'consolidated' ? 'consolidated' : 'calendar';
-  const [activeView, setActiveView] = useState<ReportsView>(initialView);
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
 
   const [calendarReport, setCalendarReport] =
@@ -42,7 +41,6 @@ export default function ReportsPage() {
 
   const handleViewChange = (value: string) => {
     const view = value as ReportsView;
-    setActiveView(view);
     if (view === 'consolidated') {
       setSearchParams({ view: 'consolidated' });
     } else {

@@ -100,7 +100,7 @@ export function ConsolidatedReportSection({
             <CardTitle className="text-lg">Totales en {currency}</CardTitle>
             <CardDescription>
               {totals.boardCount} tablero
-              {totals.boardCount === 1 ? '' : 's'} con movimientos
+              {totals.boardCount === 1 ? '' : 's'} en {currency}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
