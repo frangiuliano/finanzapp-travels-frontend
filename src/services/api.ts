@@ -54,9 +54,18 @@ api.interceptors.response.use(
             {},
             { withCredentials: true },
           )
-          .then((res) => {
+          .then(async (res) => {
             const { accessToken, user } = res.data;
             useAuthStore.getState().setAuth(user, accessToken);
+            try {
+              const meRes = await axios.get(`${api.defaults.baseURL}/auth/me`, {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                withCredentials: true,
+              });
+              useAuthStore.getState().setAuth(meRes.data, accessToken);
+            } catch {
+              // keep partial user from refresh
+            }
             refreshPromise = null;
             return { accessToken, user };
           })
