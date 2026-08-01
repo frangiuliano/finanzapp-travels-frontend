@@ -12,8 +12,14 @@ import type {
 export const expensesService = {
   async createExpense(
     data: CreateExpenseDto,
+    clientRequestId?: string,
   ): Promise<{ message: string; expense: Expense }> {
-    const response = await api.post('/expenses', data);
+    const idempotencyKey = clientRequestId ?? data.clientRequestId;
+    const response = await api.post('/expenses', data, {
+      headers: idempotencyKey
+        ? { 'Idempotency-Key': idempotencyKey }
+        : undefined,
+    });
     return response.data;
   },
 

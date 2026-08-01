@@ -109,6 +109,7 @@ export interface CreateExpenseDto {
     percentage?: number;
   }[];
   expenseDate?: string;
+  clientRequestId?: string;
 }
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {
