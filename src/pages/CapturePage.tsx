@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { EmptyBoardState } from '@/components/empty-board-state';
 import { QuickExpenseForm } from '@/components/quick-expense-form';
-import { PlusCircle } from 'lucide-react';
+import { Calculator, PlusCircle } from 'lucide-react';
 import { useBoardsStore } from '@/store/boardsStore';
 
 export default function CapturePage() {
@@ -60,6 +60,15 @@ export default function CapturePage() {
       </div>
 
       <QuickExpenseForm board={activeBoard} onSuccess={handleSuccess} />
+
+      {activeBoard.type === 'everyday' ? (
+        <Button asChild variant="outline" className="w-full rounded-xl">
+          <Link to="/simulate">
+            <Calculator className="mr-2 size-4" />
+            Simular compra en cuotas
+          </Link>
+        </Button>
+      ) : null}
     </div>
   );
 }
