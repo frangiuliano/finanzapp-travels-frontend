@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -52,7 +54,7 @@ export function CreateBudgetDialog({
   useEffect(() => {
     if (budget) {
       setName(budget.name);
-      setAmount(budget.amount.toString());
+      setAmount(formatMoneyInputFromNumber(budget.amount));
       setCurrency(
         (SUPPORTED_CURRENCIES.includes(budget.currency as SupportedCurrency)
           ? budget.currency
@@ -80,8 +82,8 @@ export function CreateBudgetDialog({
     if (!amount.trim()) {
       newErrors.amount = 'El monto es obligatorio';
     } else {
-      const numAmount = parseFloat(amount);
-      if (isNaN(numAmount) || numAmount < 0) {
+      const numAmount = parseMoneyInput(amount);
+      if (numAmount === null || numAmount < 0) {
         newErrors.amount =
           'El monto debe ser un número válido mayor o igual a 0';
       }
@@ -102,7 +104,7 @@ export function CreateBudgetDialog({
       if (budget) {
         await budgetsService.updateBudget(budget._id, {
           name: name.trim(),
-          amount: parseFloat(amount),
+          amount: parseMoneyInput(amount)!,
           currency,
         });
         toast.success('Presupuesto actualizado exitosamente');
@@ -110,7 +112,7 @@ export function CreateBudgetDialog({
         await budgetsService.createBudget({
           tripId,
           name: name.trim(),
-          amount: parseFloat(amount),
+          amount: parseMoneyInput(amount)!,
           currency,
         });
         toast.success('Presupuesto creado exitosamente');
@@ -184,14 +186,10 @@ export function CreateBudgetDialog({
 
           <div className="space-y-2">
             <Label htmlFor="amount">Monto *</Label>
-            <Input
+            <MoneyInput
               id="amount"
-              type="number"
-              step="0.01"
-              min="0"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
+              onChange={setAmount}
               disabled={isLoading}
             />
             {errors.amount && (

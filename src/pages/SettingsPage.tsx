@@ -371,7 +371,11 @@ export default function SettingsPage() {
             <Button
               variant="outline"
               onClick={() =>
-                window.open('https://t.me/finanzapp_travels_bot', '_blank')
+                window.open(
+                  'https://t.me/finanzapp_travels_bot',
+                  '_blank',
+                  'noopener,noreferrer',
+                )
               }
               className="w-full sm:w-auto"
             >

@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
@@ -80,7 +82,7 @@ export function ManageInstallmentPlansSection({
     setEditingItem(item);
     setFormData({
       label: item.label,
-      installmentAmount: String(item.installmentAmount),
+      installmentAmount: formatMoneyInputFromNumber(item.installmentAmount),
       totalInstallments: String(item.totalInstallments),
       paidInstallments: String(item.paidInstallments),
       startYearMonth: item.startYearMonth,
@@ -95,11 +97,11 @@ export function ManageInstallmentPlansSection({
       return;
     }
 
-    const installmentAmount = parseFloat(formData.installmentAmount);
+    const installmentAmount = parseMoneyInput(formData.installmentAmount);
     const totalInstallments = parseInt(formData.totalInstallments, 10);
     const paidInstallments = parseInt(formData.paidInstallments, 10);
 
-    if (isNaN(installmentAmount) || installmentAmount < 0.01) {
+    if (installmentAmount === null || installmentAmount < 0.01) {
       toast.error('Ingresá un monto de cuota válido');
       return;
     }
@@ -246,15 +248,12 @@ export function ManageInstallmentPlansSection({
           </div>
           <div className="space-y-2">
             <Label>Monto por cuota ({currency})</Label>
-            <Input
-              type="number"
-              min="0.01"
-              step="0.01"
+            <MoneyInput
               value={formData.installmentAmount}
-              onChange={(e) =>
+              onChange={(value) =>
                 setFormData((prev) => ({
                   ...prev,
-                  installmentAmount: e.target.value,
+                  installmentAmount: value,
                 }))
               }
               disabled={isSaving}

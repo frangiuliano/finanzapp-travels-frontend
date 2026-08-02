@@ -5,6 +5,8 @@ import { ArrowLeft, Calculator, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import { EmptyBoardState } from '@/components/empty-board-state';
 import { ExpenseSimulationResults } from '@/components/expense-simulation-results';
@@ -60,14 +62,14 @@ export default function SimulateExpensePage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    const parsedAmount = parseFloat(totalAmount);
+    const parsedAmount = parseMoneyInput(totalAmount);
     const parsedInstallments = parseInt(installments, 10);
 
     if (!label.trim()) {
       toast.error('Ingresá un concepto');
       return;
     }
-    if (isNaN(parsedAmount) || parsedAmount < 0.01) {
+    if (parsedAmount === null || parsedAmount < 0.01) {
       toast.error('Ingresá un monto válido');
       return;
     }
@@ -136,15 +138,10 @@ export default function SimulateExpensePage() {
           <Label htmlFor="sim-amount">
             Monto total ({activeBoard.baseCurrency})
           </Label>
-          <Input
+          <MoneyInput
             id="sim-amount"
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputMode="decimal"
             value={totalAmount}
-            onChange={(event) => setTotalAmount(event.target.value)}
-            placeholder="50000"
+            onChange={setTotalAmount}
             className="rounded-xl"
           />
         </div>
