@@ -17,12 +17,12 @@ import {
   SidebarFooter,
   SidebarHeader,
 } from '@/components/ui/sidebar';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/authService';
 import { BoardSwitcher } from './board-switcher';
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const navigate = useNavigate();
 
   const handleLogout = async () => {

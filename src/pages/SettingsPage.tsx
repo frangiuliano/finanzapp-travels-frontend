@@ -29,7 +29,6 @@ import {
 import { botService } from '@/services/botService';
 import { boardToTrip } from '@/lib/board-trip-sync';
 import { syncTelegramActiveBoard } from '@/lib/sync-active-board';
-import { useAuth } from '@/hooks/useAuth';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/store/authStore';
 import { useBoardsStore } from '@/store/boardsStore';
@@ -46,7 +45,7 @@ function BoardTypeIcon({ type }: { type: Board['type'] }) {
 }
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const setAuth = useAuthStore((state) => state.setAuth);
   const accessToken = useAuthStore((state) => state.accessToken);
   const [token, setToken] = useState<string | null>(null);
