@@ -13,6 +13,7 @@ export interface PaymentMethod {
   closingDay?: number;
   dueDay?: number;
   isActive: boolean;
+  isDefault?: boolean;
   migratedFromCardId?: string;
   createdAt: string;
   updatedAt: string;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Settings2, Trash2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,11 @@ import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { leaveBoardWithConfirm } from '@/lib/leave-board';
 
 export default function BoardSettingsPage() {
+  const [searchParams] = useSearchParams();
+  const organizationTab =
+    searchParams.get('tab') === 'payment-methods'
+      ? 'payment-methods'
+      : 'categories';
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const boards = useBoardsStore((state) => state.boards);
   const activeBoard = currentBoard || boards[0] || null;
@@ -112,7 +117,7 @@ export default function BoardSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="categories" className="w-full">
+          <Tabs defaultValue={organizationTab} className="w-full">
             <TabsList className="mb-6 grid w-full grid-cols-2">
               <TabsTrigger value="categories">Categorías</TabsTrigger>
               <TabsTrigger value="payment-methods">Medios de pago</TabsTrigger>
@@ -121,7 +126,10 @@ export default function BoardSettingsPage() {
               <ManageCategoriesSection boardId={activeBoard._id} />
             </TabsContent>
             <TabsContent value="payment-methods">
-              <ManagePaymentMethodsSection boardId={activeBoard._id} />
+              <ManagePaymentMethodsSection
+                boardId={activeBoard._id}
+                boardName={activeBoard.name}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>

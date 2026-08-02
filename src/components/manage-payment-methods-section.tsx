@@ -27,6 +27,7 @@ import {
 
 interface ManagePaymentMethodsSectionProps {
   boardId: string;
+  boardName: string;
 }
 
 interface PaymentMethodFormState {
@@ -36,17 +37,15 @@ interface PaymentMethodFormState {
   lastFourDigits: string;
   brand: string;
   closingDay: string;
-  dueDay: string;
 }
 
 const defaultForm: PaymentMethodFormState = {
   ownerType: 'user',
-  kind: 'credit',
+  kind: 'debit',
   name: '',
   lastFourDigits: '',
   brand: '',
   closingDay: '',
-  dueDay: '',
 };
 
 function getOwnerLabel(method: PaymentMethod): string {
@@ -74,7 +73,6 @@ function formStateFromMethod(method: PaymentMethod): PaymentMethodFormState {
     lastFourDigits: method.lastFourDigits || '',
     brand: method.brand || '',
     closingDay: method.closingDay ? String(method.closingDay) : '',
-    dueDay: method.dueDay ? String(method.dueDay) : '',
   };
 }
 
@@ -96,14 +94,14 @@ function buildUpdatePayload(
       : undefined;
   }
 
-  updatePayload.dueDay = formData.dueDay.trim()
-    ? Number(formData.dueDay)
-    : undefined;
-
   return updatePayload;
 }
 
 function formatMethodSummary(method: PaymentMethod): string {
+  if (method.kind === 'cash') {
+    return PAYMENT_METHOD_KIND_LABELS.cash;
+  }
+
   const parts = [PAYMENT_METHOD_KIND_LABELS[method.kind]];
   if (method.lastFourDigits) {
     parts.push(`•••• ${method.lastFourDigits}`);
@@ -116,6 +114,7 @@ function formatMethodSummary(method: PaymentMethod): string {
 
 export function ManagePaymentMethodsSection({
   boardId,
+  boardName,
 }: ManagePaymentMethodsSectionProps) {
   const [userMethods, setUserMethods] = useState<PaymentMethod[]>([]);
   const [boardMethods, setBoardMethods] = useState<PaymentMethod[]>([]);
@@ -199,10 +198,6 @@ export function ManagePaymentMethodsSection({
       payload.closingDay = Number(formData.closingDay);
     }
 
-    if (formData.dueDay.trim()) {
-      payload.dueDay = Number(formData.dueDay);
-    }
-
     return payload;
   };
 
@@ -224,14 +219,6 @@ export function ManagePaymentMethodsSection({
       const closingDay = Number(formData.closingDay);
       if (closingDay < 1 || closingDay > 28) {
         toast.error('El día de cierre debe estar entre 1 y 28');
-        return;
-      }
-    }
-
-    if (formData.dueDay.trim()) {
-      const dueDay = Number(formData.dueDay);
-      if (dueDay < 1 || dueDay > 28) {
-        toast.error('El día de vencimiento debe estar entre 1 y 28');
         return;
       }
     }
@@ -285,6 +272,10 @@ export function ManagePaymentMethodsSection({
   };
 
   const handleArchive = async (method: PaymentMethod) => {
+    if (method.isDefault) {
+      return;
+    }
+
     if (
       !confirm(
         `¿Archivar "${method.name}"? No se borran los gastos ya registrados.`,
@@ -328,6 +319,11 @@ export function ManagePaymentMethodsSection({
                 <Badge variant="outline" className="text-[10px]">
                   {PAYMENT_METHOD_OWNER_LABELS[method.ownerType]}
                 </Badge>
+                {method.isDefault ? (
+                  <Badge variant="secondary" className="text-[10px]">
+                    Predeterminado
+                  </Badge>
+                ) : null}
                 {method.kind === 'credit' && !method.closingDay ? (
                   <Badge
                     variant="secondary"
@@ -353,19 +349,22 @@ export function ManagePaymentMethodsSection({
                 className="size-8"
                 onClick={() => openEdit(method)}
                 aria-label={`Editar ${method.name}`}
+                disabled={method.isDefault}
               >
                 <Pencil className="size-4" />
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => handleArchive(method)}
-                aria-label={`Archivar ${method.name}`}
-              >
-                <Archive className="size-4 text-muted-foreground" />
-              </Button>
+              {!method.isDefault ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => handleArchive(method)}
+                  aria-label={`Archivar ${method.name}`}
+                >
+                  <Archive className="size-4 text-muted-foreground" />
+                </Button>
+              ) : null}
             </div>
           </li>
         ))}
@@ -382,13 +381,25 @@ export function ManagePaymentMethodsSection({
         <div>
           <h3 className="font-display text-lg font-semibold">Medios de pago</h3>
           <p className="text-sm text-muted-foreground">
-            Efectivo, débito y crédito personales o del tablero.
+            Tarjetas de débito y crédito personales o del tablero. Efectivo /
+            Transferencia viene incluido en cada tablero.
           </p>
         </div>
         <Button type="button" size="sm" onClick={openCreate}>
           <Plus className="mr-1.5 size-4" />
           Nuevo
         </Button>
+      </div>
+
+      <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+        <p className="text-muted-foreground">
+          Tablero activo:{' '}
+          <span className="font-medium text-foreground">{boardName}</span>
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Los medios del tablero se crean en este tablero. Cambiá el tablero
+          activo desde el selector del encabezado para configurar otro.
+        </p>
       </div>
 
       {creditWithoutClosingDay.length > 0 ? (
@@ -473,7 +484,9 @@ export function ManagePaymentMethodsSection({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">Personal (mío)</SelectItem>
-                    <SelectItem value="board">Del tablero activo</SelectItem>
+                    <SelectItem value="board">
+                      Del tablero: {boardName}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -485,8 +498,7 @@ export function ManagePaymentMethodsSection({
                     setFormData((prev) => ({
                       ...prev,
                       kind: value as PaymentMethodKind,
-                      lastFourDigits:
-                        value === 'cash' ? '' : prev.lastFourDigits,
+                      lastFourDigits: prev.lastFourDigits,
                     }))
                   }
                   disabled={isSaving}
@@ -495,7 +507,6 @@ export function ManagePaymentMethodsSection({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cash">Efectivo</SelectItem>
                     <SelectItem value="debit">Débito</SelectItem>
                     <SelectItem value="credit">Crédito</SelectItem>
                   </SelectContent>
@@ -572,27 +583,10 @@ export function ManagePaymentMethodsSection({
                   disabled={isSaving}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Usado para reportes por ciclo de facturación. Podés omitirlo y
-                  configurarlo después; los gastos se registran igual.
+                  Día del mes en que cierra el resumen (ej. 14 = cierra todos
+                  los meses el día 14). Se configura una vez; el sistema calcula
+                  cada ciclo automáticamente.
                 </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pm-due">Día de vencimiento (opcional)</Label>
-                <Input
-                  id="pm-due"
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={formData.dueDay}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      dueDay: event.target.value,
-                    }))
-                  }
-                  placeholder="5"
-                  disabled={isSaving}
-                />
               </div>
             </>
           ) : null}

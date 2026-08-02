@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { ChevronDown, Loader2, Settings2 } from 'lucide-react';
+import { ChevronDown, Loader2, Plus, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CreatePaymentMethodSheet } from '@/components/create-payment-method-sheet';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -18,21 +19,29 @@ import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { budgetsService } from '@/services/budgetsService';
 import { createExpenseWithOffline } from '@/services/createExpenseWithOffline';
+import { expensesService } from '@/services/expensesService';
 import { participantsService } from '@/services/participantsService';
 import { useAuthStore } from '@/store/authStore';
 import { Budget } from '@/types/budget';
 import { Board } from '@/types/board';
-import { CreateExpenseDto, SplitType } from '@/types/expense';
-import { Participant } from '@/types/participant';
 import {
-  PAYMENT_METHOD_KIND_LABELS,
-  PaymentMethod,
-} from '@/types/payment-method';
+  CreateExpenseDto,
+  Expense,
+  ExpenseStatus,
+  SplitType,
+  UpdateExpenseDto,
+} from '@/types/expense';
+import { Participant } from '@/types/participant';
+import { formatPaymentMethodLabel } from '@/lib/format-payment-method-label';
 import { cn } from '@/lib/utils';
 
 interface QuickExpenseFormProps {
   board: Board;
   onSuccess?: () => void;
+  expense?: Expense | null;
+  prefilledBudgets?: Budget[];
+  prefilledParticipants?: Participant[];
+  isDialog?: boolean;
 }
 
 function getParticipantName(participant: Participant): string {
@@ -43,14 +52,6 @@ function getParticipantName(participant: Participant): string {
     return `${participant.userId.firstName} ${participant.userId.lastName}`;
   }
   return 'Participante';
-}
-
-function formatPaymentMethodLabel(method: PaymentMethod): string {
-  const parts = [method.name, PAYMENT_METHOD_KIND_LABELS[method.kind]];
-  if (method.lastFourDigits) {
-    parts.push(`•••• ${method.lastFourDigits}`);
-  }
-  return parts.join(' · ');
 }
 
 function todayIsoDate(): string {
@@ -73,31 +74,52 @@ function isSafeHexColor(color: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(color);
 }
 
-export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
+export function QuickExpenseForm({
+  board,
+  onSuccess,
+  expense,
+  prefilledBudgets,
+  prefilledParticipants,
+  isDialog = false,
+}: QuickExpenseFormProps) {
+  const isEditing = Boolean(expense);
   const user = useAuthStore((state) => state.user);
   const isTravel = board.type === 'travel';
 
   const { categories, isLoading: categoriesLoading } = useBoardCategories(
     board._id,
   );
-  const { paymentMethods, isLoading: paymentLoading } =
-    useAvailablePaymentMethods(board._id);
+  const {
+    paymentMethods,
+    isLoading: paymentLoading,
+    refetch: refetchPaymentMethods,
+  } = useAvailablePaymentMethods(board._id);
 
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [paymentMethodId, setPaymentMethodId] = useState('');
   const [note, setNote] = useState('');
   const [expenseDate, setExpenseDate] = useState(todayIsoDate());
-  const [showDetails, setShowDetails] = useState(false);
-  const [showTravelOptions, setShowTravelOptions] = useState(false);
+  const [showDetails, setShowDetails] = useState(isDialog);
+  const [showTravelOptions, setShowTravelOptions] = useState(
+    isDialog && board.type === 'travel',
+  );
   const [budgetId, setBudgetId] = useState('');
   const [paidByParticipantId, setPaidByParticipantId] = useState('');
+  const [merchantName, setMerchantName] = useState('');
+  const [status, setStatus] = useState<ExpenseStatus>(ExpenseStatus.PAID);
   const [isDivisible, setIsDivisible] = useState(false);
+  const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL);
   const [splitParticipantIds, setSplitParticipantIds] = useState<string[]>([]);
+  const [manualSplits, setManualSplits] = useState<
+    Record<string, { amount: string; enabled: boolean }>
+  >({});
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [travelDataLoading, setTravelDataLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPaymentMethodSheetOpen, setIsPaymentMethodSheetOpen] =
+    useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isLoading = categoriesLoading || paymentLoading;
@@ -130,6 +152,27 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
       setSplitParticipantIds([]);
       setBudgetId('');
       setIsDivisible(false);
+      setManualSplits({});
+      setTravelDataLoading(false);
+      return;
+    }
+
+    if (prefilledParticipants && prefilledBudgets) {
+      setParticipants(prefilledParticipants);
+      setBudgets(prefilledBudgets);
+      const currentUserParticipant = prefilledParticipants.find(
+        (participant) =>
+          typeof participant.userId === 'object' &&
+          participant.userId?._id === user?.id,
+      );
+      if (!isEditing) {
+        setPaidByParticipantId(
+          currentUserParticipant?._id ?? prefilledParticipants[0]?._id ?? '',
+        );
+        setSplitParticipantIds(
+          prefilledParticipants.map((participant) => participant._id),
+        );
+      }
       setTravelDataLoading(false);
       return;
     }
@@ -140,6 +183,7 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
     setBudgets([]);
     setBudgetId('');
     setIsDivisible(false);
+    setManualSplits({});
 
     let stale = false;
     setTravelDataLoading(true);
@@ -157,17 +201,19 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
         setParticipants(loadedParticipants);
         setBudgets(budgetsResult.budgets);
 
-        const currentUserParticipant = loadedParticipants.find(
-          (participant) =>
-            typeof participant.userId === 'object' &&
-            participant.userId?._id === user?.id,
-        );
-        const defaultPaidBy =
-          currentUserParticipant?._id ?? loadedParticipants[0]?._id ?? '';
-        setPaidByParticipantId(defaultPaidBy);
-        setSplitParticipantIds(
-          loadedParticipants.map((participant) => participant._id),
-        );
+        if (!isEditing) {
+          const currentUserParticipant = loadedParticipants.find(
+            (participant) =>
+              typeof participant.userId === 'object' &&
+              participant.userId?._id === user?.id,
+          );
+          const defaultPaidBy =
+            currentUserParticipant?._id ?? loadedParticipants[0]?._id ?? '';
+          setPaidByParticipantId(defaultPaidBy);
+          setSplitParticipantIds(
+            loadedParticipants.map((participant) => participant._id),
+          );
+        }
       } catch (error) {
         if (!stale) {
           const axiosError = error as AxiosError<{ message?: string }>;
@@ -186,16 +232,66 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
     return () => {
       stale = true;
     };
-  }, [board._id, isTravel, user?.id]);
+  }, [
+    board._id,
+    isTravel,
+    user?.id,
+    prefilledParticipants,
+    prefilledBudgets,
+    isEditing,
+  ]);
+
+  useEffect(() => {
+    if (!expense) return;
+
+    setAmount(expense.amount.toString());
+    setNote(expense.description);
+    setMerchantName(expense.merchantName || '');
+    setStatus(expense.status);
+    setExpenseDate(
+      expense.expenseDate
+        ? new Date(expense.expenseDate).toISOString().slice(0, 10)
+        : todayIsoDate(),
+    );
+    if (expense.categoryId) {
+      setCategoryId(expense.categoryId);
+    }
+    if (expense.paymentMethodId) {
+      setPaymentMethodId(expense.paymentMethodId);
+    }
+    setBudgetId(expense.budgetId || '');
+    setPaidByParticipantId(
+      expense.paidByParticipantId || expense.paidByParticipant?._id || '',
+    );
+    setIsDivisible(expense.isDivisible);
+    setSplitType(expense.splitType || SplitType.EQUAL);
+
+    if (expense.isDivisible && expense.splits?.length) {
+      const ids = expense.splits.map((split) => split.participantId);
+      setSplitParticipantIds(ids);
+      const splits: Record<string, { amount: string; enabled: boolean }> = {};
+      expense.splits.forEach((split) => {
+        splits[split.participantId] = {
+          amount: split.amount.toString(),
+          enabled: true,
+        };
+      });
+      setManualSplits(splits);
+    }
+  }, [expense]);
 
   const resetForm = useCallback(() => {
     setAmount('');
     setNote('');
     setExpenseDate(todayIsoDate());
-    setShowDetails(false);
-    setShowTravelOptions(false);
+    setShowDetails(isDialog);
+    setShowTravelOptions(isDialog && isTravel);
     setBudgetId('');
     setIsDivisible(false);
+    setSplitType(SplitType.EQUAL);
+    setManualSplits({});
+    setMerchantName('');
+    setStatus(ExpenseStatus.PAID);
     if (categories.length > 0) {
       setCategoryId(categories[0]._id);
     }
@@ -219,7 +315,7 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
       );
     }
     setErrors({});
-  }, [categories, paymentMethods, isTravel, participants, user?.id]);
+  }, [categories, paymentMethods, isTravel, participants, user?.id, isDialog]);
 
   const validate = (): boolean => {
     const nextErrors: Record<string, string> = {};
@@ -250,8 +346,28 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
       nextErrors.paidBy = 'Seleccioná quién pagó';
     }
 
-    if (isTravel && isDivisible && splitParticipantIds.length === 0) {
-      nextErrors.splits = 'Incluí al menos un participante en el split';
+    if (isTravel && isDivisible) {
+      if (splitType === SplitType.EQUAL && splitParticipantIds.length === 0) {
+        nextErrors.splits = 'Incluí al menos un participante en el split';
+      }
+
+      if (splitType === SplitType.MANUAL) {
+        const enabledSplits = Object.entries(manualSplits).filter(
+          ([, value]) => value.enabled,
+        );
+        if (enabledSplits.length === 0) {
+          nextErrors.splits = 'Incluí al menos un participante en el split';
+        } else {
+          const numAmount = parseFloat(amount) || 0;
+          const totalManualAmount = enabledSplits.reduce((sum, [, value]) => {
+            const splitAmount = parseFloat(value.amount);
+            return sum + (Number.isNaN(splitAmount) ? 0 : splitAmount);
+          }, 0);
+          if (Math.abs(totalManualAmount - numAmount) > 0.01) {
+            nextErrors.splits = `La suma de las divisiones debe ser igual al monto total`;
+          }
+        }
+      }
     }
 
     setErrors(nextErrors);
@@ -264,6 +380,24 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
     }
 
     return Object.keys(nextErrors).length === 0;
+  };
+
+  const buildSplits = () => {
+    if (!isDivisible) return undefined;
+
+    if (splitType === SplitType.EQUAL) {
+      return splitParticipantIds.map((participantId) => ({
+        participantId,
+        amount: 0,
+      }));
+    }
+
+    return Object.entries(manualSplits)
+      .filter(([, value]) => value.enabled)
+      .map(([participantId, value]) => ({
+        participantId,
+        amount: parseFloat(value.amount),
+      }));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -288,26 +422,36 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
 
       if (isTravel) {
         payload.paidByParticipantId = paidByParticipantId;
+        payload.status = status;
+        payload.merchantName = merchantName.trim() || undefined;
         if (budgetId && budgetId !== 'none') {
           payload.budgetId = budgetId;
         }
         payload.isDivisible = isDivisible;
         if (isDivisible) {
-          payload.splitType = SplitType.EQUAL;
-          payload.splits = splitParticipantIds.map((participantId) => ({
-            participantId,
-            amount: 0,
-          }));
+          payload.splitType = splitType;
+          payload.splits = buildSplits();
         }
       }
 
-      const result = await createExpenseWithOffline(payload);
-      if (result.mode === 'queued') {
-        toast.success('Gasto guardado. Se sincronizará al volver la conexión.');
+      if (isEditing && expense) {
+        const updatePayload: UpdateExpenseDto = { ...payload };
+        await expensesService.updateExpense(expense._id, updatePayload);
+        toast.success('Gasto actualizado');
       } else {
-        toast.success('Gasto registrado');
+        const result = await createExpenseWithOffline(payload);
+        if (result.mode === 'queued') {
+          toast.success(
+            'Gasto guardado. Se sincronizará al volver la conexión.',
+          );
+        } else {
+          toast.success('Gasto registrado');
+        }
       }
-      resetForm();
+
+      if (!isEditing) {
+        resetForm();
+      }
       onSuccess?.();
     } catch (error) {
       const axiosError = error as AxiosError<{
@@ -334,6 +478,23 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
       }
       return current.filter((id) => id !== participantId);
     });
+    setManualSplits((current) => ({
+      ...current,
+      [participantId]: {
+        amount: current[participantId]?.amount || '',
+        enabled,
+      },
+    }));
+  };
+
+  const updateManualSplitAmount = (participantId: string, value: string) => {
+    setManualSplits((current) => ({
+      ...current,
+      [participantId]: {
+        amount: value,
+        enabled: current[participantId]?.enabled ?? true,
+      },
+    }));
   };
 
   if (isLoading) {
@@ -354,9 +515,9 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
             : 'No hay medios de pago disponibles.'}
         </p>
         <Button asChild variant="outline" className="rounded-xl">
-          <Link to="/boards/settings">
+          <Link to="/boards/settings?tab=payment-methods">
             <Settings2 className="mr-1.5 size-4" />
-            Configurar tablero
+            Configurar medios de pago
           </Link>
         </Button>
       </div>
@@ -425,7 +586,19 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-muted-foreground text-xs">Medio de pago</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-muted-foreground text-xs">Medio de pago</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+            onClick={() => setIsPaymentMethodSheetOpen(true)}
+          >
+            <Plus className="size-3.5" />
+            Agregar tarjeta
+          </Button>
+        </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {paymentMethods.map((method) => {
             const isSelected = paymentMethodId === method._id;
@@ -485,6 +658,9 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
               onChange={(event) => setExpenseDate(event.target.value)}
               className="rounded-xl"
             />
+            <p className="text-muted-foreground text-[11px]">
+              Si no la cambiás, se registra con la fecha de hoy.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="quick-note" className="text-xs">
@@ -580,6 +756,41 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
                     </div>
                   ) : null}
 
+                  <div className="space-y-2">
+                    <Label htmlFor="quick-merchant" className="text-xs">
+                      Comercio (opcional)
+                    </Label>
+                    <Input
+                      id="quick-merchant"
+                      value={merchantName}
+                      onChange={(event) => setMerchantName(event.target.value)}
+                      placeholder="Ej. Restaurante, farmacia…"
+                      className="rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">Estado</Label>
+                    <Select
+                      value={status}
+                      onValueChange={(value) =>
+                        setStatus(value as ExpenseStatus)
+                      }
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ExpenseStatus.PAID}>
+                          Pagado
+                        </SelectItem>
+                        <SelectItem value={ExpenseStatus.PENDING}>
+                          Pendiente
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="quick-divisible"
@@ -594,40 +805,107 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
                   </div>
 
                   {isDivisible ? (
-                    <div className="space-y-2">
-                      <p className="text-muted-foreground text-xs">
-                        División igual entre los seleccionados
-                      </p>
-                      <ul className="space-y-2">
-                        {participants.map((participant) => {
-                          const enabled = splitParticipantIds.includes(
-                            participant._id,
-                          );
-                          return (
-                            <li
-                              key={participant._id}
-                              className="flex items-center gap-2 rounded-lg border px-3 py-2"
-                            >
-                              <Checkbox
-                                id={`split-${participant._id}`}
-                                checked={enabled}
-                                onCheckedChange={(checked) =>
-                                  toggleSplitParticipant(
-                                    participant._id,
-                                    checked === true,
-                                  )
-                                }
-                              />
-                              <Label
-                                htmlFor={`split-${participant._id}`}
-                                className="text-sm font-normal"
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Tipo de división</Label>
+                        <Select
+                          value={splitType}
+                          onValueChange={(value) =>
+                            setSplitType(value as SplitType)
+                          }
+                        >
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={SplitType.EQUAL}>
+                              Igual entre participantes
+                            </SelectItem>
+                            <SelectItem value={SplitType.MANUAL}>
+                              Montos manuales
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {splitType === SplitType.EQUAL ? (
+                        <ul className="space-y-2">
+                          {participants.map((participant) => {
+                            const enabled = splitParticipantIds.includes(
+                              participant._id,
+                            );
+                            return (
+                              <li
+                                key={participant._id}
+                                className="flex items-center gap-2 rounded-lg border px-3 py-2"
                               >
-                                {getParticipantName(participant)}
-                              </Label>
-                            </li>
-                          );
-                        })}
-                      </ul>
+                                <Checkbox
+                                  id={`split-${participant._id}`}
+                                  checked={enabled}
+                                  onCheckedChange={(checked) =>
+                                    toggleSplitParticipant(
+                                      participant._id,
+                                      checked === true,
+                                    )
+                                  }
+                                />
+                                <Label
+                                  htmlFor={`split-${participant._id}`}
+                                  className="text-sm font-normal"
+                                >
+                                  {getParticipantName(participant)}
+                                </Label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <ul className="space-y-2">
+                          {participants.map((participant) => {
+                            const splitState = manualSplits[participant._id];
+                            const enabled = splitState?.enabled ?? false;
+                            return (
+                              <li
+                                key={participant._id}
+                                className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                              >
+                                <Checkbox
+                                  id={`split-manual-${participant._id}`}
+                                  checked={enabled}
+                                  onCheckedChange={(checked) =>
+                                    toggleSplitParticipant(
+                                      participant._id,
+                                      checked === true,
+                                    )
+                                  }
+                                />
+                                <Label
+                                  htmlFor={`split-manual-${participant._id}`}
+                                  className="min-w-0 flex-1 text-sm font-normal"
+                                >
+                                  {getParticipantName(participant)}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  inputMode="decimal"
+                                  step="0.01"
+                                  min="0"
+                                  value={splitState?.amount || ''}
+                                  onChange={(event) =>
+                                    updateManualSplitAmount(
+                                      participant._id,
+                                      event.target.value,
+                                    )
+                                  }
+                                  disabled={!enabled}
+                                  className="h-8 w-24 rounded-lg"
+                                />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+
                       {errors.splits ? (
                         <p className="text-destructive text-xs">
                           {errors.splits}
@@ -635,18 +913,6 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
                       ) : null}
                     </div>
                   ) : null}
-
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    Para splits manuales o más opciones, usa la gestión completa
-                    en{' '}
-                    <Link
-                      to="/travel"
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      Viajes
-                    </Link>
-                    .
-                  </p>
                 </>
               )}
             </div>
@@ -672,10 +938,23 @@ export function QuickExpenseForm({ board, onSuccess }: QuickExpenseFormProps) {
             <Loader2 className="mr-2 size-4 animate-spin" />
             Guardando…
           </>
+        ) : isEditing ? (
+          'Actualizar gasto'
         ) : (
           'Registrar gasto'
         )}
       </Button>
+
+      <CreatePaymentMethodSheet
+        open={isPaymentMethodSheetOpen}
+        onOpenChange={setIsPaymentMethodSheetOpen}
+        boardId={board._id}
+        boardName={board.name}
+        onCreated={async (paymentMethod) => {
+          await refetchPaymentMethods();
+          setPaymentMethodId(paymentMethod._id);
+        }}
+      />
     </form>
   );
 }
