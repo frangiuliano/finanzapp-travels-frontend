@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,8 @@ export function LoginForm({
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const emailVerifiedFromLink = searchParams.get('verified');
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -92,6 +94,17 @@ export function LoginForm({
         <CardContent>
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-6">
+              {emailVerifiedFromLink === '1' && (
+                <div className="rounded-md bg-green-50 dark:bg-green-950 p-3 text-sm text-green-800 dark:text-green-200">
+                  ¡Email verificado correctamente! Ya puedes iniciar sesión.
+                </div>
+              )}
+              {emailVerifiedFromLink === '0' && (
+                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                  El enlace de verificación es inválido o ya expiró. Inicia
+                  sesión y solicita un nuevo email de verificación.
+                </div>
+              )}
               {error && !emailNotVerified && (
                 <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                   {error}
