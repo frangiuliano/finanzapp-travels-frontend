@@ -9,6 +9,7 @@ import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { incomesService } from '@/services/incomesService';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
+import type { Income } from '@/types/income';
 import {
   DEFAULT_CURRENCY,
   SUPPORTED_CURRENCIES,
@@ -20,6 +21,7 @@ interface CreateIncomeSheetProps {
   onOpenChange: (open: boolean) => void;
   boardId: string;
   currency: string;
+  income?: Income | null;
   onSuccess?: () => void;
 }
 
@@ -35,8 +37,10 @@ export function CreateIncomeSheet({
   onOpenChange,
   boardId,
   currency,
+  income,
   onSuccess,
 }: CreateIncomeSheetProps) {
+  const isEditing = Boolean(income);
   const [mode, setMode] = useState<'one-time' | 'recurring'>('one-time');
   const [label, setLabel] = useState('Sueldo');
   const [amount, setAmount] = useState('');
@@ -53,14 +57,22 @@ export function CreateIncomeSheet({
 
   useEffect(() => {
     if (open) {
-      setMode('one-time');
-      setLabel('Sueldo');
-      setAmount('');
-      setIncomeDate(new Date().toISOString().slice(0, 10));
-      setDaysOfMonth([1]);
+      if (income) {
+        setMode('one-time');
+        setLabel(income.label);
+        setAmount(String(income.amount));
+        setIncomeDate(income.incomeDate.slice(0, 10));
+        setDaysOfMonth([1]);
+      } else {
+        setMode('one-time');
+        setLabel('Sueldo');
+        setAmount('');
+        setIncomeDate(new Date().toISOString().slice(0, 10));
+        setDaysOfMonth([1]);
+      }
       setErrors({});
     }
-  }, [open]);
+  }, [open, income]);
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
@@ -102,7 +114,15 @@ export function CreateIncomeSheet({
 
     setIsLoading(true);
     try {
-      if (mode === 'one-time') {
+      if (isEditing && income) {
+        await incomesService.updateIncome(income._id, {
+          label: label.trim(),
+          amount: parseFloat(amount),
+          currency: resolvedCurrency,
+          incomeDate: incomeDate || undefined,
+        });
+        toast.success('Ingreso actualizado');
+      } else if (mode === 'one-time') {
         await incomesService.createIncome({
           boardId,
           label: label.trim(),
@@ -139,52 +159,74 @@ export function CreateIncomeSheet({
       open={open}
       onOpenChange={onOpenChange}
       mobilePresentation="dialog"
-      title="Registrar ingreso"
+      title={isEditing ? 'Editar ingreso' : 'Registrar ingreso'}
       description={
-        mode === 'one-time'
-          ? `Ingreso puntual en ${resolvedCurrency}.`
-          : `Se proyectará cada mes en los días elegidos.`
+        isEditing
+          ? `Modificar ingreso puntual en ${resolvedCurrency}.`
+          : mode === 'one-time'
+            ? `Ingreso puntual en ${resolvedCurrency}.`
+            : `Se proyectará cada mes en los días elegidos.`
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Tabs
-          value={mode}
-          onValueChange={(value) => setMode(value as 'one-time' | 'recurring')}
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="one-time">Puntual</TabsTrigger>
-            <TabsTrigger value="recurring">Recurrente</TabsTrigger>
-          </TabsList>
+        {!isEditing ? (
+          <Tabs
+            value={mode}
+            onValueChange={(value) =>
+              setMode(value as 'one-time' | 'recurring')
+            }
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="one-time">Puntual</TabsTrigger>
+              <TabsTrigger value="recurring">Recurrente</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="one-time" className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="income-date">Fecha</Label>
-              <Input
-                id="income-date"
-                type="date"
-                value={incomeDate}
-                onChange={(e) => setIncomeDate(e.target.value)}
+            <TabsContent value="one-time" className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="income-date">Fecha</Label>
+                <Input
+                  id="income-date"
+                  type="date"
+                  value={incomeDate}
+                  onChange={(e) => setIncomeDate(e.target.value)}
+                  disabled={isLoading}
+                />
+                {errors.incomeDate && (
+                  <p className="text-sm text-destructive">
+                    {errors.incomeDate}
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="recurring" className="mt-4 space-y-2">
+              <Label>Días de acreditación</Label>
+              <DayOfMonthPicker
+                mode="multiple"
+                value={daysOfMonth}
+                onChange={setDaysOfMonth}
                 disabled={isLoading}
               />
-              {errors.incomeDate && (
-                <p className="text-sm text-destructive">{errors.incomeDate}</p>
+              {errors.daysOfMonth && (
+                <p className="text-sm text-destructive">{errors.daysOfMonth}</p>
               )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="recurring" className="mt-4 space-y-2">
-            <Label>Días de acreditación</Label>
-            <DayOfMonthPicker
-              mode="multiple"
-              value={daysOfMonth}
-              onChange={setDaysOfMonth}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="income-date">Fecha</Label>
+            <Input
+              id="income-date"
+              type="date"
+              value={incomeDate}
+              onChange={(e) => setIncomeDate(e.target.value)}
               disabled={isLoading}
             />
-            {errors.daysOfMonth && (
-              <p className="text-sm text-destructive">{errors.daysOfMonth}</p>
+            {errors.incomeDate && (
+              <p className="text-sm text-destructive">{errors.incomeDate}</p>
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="income-label">Concepto</Label>

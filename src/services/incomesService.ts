@@ -3,6 +3,7 @@ import type {
   CreateIncomeDto,
   Income,
   MonthlyBoardSummary,
+  UpdateIncomeDto,
 } from '@/types/income';
 
 export const incomesService = {
@@ -26,5 +27,17 @@ export const incomesService = {
     const params = new URLSearchParams({ boardId, yearMonth });
     const response = await api.get(`/incomes/summary?${params.toString()}`);
     return response.data;
+  },
+
+  async updateIncome(
+    id: string,
+    data: UpdateIncomeDto,
+  ): Promise<{ message: string; income: Income }> {
+    const response = await api.patch(`/incomes/${id}`, data);
+    return response.data;
+  },
+
+  async deleteIncome(id: string): Promise<void> {
+    await api.delete(`/incomes/${id}`);
   },
 };

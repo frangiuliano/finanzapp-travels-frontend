@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PlusIcon } from 'lucide-react';
+import { Pencil, PlusIcon, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
+import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { MonthBudgetsProgress } from '@/components/month-budgets-progress';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
@@ -19,10 +21,12 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
+import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
 import { incomesService } from '@/services/incomesService';
 import type { Board } from '@/types/board';
 import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
+import type { Expense } from '@/types/expense';
 import type { MonthlyForecast } from '@/types/forecast';
 import type { Income } from '@/types/income';
 import {
@@ -53,6 +57,9 @@ export function EverydayBoardHome({
   const [monthIncomes, setMonthIncomes] = useState<Income[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isIncomeSheetOpen, setIsIncomeSheetOpen] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
 
   useEffect(() => {
     if (board._id.startsWith('mock-')) {
@@ -124,6 +131,66 @@ export function EverydayBoardHome({
     onRefresh();
   };
 
+  const openCreateIncome = () => {
+    setEditingIncome(null);
+    setIsIncomeSheetOpen(true);
+  };
+
+  const openEditIncome = (income: Income) => {
+    setEditingIncome(income);
+    setIsIncomeSheetOpen(true);
+  };
+
+  const handleDeleteIncome = async (income: Income) => {
+    if (
+      !confirm(
+        `¿Estás seguro de que deseas eliminar el ingreso "${income.label}"?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await incomesService.deleteIncome(income._id);
+      toast.success('Ingreso eliminado');
+      onRefresh();
+    } catch {
+      toast.error('Error al eliminar el ingreso');
+    }
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setIsExpenseDialogOpen(true);
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+      return;
+    }
+
+    try {
+      await expensesService.deleteExpense(expenseId);
+      toast.success('Gasto eliminado');
+      onRefresh();
+    } catch {
+      toast.error('Error al eliminar el gasto');
+    }
+  };
+
+  const handleExpenseSuccess = () => {
+    setIsExpenseDialogOpen(false);
+    setSelectedExpense(null);
+    onRefresh();
+  };
+
+  const handleIncomeSheetOpenChange = (open: boolean) => {
+    setIsIncomeSheetOpen(open);
+    if (!open) {
+      setEditingIncome(null);
+    }
+  };
+
   if (board._id.startsWith('mock-')) {
     return (
       <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-6 text-sm text-muted-foreground">
@@ -139,10 +206,7 @@ export function EverydayBoardHome({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
-          <Button
-            className="rounded-xl"
-            onClick={() => setIsIncomeSheetOpen(true)}
-          >
+          <Button className="rounded-xl" onClick={openCreateIncome}>
             <PlusIcon className="size-4" />
             Registrar ingreso
           </Button>
@@ -178,11 +242,7 @@ export function EverydayBoardHome({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              className="rounded-xl"
-              onClick={() => setIsIncomeSheetOpen(true)}
-            >
+            <Button size="sm" className="rounded-xl" onClick={openCreateIncome}>
               Registrar ingreso
             </Button>
             <Button asChild size="sm" variant="outline" className="rounded-xl">
@@ -244,9 +304,29 @@ export function EverydayBoardHome({
                       {formatDate(income.incomeDate)}
                     </p>
                   </div>
-                  <span className="font-medium tabular-nums shrink-0 text-emerald-700 dark:text-emerald-400">
-                    +{formatCurrency(income.amount, income.currency)}
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                      +{formatCurrency(income.amount, income.currency)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => openEditIncome(income)}
+                      aria-label="Editar ingreso"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => void handleDeleteIncome(income)}
+                      aria-label="Eliminar ingreso"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -261,15 +341,31 @@ export function EverydayBoardHome({
           tripId={board._id}
           refreshTrigger={refreshTrigger}
           onRefresh={onRefresh}
+          onEdit={handleEditExpense}
+          onDelete={(expenseId) => void handleDeleteExpense(expenseId)}
         />
       </div>
 
       <CreateIncomeSheet
         open={isIncomeSheetOpen}
-        onOpenChange={setIsIncomeSheetOpen}
+        onOpenChange={handleIncomeSheetOpenChange}
         boardId={board._id}
         currency={currency}
+        income={editingIncome}
         onSuccess={handleIncomeCreated}
+      />
+
+      <ExpenseFormDialog
+        open={isExpenseDialogOpen}
+        onOpenChange={(open) => {
+          setIsExpenseDialogOpen(open);
+          if (!open) {
+            setSelectedExpense(null);
+          }
+        }}
+        board={board}
+        expense={selectedExpense}
+        onSuccess={handleExpenseSuccess}
       />
     </div>
   );

@@ -35,3 +35,11 @@ export interface CreateIncomeDto {
   description?: string;
   incomeDate?: string;
 }
+
+export interface UpdateIncomeDto {
+  amount?: number;
+  currency?: SupportedCurrency;
+  label?: string;
+  description?: string;
+  incomeDate?: string;
+}
