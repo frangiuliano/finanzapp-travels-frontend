@@ -28,7 +28,7 @@ import type { Board } from '@/types/board';
 import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
 import type { Expense } from '@/types/expense';
 import type { MonthlyForecast } from '@/types/forecast';
-import type { Income } from '@/types/income';
+import { IncomeStatus, type Income } from '@/types/income';
 import {
   formatCurrency,
   formatDate,
@@ -93,7 +93,12 @@ export function EverydayBoardHome({
         setBudgetProgress(progressResult);
         setMonthIncomes(
           incomesResult
-            .filter((income) => isDateInYearMonth(income.incomeDate, yearMonth))
+            .filter(
+              (income) =>
+                isDateInYearMonth(income.incomeDate, yearMonth) &&
+                (income.status ?? IncomeStatus.CONFIRMED) ===
+                  IncomeStatus.CONFIRMED,
+            )
             .sort(
               (a, b) =>
                 new Date(b.incomeDate).getTime() -
@@ -262,6 +267,7 @@ export function EverydayBoardHome({
           installments={forecast.planned.installments}
           currency={currency}
           isFutureMonth={forecast.isFutureMonth}
+          onRefresh={onRefresh}
         />
       ) : null}
 
@@ -275,9 +281,9 @@ export function EverydayBoardHome({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Ingresos puntuales del mes</CardTitle>
+          <CardTitle className="text-lg">Ingresos del mes</CardTitle>
           <CardDescription>
-            Movimientos registrados manualmente en {yearMonth}
+            Puntuales y recurrentes confirmados en {yearMonth}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -288,8 +294,8 @@ export function EverydayBoardHome({
             </div>
           ) : monthIncomes.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              Sin ingresos puntuales este mes. Los recurrentes aparecen en la
-              planificación de arriba.
+              Sin ingresos confirmados este mes. Los pendientes aparecen en
+              compromisos de arriba.
             </p>
           ) : (
             <ul className="divide-y">
@@ -302,30 +308,35 @@ export function EverydayBoardHome({
                     <p className="font-medium truncate">{income.label}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(income.incomeDate)}
+                      {income.recurringIncomeId ? ' · Recurrente' : ''}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
                       +{formatCurrency(income.amount, income.currency)}
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => openEditIncome(income)}
-                      aria-label="Editar ingreso"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => void handleDeleteIncome(income)}
-                      aria-label="Eliminar ingreso"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    {!income.recurringIncomeId ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => openEditIncome(income)}
+                          aria-label="Editar ingreso"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => void handleDeleteIncome(income)}
+                          aria-label="Eliminar ingreso"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </>
+                    ) : null}
                   </div>
                 </li>
               ))}
@@ -339,8 +350,9 @@ export function EverydayBoardHome({
       <div>
         <RecentExpensesTable
           tripId={board._id}
-          refreshTrigger={refreshTrigger}
+          boardCurrency={currency}
           onRefresh={onRefresh}
+          refreshTrigger={refreshTrigger}
           onEdit={handleEditExpense}
           onDelete={(expenseId) => void handleDeleteExpense(expenseId)}
         />

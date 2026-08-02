@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Settings2, Trash2, LogOut } from 'lucide-react';
+import { Settings2, Trash2, LogOut, CalendarPlus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,6 +20,8 @@ import { useBoardsStore } from '@/store/boardsStore';
 import { ParticipantRole } from '@/services/tripsService';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { leaveBoardWithConfirm } from '@/lib/leave-board';
+import { forecastService } from '@/services/forecastService';
+import { formatYearMonth } from '@/lib/utils';
 
 export default function BoardSettingsPage() {
   const [searchParams] = useSearchParams();
@@ -31,6 +34,22 @@ export default function BoardSettingsPage() {
   const activeBoard = currentBoard || boards[0] || null;
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isExtendingHorizon, setIsExtendingHorizon] = useState(false);
+
+  const handleExtendHorizon = async () => {
+    if (!activeBoard) return;
+    setIsExtendingHorizon(true);
+    try {
+      const result = await forecastService.ensureHorizon(activeBoard._id);
+      toast.success(
+        `Planificación extendida hasta ${formatYearMonth(result.horizonEnd)} (${result.generated} nuevos movimientos)`,
+      );
+    } catch {
+      toast.error('No se pudo extender la planificación');
+    } finally {
+      setIsExtendingHorizon(false);
+    }
+  };
 
   if (!activeBoard) {
     return (
@@ -74,11 +93,23 @@ export default function BoardSettingsPage() {
               Ingresos y compromisos recurrentes
             </CardTitle>
             <CardDescription>
-              Ingresos recurrentes, gastos fijos y cuotas para proyectar meses
-              futuros en el Home.
+              Ingresos recurrentes, gastos fijos y cuotas. Se materializan como
+              movimientos programados hasta 12 meses adelante.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              disabled={isExtendingHorizon}
+              onClick={() => void handleExtendHorizon()}
+            >
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              {isExtendingHorizon
+                ? 'Extendiendo…'
+                : 'Extender planificación 12 meses'}
+            </Button>
             <Tabs defaultValue="recurring-incomes" className="w-full">
               <TabsList className="mb-6 grid w-full grid-cols-3">
                 <TabsTrigger value="recurring-incomes">Ingresos</TabsTrigger>

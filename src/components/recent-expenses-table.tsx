@@ -29,6 +29,7 @@ import {
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import {
   DropdownMenu,
@@ -64,6 +65,7 @@ import {
 import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { expensesService } from '@/services/expensesService';
+import { ExpenseAmountDisplay } from '@/components/expense-amount-display';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 
@@ -86,6 +88,8 @@ const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
 
 const createColumns = (
   tripId: string,
+  boardCurrency: string,
+  showBoardCurrency: boolean,
   onEdit?: (expense: Expense) => void,
   onDelete?: (expenseId: string) => void,
   onRefresh?: () => void,
@@ -188,15 +192,13 @@ const createColumns = (
       accessorKey: 'amount',
       header: () => <div className="w-full text-right">Monto</div>,
       cell: ({ row }) => {
-        const amount = row.original.amount;
-        const currency = row.original.currency || DEFAULT_CURRENCY;
+        const expense = row.original;
         return (
-          <div className="text-right font-medium">
-            {new Intl.NumberFormat('es-ES', {
-              style: 'currency',
-              currency: currency,
-            }).format(amount)}
-          </div>
+          <ExpenseAmountDisplay
+            expense={expense}
+            boardCurrency={boardCurrency}
+            showBoardCurrency={showBoardCurrency}
+          />
         );
       },
     },
@@ -271,6 +273,8 @@ const createColumns = (
 
 interface RecentExpensesTableProps {
   tripId: string;
+  boardCurrency?: string;
+  showBoardCurrency?: boolean;
   onEdit?: (expense: Expense) => void;
   onDelete?: (expenseId: string) => void;
   refreshTrigger?: number;
@@ -279,11 +283,30 @@ interface RecentExpensesTableProps {
 
 export function RecentExpensesTable({
   tripId,
+  boardCurrency = DEFAULT_CURRENCY,
+  showBoardCurrency = true,
   onEdit,
   onDelete,
   refreshTrigger,
   onRefresh,
 }: RecentExpensesTableProps) {
+  const [showBoardCurrencyLocal, setShowBoardCurrencyLocal] = useState(() => {
+    if (typeof window === 'undefined') return showBoardCurrency;
+    const stored = window.localStorage.getItem(
+      'finanzapp.showExpenseBoardCurrency',
+    );
+    return stored == null ? showBoardCurrency : stored === 'true';
+  });
+  const resolvedShowBoardCurrency =
+    showBoardCurrency === false ? false : showBoardCurrencyLocal;
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      'finanzapp.showExpenseBoardCurrency',
+      String(showBoardCurrencyLocal),
+    );
+  }, [showBoardCurrencyLocal]);
+
   const [data, setData] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [rowSelection, setRowSelection] = useState({});
@@ -325,7 +348,14 @@ export function RecentExpensesTable({
     fetchExpenses();
   }, [tripId, refreshTrigger]);
 
-  const columns = createColumns(tripId, onEdit, onDelete, onRefresh);
+  const columns = createColumns(
+    tripId,
+    boardCurrency,
+    resolvedShowBoardCurrency,
+    onEdit,
+    onDelete,
+    onRefresh,
+  );
 
   const table = useReactTable({
     data,
@@ -361,6 +391,15 @@ export function RecentExpensesTable({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <label className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+              <Checkbox
+                checked={resolvedShowBoardCurrency}
+                onCheckedChange={(checked) =>
+                  setShowBoardCurrencyLocal(checked === true)
+                }
+              />
+              Ver equivalente en {boardCurrency}
+            </label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">

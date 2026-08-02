@@ -31,4 +31,7 @@ export interface UpdateRecurringExpenseDto {
   categoryId?: string;
   paymentMethodId?: string;
   isActive?: boolean;
+  amountChangeScope?: 'this_month' | 'from_month';
+  amountChangeYearMonth?: string;
+  cancelFromYearMonth?: string;
 }

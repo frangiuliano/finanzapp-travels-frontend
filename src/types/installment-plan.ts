@@ -22,6 +22,7 @@ export interface CreateInstallmentPlanDto {
   dayOfMonth: number;
   paymentMethodId?: string;
   currency?: string;
+  fxRateOverride?: number;
 }
 
 export interface UpdateInstallmentPlanDto {

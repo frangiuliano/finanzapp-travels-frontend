@@ -8,12 +8,19 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { formatDaysOfMonth } from '@/lib/format-days-of-month';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
 import type { RecurringIncome } from '@/types/recurring-income';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getCurrentYearMonth } from '@/lib/utils';
 
 interface ManageRecurringIncomesSectionProps {
   boardId: string;
@@ -24,12 +31,14 @@ interface FormState {
   label: string;
   amount: string;
   daysOfMonth: number[];
+  amountChangeScope: 'this_month' | 'from_month';
 }
 
 const emptyForm: FormState = {
   label: 'Sueldo',
   amount: '',
   daysOfMonth: [1],
+  amountChangeScope: 'from_month',
 };
 
 export function ManageRecurringIncomesSection({
@@ -77,6 +86,7 @@ export function ManageRecurringIncomesSection({
       label: item.label,
       amount: formatMoneyInputFromNumber(item.amount),
       daysOfMonth: item.daysOfMonth,
+      amountChangeScope: 'from_month',
     });
     setSheetOpen(true);
   };
@@ -103,6 +113,12 @@ export function ManageRecurringIncomesSection({
         amount,
         currency,
         daysOfMonth: formData.daysOfMonth,
+        ...(editingItem
+          ? {
+              amountChangeScope: formData.amountChangeScope,
+              amountChangeYearMonth: getCurrentYearMonth(),
+            }
+          : {}),
       };
 
       if (editingItem) {
@@ -206,7 +222,7 @@ export function ManageRecurringIncomesSection({
         title={
           editingItem ? 'Editar ingreso recurrente' : 'Nuevo ingreso recurrente'
         }
-        description="Se proyectará automáticamente en los meses que navegues."
+        description="Se generan movimientos programados para los próximos 12 meses."
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -240,6 +256,29 @@ export function ManageRecurringIncomesSection({
               disabled={isSaving}
             />
           </div>
+          {editingItem ? (
+            <div className="space-y-2">
+              <Label>Cambio de monto</Label>
+              <Select
+                value={formData.amountChangeScope}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    amountChangeScope: value as 'this_month' | 'from_month',
+                  }))
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="from_month">Desde este mes</SelectItem>
+                  <SelectItem value="this_month">Solo este mes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <Button
             className="w-full"
             onClick={() => void handleSubmit()}

@@ -17,11 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { budgetsService } from '@/services/budgetsService';
 import { createExpenseWithOffline } from '@/services/createExpenseWithOffline';
 import { expensesService } from '@/services/expensesService';
+import { recurringExpensesService } from '@/services/recurringExpensesService';
+import { installmentPlansService } from '@/services/installmentPlansService';
+import { fxService } from '@/services/fxService';
 import { participantsService } from '@/services/participantsService';
 import { useAuthStore } from '@/store/authStore';
 import { Budget } from '@/types/budget';
@@ -35,6 +40,19 @@ import {
 } from '@/types/expense';
 import { Participant } from '@/types/participant';
 import { formatPaymentMethodLabel } from '@/lib/format-payment-method-label';
+import {
+  getDayFromIsoDate,
+  getYearMonthFromIsoDate,
+  splitInstallmentAmounts,
+} from '@/lib/installments';
+import { formatCurrency } from '@/lib/utils';
+import {
+  CURRENCY_OPTIONS,
+  DEFAULT_CURRENCY,
+  SUPPORTED_CURRENCIES,
+  type SupportedCurrency,
+} from '@/constants/currencies';
+import type { PaymentMethod as BoardPaymentMethod } from '@/types/payment-method';
 import { cn } from '@/lib/utils';
 
 interface QuickExpenseFormProps {
@@ -87,6 +105,21 @@ export function QuickExpenseForm({
   const isEditing = Boolean(expense);
   const user = useAuthStore((state) => state.user);
   const isTravel = board.type === 'travel';
+  const isEveryday = !isTravel;
+  const boardCurrency = (
+    SUPPORTED_CURRENCIES.includes(board.baseCurrency as SupportedCurrency)
+      ? board.baseCurrency
+      : DEFAULT_CURRENCY
+  ) as SupportedCurrency;
+  const [mode, setMode] = useState<'one-time' | 'recurring'>('one-time');
+  const [daysOfMonth, setDaysOfMonth] = useState<number[]>([1]);
+  const [expenseCurrency, setExpenseCurrency] =
+    useState<SupportedCurrency>(boardCurrency);
+  const [installments, setInstallments] = useState('1');
+  const [fxRate, setFxRate] = useState<number | null>(null);
+  const [fxRateInput, setFxRateInput] = useState('');
+  const [isFxLoading, setIsFxLoading] = useState(false);
+  const [fxProviderEnabled, setFxProviderEnabled] = useState(true);
 
   const { categories, isLoading: categoriesLoading } = useBoardCategories(
     board._id,
@@ -131,6 +164,26 @@ export function QuickExpenseForm({
     [categories, categoryId],
   );
 
+  const selectedPaymentMethod = useMemo(
+    () => paymentMethods.find((method) => method._id === paymentMethodId),
+    [paymentMethods, paymentMethodId],
+  );
+
+  const parsedInstallments = Math.max(1, parseInt(installments, 10) || 1);
+  const showInstallments =
+    isEveryday &&
+    !isEditing &&
+    mode === 'one-time' &&
+    selectedPaymentMethod?.kind === 'credit';
+  const needsFx = expenseCurrency !== boardCurrency;
+  const isCreditReferentialFx =
+    needsFx &&
+    selectedPaymentMethod?.kind === 'credit' &&
+    selectedPaymentMethod?.closingDay != null;
+  const resolvedFxRate = fxRateInput.trim()
+    ? parseMoneyInput(fxRateInput)
+    : fxRate;
+
   useEffect(() => {
     if (!categoryId && categories.length > 0) {
       setCategoryId(categories[0]._id);
@@ -145,6 +198,45 @@ export function QuickExpenseForm({
       setPaymentMethodId(cashMethod?._id ?? paymentMethods[0]._id);
     }
   }, [paymentMethods, paymentMethodId]);
+
+  useEffect(() => {
+    setExpenseCurrency(boardCurrency);
+  }, [board._id, boardCurrency]);
+
+  useEffect(() => {
+    if (!needsFx || isEditing) {
+      setFxRate(null);
+      setFxRateInput('');
+      setIsFxLoading(false);
+      return;
+    }
+
+    let stale = false;
+    setIsFxLoading(true);
+
+    void fxService
+      .getRate(expenseCurrency, boardCurrency)
+      .then((result) => {
+        if (stale) return;
+        setFxRate(result.rate);
+        setFxProviderEnabled(result.providerEnabled);
+        setFxRateInput('');
+      })
+      .catch(() => {
+        if (stale) return;
+        setFxRate(null);
+        setFxProviderEnabled(false);
+      })
+      .finally(() => {
+        if (!stale) {
+          setIsFxLoading(false);
+        }
+      });
+
+    return () => {
+      stale = true;
+    };
+  }, [needsFx, expenseCurrency, boardCurrency, isEditing]);
 
   useEffect(() => {
     if (!isTravel) {
@@ -261,6 +353,12 @@ export function QuickExpenseForm({
     if (expense.paymentMethodId) {
       setPaymentMethodId(expense.paymentMethodId);
     }
+    if (
+      expense.currency &&
+      SUPPORTED_CURRENCIES.includes(expense.currency as SupportedCurrency)
+    ) {
+      setExpenseCurrency(expense.currency as SupportedCurrency);
+    }
     setBudgetId(expense.budgetId || '');
     setPaidByParticipantId(
       expense.paidByParticipantId || expense.paidByParticipant?._id || '',
@@ -294,6 +392,12 @@ export function QuickExpenseForm({
     setManualSplits({});
     setMerchantName('');
     setStatus(ExpenseStatus.PAID);
+    setMode('one-time');
+    setDaysOfMonth([1]);
+    setExpenseCurrency(boardCurrency);
+    setInstallments('1');
+    setFxRate(null);
+    setFxRateInput('');
     if (categories.length > 0) {
       setCategoryId(categories[0]._id);
     }
@@ -317,7 +421,30 @@ export function QuickExpenseForm({
       );
     }
     setErrors({});
-  }, [categories, paymentMethods, isTravel, participants, user?.id, isDialog]);
+  }, [
+    categories,
+    paymentMethods,
+    isTravel,
+    participants,
+    user?.id,
+    isDialog,
+    boardCurrency,
+  ]);
+
+  const resolveFxOverride = (): number | undefined => {
+    if (!needsFx) return undefined;
+    const rate = resolvedFxRate;
+    if (rate == null || rate <= 0) {
+      return undefined;
+    }
+    return rate;
+  };
+
+  const resolveInstallmentDay = (method?: BoardPaymentMethod): number => {
+    if (method?.dueDay) return method.dueDay;
+    if (method?.closingDay) return method.closingDay;
+    return getDayFromIsoDate(expenseDate);
+  };
 
   const validate = (): boolean => {
     const nextErrors: Record<string, string> = {};
@@ -342,6 +469,27 @@ export function QuickExpenseForm({
     const description = note.trim() || selectedCategory?.name || '';
     if (description.length < 3) {
       nextErrors.note = 'La nota debe tener al menos 3 caracteres';
+    }
+
+    if (isEveryday && !isEditing && mode === 'recurring') {
+      if (daysOfMonth.length === 0) {
+        nextErrors.daysOfMonth = 'Seleccioná el día del mes';
+      }
+    }
+
+    if (showInstallments) {
+      if (parsedInstallments < 1 || parsedInstallments > 120) {
+        nextErrors.installments = 'Cantidad de cuotas inválida (1-120)';
+      }
+    }
+
+    if (needsFx && !isEditing && !isCreditReferentialFx) {
+      const rate = resolveFxOverride();
+      if (rate == null) {
+        nextErrors.fxRate = fxProviderEnabled
+          ? 'Esperá el tipo de cambio o ingresalo manualmente'
+          : 'Ingresá el tipo de cambio manualmente';
+      }
     }
 
     if (isTravel && !paidByParticipantId) {
@@ -375,6 +523,9 @@ export function QuickExpenseForm({
     setErrors(nextErrors);
 
     if (nextErrors.note) {
+      setShowDetails(true);
+    }
+    if (nextErrors.daysOfMonth) {
       setShowDetails(true);
     }
     if (nextErrors.paidBy || nextErrors.splits) {
@@ -411,11 +562,57 @@ export function QuickExpenseForm({
     try {
       const numAmount = parseMoneyInput(amount)!;
       const description = note.trim() || selectedCategory?.name || 'Gasto';
+      const fxRateOverride = resolveFxOverride();
+
+      if (isEveryday && !isEditing && mode === 'recurring') {
+        await recurringExpensesService.create({
+          boardId: board._id,
+          label: description,
+          amount: numAmount,
+          currency: expenseCurrency,
+          dayOfMonth: daysOfMonth[0],
+          categoryId,
+          paymentMethodId,
+        });
+        toast.success('Gasto recurrente configurado');
+        resetForm();
+        onSuccess?.();
+        return;
+      }
+
+      if (
+        isEveryday &&
+        !isEditing &&
+        mode === 'one-time' &&
+        showInstallments &&
+        parsedInstallments > 1
+      ) {
+        const installmentAmounts = splitInstallmentAmounts(
+          numAmount,
+          parsedInstallments,
+        );
+        await installmentPlansService.create({
+          boardId: board._id,
+          label: description,
+          installmentAmount: installmentAmounts[0],
+          totalInstallments: parsedInstallments,
+          startYearMonth: getYearMonthFromIsoDate(expenseDate),
+          dayOfMonth: resolveInstallmentDay(selectedPaymentMethod),
+          paymentMethodId,
+          currency: expenseCurrency,
+          fxRateOverride,
+        });
+        toast.success(`Compra en ${parsedInstallments} cuotas configurada`);
+        resetForm();
+        onSuccess?.();
+        return;
+      }
 
       const payload: CreateExpenseDto = {
         boardId: board._id,
         amount: numAmount,
-        currency: board.baseCurrency,
+        currency: expenseCurrency,
+        fxRateOverride,
         description,
         categoryId,
         paymentMethodId,
@@ -528,10 +725,61 @@ export function QuickExpenseForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {isEveryday && !isEditing ? (
+        <Tabs
+          value={mode}
+          onValueChange={(value) => setMode(value as 'one-time' | 'recurring')}
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="one-time">Puntual</TabsTrigger>
+            <TabsTrigger value="recurring">Recurrente</TabsTrigger>
+          </TabsList>
+          <TabsContent value="recurring" className="mt-4 space-y-2">
+            <Label className="text-muted-foreground text-xs">Día del mes</Label>
+            <DayOfMonthPicker
+              mode="single"
+              value={daysOfMonth}
+              onChange={setDaysOfMonth}
+              disabled={isSubmitting}
+            />
+            {errors.daysOfMonth ? (
+              <p className="text-destructive text-xs">{errors.daysOfMonth}</p>
+            ) : (
+              <p className="text-muted-foreground text-[11px]">
+                Se generarán gastos programados cada mes en ese día.
+              </p>
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : null}
+
       <div className="space-y-2">
-        <Label htmlFor="quick-amount" className="text-muted-foreground text-xs">
-          Monto ({board.baseCurrency})
-        </Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label
+            htmlFor="quick-amount"
+            className="text-muted-foreground text-xs"
+          >
+            Monto ({expenseCurrency})
+          </Label>
+          <Select
+            value={expenseCurrency}
+            onValueChange={(value) =>
+              setExpenseCurrency(value as SupportedCurrency)
+            }
+            disabled={isSubmitting || isEditing}
+          >
+            <SelectTrigger className="h-8 w-[110px] rounded-lg text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <MoneyInput
           id="quick-amount"
           placeholder="0,00"
@@ -545,6 +793,64 @@ export function QuickExpenseForm({
         />
         {errors.amount ? (
           <p className="text-destructive text-xs">{errors.amount}</p>
+        ) : null}
+        {needsFx && !isEditing ? (
+          <div className="space-y-2 rounded-xl border bg-muted/20 p-3">
+            {isCreditReferentialFx ? (
+              <p className="text-muted-foreground text-xs">
+                Con tarjeta de crédito, el equivalente en {boardCurrency} es{' '}
+                <strong>referencial</strong> y usa el TC del momento. Al cerrar
+                el ciclo se fijará el TC del día de cierre.
+              </p>
+            ) : null}
+            {isFxLoading ? (
+              <p className="text-muted-foreground text-xs">
+                Cargando tipo de cambio…
+              </p>
+            ) : fxRate != null && !fxRateInput.trim() ? (
+              <p className="text-muted-foreground text-xs">
+                1 {expenseCurrency} = {fxRate.toLocaleString('es-AR')}{' '}
+                {boardCurrency}
+                {parseMoneyInput(amount) != null &&
+                parseMoneyInput(amount)! > 0 ? (
+                  <>
+                    {' '}
+                    · ≈{' '}
+                    {formatCurrency(
+                      parseMoneyInput(amount)! * fxRate,
+                      boardCurrency,
+                    )}
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            <div className="space-y-1">
+              <Label htmlFor="fx-rate" className="text-xs">
+                Tipo de cambio manual ({expenseCurrency} → {boardCurrency})
+                {isCreditReferentialFx ? ' (opcional)' : ''}
+              </Label>
+              <Input
+                id="fx-rate"
+                inputMode="decimal"
+                placeholder={
+                  isCreditReferentialFx
+                    ? 'Opcional — se actualiza al ver el gasto'
+                    : fxProviderEnabled
+                      ? 'Opcional'
+                      : 'Requerido'
+                }
+                value={fxRateInput}
+                onChange={(event) => setFxRateInput(event.target.value)}
+                className={cn(
+                  'rounded-xl',
+                  errors.fxRate && 'border-destructive',
+                )}
+              />
+              {errors.fxRate ? (
+                <p className="text-destructive text-xs">{errors.fxRate}</p>
+              ) : null}
+            </div>
+          </div>
         ) : null}
       </div>
 
@@ -629,6 +935,76 @@ export function QuickExpenseForm({
         ) : null}
       </div>
 
+      {showInstallments ? (
+        <div className="space-y-2">
+          <Label
+            htmlFor="installments"
+            className="text-muted-foreground text-xs"
+          >
+            Cuotas
+          </Label>
+          <div className="flex flex-wrap gap-2">
+            {[1, 3, 6, 12, 18, 24].map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setInstallments(String(value))}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                  parsedInstallments === value
+                    ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_14%,transparent)]'
+                    : 'border-border text-muted-foreground hover:border-foreground/20',
+                )}
+              >
+                {value === 1 ? '1 (contado)' : `${value} cuotas`}
+              </button>
+            ))}
+          </div>
+          <Input
+            id="installments"
+            type="number"
+            min={1}
+            max={120}
+            value={installments}
+            onChange={(event) => setInstallments(event.target.value)}
+            className={cn(
+              'rounded-xl',
+              errors.installments && 'border-destructive',
+            )}
+          />
+          {errors.installments ? (
+            <p className="text-destructive text-xs">{errors.installments}</p>
+          ) : parsedInstallments > 1 && parseMoneyInput(amount) != null ? (
+            <p className="text-muted-foreground text-[11px]">
+              {parsedInstallments} cuotas de{' '}
+              {formatCurrency(
+                splitInstallmentAmounts(
+                  parseMoneyInput(amount)!,
+                  parsedInstallments,
+                )[0],
+                expenseCurrency,
+              )}
+              {splitInstallmentAmounts(
+                parseMoneyInput(amount)!,
+                parsedInstallments,
+              ).length > 1
+                ? ` (última: ${formatCurrency(
+                    splitInstallmentAmounts(
+                      parseMoneyInput(amount)!,
+                      parsedInstallments,
+                    ).at(-1)!,
+                    expenseCurrency,
+                  )})`
+                : ''}
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-[11px]">
+              Con tarjeta de crédito podés financiar la compra en cuotas.
+            </p>
+          )}
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={() => setShowDetails((open) => !open)}
@@ -640,26 +1016,30 @@ export function QuickExpenseForm({
             showDetails && 'rotate-180',
           )}
         />
-        Fecha y nota
+        {mode === 'recurring' && isEveryday && !isEditing
+          ? 'Nota'
+          : 'Fecha y nota'}
       </button>
 
       {showDetails ? (
         <div className="space-y-3 rounded-2xl border bg-muted/30 p-4">
-          <div className="space-y-2">
-            <Label htmlFor="quick-date" className="text-xs">
-              Fecha
-            </Label>
-            <Input
-              id="quick-date"
-              type="date"
-              value={expenseDate}
-              onChange={(event) => setExpenseDate(event.target.value)}
-              className="rounded-xl"
-            />
-            <p className="text-muted-foreground text-[11px]">
-              Si no la cambiás, se registra con la fecha de hoy.
-            </p>
-          </div>
+          {mode === 'one-time' || isTravel || isEditing ? (
+            <div className="space-y-2">
+              <Label htmlFor="quick-date" className="text-xs">
+                Fecha
+              </Label>
+              <Input
+                id="quick-date"
+                type="date"
+                value={expenseDate}
+                onChange={(event) => setExpenseDate(event.target.value)}
+                className="rounded-xl"
+              />
+              <p className="text-muted-foreground text-[11px]">
+                Si no la cambiás, se registra con la fecha de hoy.
+              </p>
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="quick-note" className="text-xs">
               Nota (opcional)
@@ -934,6 +1314,10 @@ export function QuickExpenseForm({
           </>
         ) : isEditing ? (
           'Actualizar gasto'
+        ) : mode === 'recurring' && isEveryday ? (
+          'Configurar gasto recurrente'
+        ) : showInstallments && parsedInstallments > 1 ? (
+          `Registrar gasto en ${parsedInstallments} cuotas`
         ) : (
           'Registrar gasto'
         )}

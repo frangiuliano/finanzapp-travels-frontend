@@ -5,6 +5,7 @@ export interface ForecastLineItem {
   currency: string;
   dayOfMonth: number;
   kind: 'recurring-income' | 'recurring-expense' | 'installment';
+  status?: 'pending' | 'confirmed' | 'paid';
   meta?: {
     installmentNumber?: number;
     totalInstallments?: number;

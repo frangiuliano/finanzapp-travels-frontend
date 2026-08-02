@@ -78,6 +78,11 @@ export const expensesService = {
     return response.data;
   },
 
+  async skipRecurringExpense(id: string): Promise<{ message: string }> {
+    const response = await api.post(`/expenses/${id}/skip`);
+    return response.data;
+  },
+
   async getParticipantDebts(tripId: string): Promise<ParticipantDebtsResponse> {
     const response = await api.get(`/expenses/trip/${tripId}/debts`);
     return response.data;

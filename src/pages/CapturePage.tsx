@@ -56,6 +56,12 @@ export default function CapturePage() {
           <span className="text-foreground font-medium">
             {activeBoard.name}
           </span>
+          {activeBoard.type === 'everyday' ? (
+            <>
+              {' '}
+              · Gasto puntual, recurrente o en cuotas con tarjeta de crédito.
+            </>
+          ) : null}
         </p>
       </div>
 

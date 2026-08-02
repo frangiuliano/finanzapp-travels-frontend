@@ -1,5 +1,10 @@
 import type { SupportedCurrency } from '@/constants/currencies';
 
+export enum IncomeStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+}
+
 export interface Income {
   _id: string;
   tripId: string;
@@ -8,6 +13,8 @@ export interface Income {
   label: string;
   description?: string;
   incomeDate: string;
+  status?: IncomeStatus;
+  recurringIncomeId?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

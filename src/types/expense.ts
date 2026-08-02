@@ -3,6 +3,17 @@ export enum ExpenseStatus {
   PENDING = 'pending',
 }
 
+export type ExpenseFxPolicy = 'spot' | 'credit_cycle';
+export type ExpenseFxPurpose = 'referential' | 'settled';
+
+export interface ExpenseDisplayFx {
+  rate: number;
+  amountInBoardCurrency: number;
+  purpose: ExpenseFxPurpose;
+  isLive: boolean;
+  boardCurrency: string;
+}
+
 export enum SplitType {
   EQUAL = 'equal',
   MANUAL = 'manual',
@@ -41,6 +52,12 @@ export interface Expense {
   };
   amount: number;
   currency: string;
+  fxRateToBoardCurrency?: number;
+  fxCapturedAt?: string;
+  fxPolicy?: ExpenseFxPolicy;
+  fxPurpose?: ExpenseFxPurpose;
+  billingCycleLabel?: string;
+  displayFx?: ExpenseDisplayFx;
   description: string;
   merchantName?: string;
   tags?: string[];
@@ -91,6 +108,7 @@ export interface CreateExpenseDto {
   budgetId?: string;
   amount: number;
   currency?: string;
+  fxRateOverride?: number;
   description: string;
   merchantName?: string;
   tags?: string[];

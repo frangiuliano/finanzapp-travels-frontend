@@ -25,4 +25,7 @@ export interface UpdateRecurringIncomeDto {
   description?: string;
   daysOfMonth?: number[];
   isActive?: boolean;
+  amountChangeScope?: 'this_month' | 'from_month';
+  amountChangeYearMonth?: string;
+  cancelFromYearMonth?: string;
 }
