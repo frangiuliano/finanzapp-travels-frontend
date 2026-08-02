@@ -238,14 +238,6 @@ export function SignupForm({
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={isLoading}
-              >
-                Registrarse con Google
-              </Button>
             </div>
             <div className="mt-4 text-center text-sm">
               ¿Ya tienes una cuenta?{' '}

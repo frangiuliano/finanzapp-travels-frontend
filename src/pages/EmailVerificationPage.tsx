@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -16,23 +16,25 @@ export default function EmailVerificationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { token: tokenFromRoute } = useParams<{ token?: string }>();
+  const token = tokenFromRoute || searchParams.get('token');
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(Boolean(token));
   const [verificationStatus, setVerificationStatus] = useState<
     'idle' | 'success' | 'error'
   >('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [hasVerified, setHasVerified] = useState(false);
-  const token = tokenFromRoute || searchParams.get('token');
+  const verificationInFlightRef = useRef(false);
 
   const verifyEmail = useCallback(
     async (verificationToken: string) => {
-      if (hasVerified || isVerifying) {
+      if (hasVerified || verificationInFlightRef.current) {
         return;
       }
 
+      verificationInFlightRef.current = true;
       setIsVerifying(true);
       setErrorMessage(null);
 
@@ -125,7 +127,7 @@ export default function EmailVerificationPage() {
         setIsVerifying(false);
       }
     },
-    [hasVerified, isVerifying, user, isAuthenticated, navigate],
+    [hasVerified, user, isAuthenticated, navigate],
   );
 
   useEffect(() => {
@@ -191,7 +193,7 @@ export default function EmailVerificationPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isVerifying && (
+              {(isVerifying || verificationStatus === 'idle') && (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   <p className="mt-4 text-sm text-muted-foreground">
