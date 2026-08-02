@@ -47,23 +47,22 @@ import { Budget } from '@/types/budget';
 import { Participant } from '@/types/participant';
 import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
-import { CreateExpenseDialog } from './create-expense-dialog';
+import { ExpenseFormDialog } from './expense-form-dialog';
+import type { Board } from '@/types/board';
 import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import { formatDate } from '@/lib/utils';
 
 interface TripExpensesSectionProps {
-  tripId: string;
-  tripName: string;
+  board: Board;
   budgets: Budget[];
   participants: Participant[];
   onExpensesChange?: () => void;
 }
 
 export function TripExpensesSection({
-  tripId,
-  tripName,
+  board,
   budgets,
   participants,
   onExpensesChange,
@@ -82,11 +81,11 @@ export function TripExpensesSection({
   });
 
   const fetchExpenses = useCallback(async () => {
-    if (!tripId) return;
+    if (!board._id) return;
 
     try {
       setIsLoading(true);
-      const response = await expensesService.getExpenses(tripId);
+      const response = await expensesService.getExpenses(board._id);
       const sortedExpenses = response.expenses.sort(
         (a, b) =>
           new Date(b.expenseDate || b.createdAt).getTime() -
@@ -100,7 +99,7 @@ export function TripExpensesSection({
     } finally {
       setIsLoading(false);
     }
-  }, [tripId]);
+  }, [board._id]);
 
   useEffect(() => {
     fetchExpenses();
@@ -314,7 +313,7 @@ export function TripExpensesSection({
         ),
       },
     ],
-    [tripId],
+    [board._id],
   );
 
   const table = useReactTable({
@@ -342,7 +341,7 @@ export function TripExpensesSection({
               <CardDescription>
                 {expenses.length > 0
                   ? `${expenses.length} gasto${expenses.length !== 1 ? 's' : ''} • Total: ${formatCurrency(totalExpenses, DEFAULT_CURRENCY)}`
-                  : `Gastos registrados para ${tripName}`}
+                  : `Gastos registrados para ${board.name}`}
               </CardDescription>
             </div>
             <Button
@@ -522,7 +521,7 @@ export function TripExpensesSection({
         </CardContent>
       </Card>
 
-      <CreateExpenseDialog
+      <ExpenseFormDialog
         open={isExpenseDialogOpen}
         onOpenChange={(open) => {
           setIsExpenseDialogOpen(open);
@@ -530,7 +529,7 @@ export function TripExpensesSection({
             setSelectedExpense(null);
           }
         }}
-        tripId={tripId}
+        board={board}
         budgets={budgets}
         participants={participants}
         expense={selectedExpense}

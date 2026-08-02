@@ -16,6 +16,7 @@ import { Trip, ParticipantRole } from '@/services/tripsService';
 import { budgetsService } from '@/services/budgetsService';
 import { participantsService } from '@/services/participantsService';
 import { Budget } from '@/types/budget';
+import type { Board } from '@/types/board';
 import { Participant } from '@/types/participant';
 import { CreateBudgetDialog } from '@/components/create-budget-dialog';
 import { EditTripDialog } from '@/components/edit-trip-dialog';
@@ -47,8 +48,7 @@ import {
   Plane,
 } from 'lucide-react';
 import { ManageCardsDialog } from '@/components/manage-cards-dialog';
-import { CreateExpenseDialog } from '@/components/create-expense-dialog';
-import type { Board } from '@/types/board';
+import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 
 export default function TravelPage() {
   const boards = useBoardsStore((state) => state.boards);
@@ -516,8 +516,7 @@ export default function TravelPage() {
                     </div>
 
                     <TripExpensesSection
-                      tripId={trip._id}
-                      tripName={trip.name}
+                      board={activeTravelBoard}
                       budgets={budgets}
                       participants={participants}
                       onExpensesChange={() => {
@@ -869,15 +868,14 @@ export default function TravelPage() {
       />
 
       {activeTravelBoard && (
-        <CreateExpenseDialog
+        <ExpenseFormDialog
           open={isExpenseDialogOpen}
           onOpenChange={setIsExpenseDialogOpen}
-          tripId={activeTravelBoard._id}
+          board={activeTravelBoard}
           budgets={budgetsByBoard[activeTravelBoard._id] || []}
           participants={participantsByBoard[activeTravelBoard._id] || []}
           onSuccess={() => {
             void fetchBoardData(activeTravelBoard._id);
-            setIsExpenseDialogOpen(false);
           }}
         />
       )}
