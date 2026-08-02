@@ -138,6 +138,7 @@ export function CreateIncomeSheet({
     <ResponsiveFormSheet
       open={open}
       onOpenChange={onOpenChange}
+      mobilePresentation="dialog"
       title="Registrar ingreso"
       description={
         mode === 'one-time'

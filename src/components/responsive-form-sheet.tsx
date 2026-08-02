@@ -1,6 +1,13 @@
 import { ReactNode } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -21,6 +28,8 @@ interface ResponsiveFormSheetProps {
   title: string;
   description?: string;
   children: ReactNode;
+  /** En mobile: drawer desde abajo (default) o dialog centrado. */
+  mobilePresentation?: 'drawer' | 'dialog';
 }
 
 export function ResponsiveFormSheet({
@@ -29,8 +38,25 @@ export function ResponsiveFormSheet({
   title,
   description,
   children,
+  mobilePresentation = 'drawer',
 }: ResponsiveFormSheetProps) {
   const isMobile = useIsMobile();
+
+  if (isMobile && mobilePresentation === 'dialog') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            {description ? (
+              <DialogDescription>{description}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+          <div className="mt-2">{children}</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (isMobile) {
     return (
