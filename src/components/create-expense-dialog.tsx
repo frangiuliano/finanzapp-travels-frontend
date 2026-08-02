@@ -88,7 +88,6 @@ export function CreateExpenseDialog({
     if (!tripId) return;
     try {
       const result = await cardsService.getCardsByTrip(tripId);
-      console.log('Tarjetas cargadas para el viaje:', result.cards);
       setAvailableCards(result.cards || []);
     } catch (error) {
       console.error('Error al cargar tarjetas:', error);
@@ -189,19 +188,12 @@ export function CreateExpenseDialog({
       expense.cardId
     ) {
       const cardIdStr = expense.cardId;
-      console.log('Intentando preseleccionar tarjeta:', {
-        cardId: cardIdStr,
-        availableCardsCount: availableCards.length,
-        paymentMethod: expense.paymentMethod,
-        availableCardIds: availableCards.map((c) => c._id),
-      });
 
       if (availableCards.length > 0) {
         const cardExists = availableCards.find(
           (card) => card._id === cardIdStr,
         );
         if (cardExists) {
-          console.log('Tarjeta encontrada, preseleccionando:', cardExists.name);
           setCardId(cardIdStr);
         } else {
           console.warn('Tarjeta no encontrada en la lista disponible:', {
@@ -213,8 +205,6 @@ export function CreateExpenseDialog({
           });
           setCardId('');
         }
-      } else {
-        console.log('Tarjetas aún no cargadas, esperando...');
       }
     } else if (expense && expense.paymentMethod !== PaymentMethod.CARD) {
       setCardId('');

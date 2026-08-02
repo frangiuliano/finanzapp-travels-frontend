@@ -3,7 +3,8 @@ import { useAuthStore } from '@/store/authStore';
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  return import.meta.env.DEV ? '/api' : 'http://localhost:8080/api';
+  if (import.meta.env.DEV) return '/api';
+  throw new Error('VITE_API_URL must be set in production builds');
 };
 
 const api = axios.create({
