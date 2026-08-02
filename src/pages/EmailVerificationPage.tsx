@@ -1,4 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -12,11 +18,43 @@ import {
 import { Button } from '@/components/ui/button';
 import api from '@/services/api';
 
+const DEFAULT_VERIFY_ERROR =
+  'Error al verificar el email. El enlace puede haber expirado o ser inválido.';
+
+function VerificationResultLayout({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex min-h-svh flex-col items-center justify-center bg-muted/50 p-4',
+      )}
+    >
+      <div className="w-full max-w-md">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-2xl">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </CardHeader>
+          <CardContent>{children}</CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function EmailVerificationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { token: tokenFromRoute } = useParams<{ token?: string }>();
   const token = tokenFromRoute || searchParams.get('token');
+  const redirectStatus = searchParams.get('status');
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [isVerifying, setIsVerifying] = useState(Boolean(token));
@@ -27,6 +65,71 @@ export default function EmailVerificationPage() {
   const [isResending, setIsResending] = useState(false);
   const [hasVerified, setHasVerified] = useState(false);
   const verificationInFlightRef = useRef(false);
+
+  const schedulePostVerifyNavigation = useCallback(
+    (preferHome: boolean) => {
+      setTimeout(() => {
+        if (preferHome && useAuthStore.getState().isAuthenticated) {
+          navigate('/home');
+        } else {
+          navigate('/login');
+        }
+      }, 2000);
+    },
+    [navigate],
+  );
+
+  useEffect(() => {
+    if (!token && !isAuthenticated && !redirectStatus) {
+      navigate('/login');
+    }
+  }, [token, isAuthenticated, redirectStatus, navigate]);
+
+  useEffect(() => {
+    if (redirectStatus !== 'success') {
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncSessionAndRedirect = async () => {
+      try {
+        const refreshRes = await api.post(
+          '/auth/refresh',
+          {},
+          { withCredentials: true },
+        );
+        const { accessToken, user: refreshedUser } = refreshRes.data;
+        if (!cancelled && accessToken && refreshedUser) {
+          useAuthStore.getState().setAuth(refreshedUser, accessToken);
+          try {
+            const profileRes = await api.get('/auth/me');
+            if (!cancelled) {
+              useAuthStore.getState().setAuth(profileRes.data, accessToken);
+            }
+          } catch {
+            // keep partial user from refresh
+          }
+          if (!cancelled) {
+            schedulePostVerifyNavigation(true);
+          }
+          return;
+        }
+      } catch {
+        // no refresh cookie in this tab
+      }
+
+      if (!cancelled) {
+        schedulePostVerifyNavigation(false);
+      }
+    };
+
+    syncSessionAndRedirect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [redirectStatus, schedulePostVerifyNavigation]);
 
   const verifyEmail = useCallback(
     async (verificationToken: string) => {
@@ -54,22 +157,16 @@ export default function EmailVerificationPage() {
                 useAuthStore.getState().accessToken!,
               );
           }
-          setTimeout(() => {
-            if (isAuthenticated) {
-              navigate('/home');
-            } else {
-              navigate('/login');
-            }
-          }, 2000);
+          schedulePostVerifyNavigation(isAuthenticated);
         }
       } catch (err: unknown) {
-        const errorMessage =
+        const apiErrorMessage =
           err && typeof err === 'object' && 'response' in err
             ? (err as { response?: { data?: { message?: string } } }).response
                 ?.data?.message
             : null;
 
-        if (errorMessage?.includes('ya ha sido verificado')) {
+        if (apiErrorMessage?.includes('ya ha sido verificado')) {
           setHasVerified(true);
           setVerificationStatus('success');
           if (user && isAuthenticated) {
@@ -80,13 +177,7 @@ export default function EmailVerificationPage() {
                 useAuthStore.getState().accessToken!,
               );
           }
-          setTimeout(() => {
-            if (isAuthenticated) {
-              navigate('/home');
-            } else {
-              navigate('/login');
-            }
-          }, 2000);
+          schedulePostVerifyNavigation(isAuthenticated);
         } else if (isAuthenticated && user) {
           try {
             const userResponse = await api.get('/auth/me');
@@ -99,48 +190,31 @@ export default function EmailVerificationPage() {
                   userResponse.data,
                   useAuthStore.getState().accessToken!,
                 );
-              setTimeout(() => {
-                navigate('/home');
-              }, 2000);
+              schedulePostVerifyNavigation(true);
             } else {
               setVerificationStatus('error');
-              setErrorMessage(
-                errorMessage ||
-                  'Error al verificar el email. El enlace puede haber expirado o ser inválido.',
-              );
+              setErrorMessage(apiErrorMessage || DEFAULT_VERIFY_ERROR);
             }
           } catch {
             setVerificationStatus('error');
-            setErrorMessage(
-              errorMessage ||
-                'Error al verificar el email. El enlace puede haber expirado o ser inválido.',
-            );
+            setErrorMessage(apiErrorMessage || DEFAULT_VERIFY_ERROR);
           }
         } else {
           setVerificationStatus('error');
-          setErrorMessage(
-            errorMessage ||
-              'Error al verificar el email. El enlace puede haber expirado o ser inválido.',
-          );
+          setErrorMessage(apiErrorMessage || DEFAULT_VERIFY_ERROR);
         }
       } finally {
         setIsVerifying(false);
       }
     },
-    [hasVerified, user, isAuthenticated, navigate],
+    [hasVerified, user, isAuthenticated, schedulePostVerifyNavigation],
   );
 
   useEffect(() => {
-    if (!token && !isAuthenticated) {
-      navigate('/login');
-    }
-  }, [token, isAuthenticated, navigate]);
-
-  useEffect(() => {
-    if (token && !hasVerified) {
+    if (token && !hasVerified && !redirectStatus) {
       verifyEmail(token);
     }
-  }, [token, verifyEmail, hasVerified]);
+  }, [token, verifyEmail, hasVerified, redirectStatus]);
 
   const handleResendEmail = async () => {
     if (!isAuthenticated) {
@@ -156,13 +230,13 @@ export default function EmailVerificationPage() {
         'Email de verificación reenviado. Por favor, revisa tu bandeja de entrada.',
       );
     } catch (err: unknown) {
-      const errorMessage =
+      const resendErrorMessage =
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response
               ?.data?.message
           : null;
       setErrorMessage(
-        errorMessage ||
+        resendErrorMessage ||
           'Error al reenviar el email. Por favor, intenta de nuevo.',
       );
     } finally {
@@ -177,74 +251,99 @@ export default function EmailVerificationPage() {
     navigate('/login');
   };
 
+  if (redirectStatus === 'success') {
+    return (
+      <VerificationResultLayout
+        title="Verificando tu email"
+        description="Tu dirección de email ha sido verificada correctamente"
+      >
+        <div className="text-center py-4">
+          <div className="text-4xl mb-4">✅</div>
+          <p className="text-lg font-semibold text-green-600">
+            ¡Email verificado exitosamente!
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">Redirigiendo...</p>
+        </div>
+      </VerificationResultLayout>
+    );
+  }
+
+  if (redirectStatus === 'error') {
+    return (
+      <VerificationResultLayout
+        title="Verificación fallida"
+        description="No pudimos verificar tu dirección de email"
+      >
+        <div className="space-y-4">
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {DEFAULT_VERIFY_ERROR}
+          </div>
+          <div className="text-center text-sm">
+            <button
+              onClick={handleGoToLogin}
+              className="text-primary hover:underline"
+            >
+              Ir al inicio de sesión
+            </button>
+          </div>
+        </div>
+      </VerificationResultLayout>
+    );
+  }
+
   if (token) {
     return (
-      <div
-        className={cn(
-          'flex min-h-svh flex-col items-center justify-center bg-muted/50 p-4',
-        )}
+      <VerificationResultLayout
+        title="Verificando tu email"
+        description="Por favor espera mientras verificamos tu dirección de email"
       >
-        <div className="w-full max-w-md">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Verificando tu email</CardTitle>
-              <CardDescription>
-                Por favor espera mientras verificamos tu dirección de email
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(isVerifying || verificationStatus === 'idle') && (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Verificando...
-                  </p>
-                </div>
-              )}
+        {(isVerifying || verificationStatus === 'idle') && (
+          <div className="text-center py-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-sm text-muted-foreground">Verificando...</p>
+          </div>
+        )}
 
-              {verificationStatus === 'success' && (
-                <div className="text-center py-4">
-                  <div className="text-4xl mb-4">✅</div>
-                  <p className="text-lg font-semibold text-green-600">
-                    ¡Email verificado exitosamente!
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Redirigiendo...
-                  </p>
-                </div>
-              )}
+        {verificationStatus === 'success' && (
+          <div className="text-center py-4">
+            <div className="text-4xl mb-4">✅</div>
+            <p className="text-lg font-semibold text-green-600">
+              ¡Email verificado exitosamente!
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Redirigiendo...
+            </p>
+          </div>
+        )}
 
-              {verificationStatus === 'error' && (
-                <div className="space-y-4">
-                  <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                    {errorMessage}
-                  </div>
-                  {isAuthenticated && (
-                    <Button
-                      onClick={handleResendEmail}
-                      className="w-full"
-                      variant="outline"
-                      disabled={isResending}
-                    >
-                      {isResending
-                        ? 'Reenviando...'
-                        : 'Reenviar email de verificación'}
-                    </Button>
-                  )}
-                  <div className="text-center text-sm">
-                    <button
-                      onClick={handleGoToLogin}
-                      className="text-primary hover:underline"
-                    >
-                      Ir al inicio de sesión
-                    </button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        {verificationStatus === 'error' && (
+          <div className="space-y-4">
+            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {errorMessage}
+            </div>
+            {isAuthenticated && (
+              <Button
+                onClick={handleResendEmail}
+                className="w-full"
+                variant="outline"
+                disabled={isResending}
+              >
+                {isResending
+                  ? 'Reenviando...'
+                  : 'Reenviar email de verificación'}
+              </Button>
+            )}
+            <div className="text-center text-sm">
+              <button
+                onClick={handleGoToLogin}
+                className="text-primary hover:underline"
+              >
+                Ir al inicio de sesión
+              </button>
+            </div>
+          </div>
+        )}
+      </VerificationResultLayout>
     );
   }
 
