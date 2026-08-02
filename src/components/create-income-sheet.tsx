@@ -3,6 +3,8 @@ import { AxiosError } from 'axios';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
@@ -60,7 +62,7 @@ export function CreateIncomeSheet({
       if (income) {
         setMode('one-time');
         setLabel(income.label);
-        setAmount(String(income.amount));
+        setAmount(formatMoneyInputFromNumber(income.amount));
         setIncomeDate(income.incomeDate.slice(0, 10));
         setDaysOfMonth([1]);
       } else {
@@ -86,8 +88,8 @@ export function CreateIncomeSheet({
     if (!amount.trim()) {
       newErrors.amount = 'El monto es obligatorio';
     } else {
-      const numAmount = parseFloat(amount);
-      if (isNaN(numAmount) || numAmount < 0.01) {
+      const numAmount = parseMoneyInput(amount);
+      if (numAmount === null || numAmount < 0.01) {
         newErrors.amount = 'Ingresá un monto válido (mín. 0.01)';
       }
     }
@@ -117,7 +119,7 @@ export function CreateIncomeSheet({
       if (isEditing && income) {
         await incomesService.updateIncome(income._id, {
           label: label.trim(),
-          amount: parseFloat(amount),
+          amount: parseMoneyInput(amount)!,
           currency: resolvedCurrency,
           incomeDate: incomeDate || undefined,
         });
@@ -126,7 +128,7 @@ export function CreateIncomeSheet({
         await incomesService.createIncome({
           boardId,
           label: label.trim(),
-          amount: parseFloat(amount),
+          amount: parseMoneyInput(amount)!,
           currency: resolvedCurrency,
           incomeDate: incomeDate || undefined,
         });
@@ -135,7 +137,7 @@ export function CreateIncomeSheet({
         await recurringIncomesService.create({
           boardId,
           label: label.trim(),
-          amount: parseFloat(amount),
+          amount: parseMoneyInput(amount)!,
           currency: resolvedCurrency,
           daysOfMonth,
         });
@@ -245,15 +247,10 @@ export function CreateIncomeSheet({
 
         <div className="space-y-2">
           <Label htmlFor="income-amount">Monto ({resolvedCurrency})</Label>
-          <Input
+          <MoneyInput
             id="income-amount"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0.01"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
+            onChange={setAmount}
             disabled={isLoading}
           />
           {errors.amount && (

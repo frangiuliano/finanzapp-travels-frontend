@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
@@ -71,7 +73,7 @@ export function ManageRecurringExpensesSection({
     setEditingItem(item);
     setFormData({
       label: item.label,
-      amount: String(item.amount),
+      amount: formatMoneyInputFromNumber(item.amount),
       dayOfMonth: [item.dayOfMonth],
     });
     setSheetOpen(true);
@@ -82,8 +84,8 @@ export function ManageRecurringExpensesSection({
       toast.error('El concepto es obligatorio');
       return;
     }
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount < 0.01) {
+    const amount = parseMoneyInput(formData.amount);
+    if (amount === null || amount < 0.01) {
       toast.error('Ingresá un monto válido');
       return;
     }
@@ -214,13 +216,10 @@ export function ManageRecurringExpensesSection({
           </div>
           <div className="space-y-2">
             <Label>Monto ({currency})</Label>
-            <Input
-              type="number"
-              min="0.01"
-              step="0.01"
+            <MoneyInput
               value={formData.amount}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, amount: e.target.value }))
+              onChange={(value) =>
+                setFormData((prev) => ({ ...prev, amount: value }))
               }
               disabled={isSaving}
             />

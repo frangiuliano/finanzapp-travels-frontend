@@ -7,6 +7,8 @@ import { CreatePaymentMethodSheet } from '@/components/create-payment-method-she
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -323,8 +325,8 @@ export function QuickExpenseForm({
     if (!amount.trim()) {
       nextErrors.amount = 'El monto es obligatorio';
     } else {
-      const numAmount = parseFloat(amount);
-      if (Number.isNaN(numAmount) || numAmount <= 0) {
+      const numAmount = parseMoneyInput(amount);
+      if (numAmount === null || numAmount <= 0) {
         nextErrors.amount = 'El monto debe ser mayor a 0';
       }
     }
@@ -358,10 +360,10 @@ export function QuickExpenseForm({
         if (enabledSplits.length === 0) {
           nextErrors.splits = 'Incluí al menos un participante en el split';
         } else {
-          const numAmount = parseFloat(amount) || 0;
+          const numAmount = parseMoneyInput(amount) || 0;
           const totalManualAmount = enabledSplits.reduce((sum, [, value]) => {
-            const splitAmount = parseFloat(value.amount);
-            return sum + (Number.isNaN(splitAmount) ? 0 : splitAmount);
+            const splitAmount = parseMoneyInput(value.amount);
+            return sum + (splitAmount === null ? 0 : splitAmount);
           }, 0);
           if (Math.abs(totalManualAmount - numAmount) > 0.01) {
             nextErrors.splits = `La suma de las divisiones debe ser igual al monto total`;
@@ -396,7 +398,7 @@ export function QuickExpenseForm({
       .filter(([, value]) => value.enabled)
       .map(([participantId, value]) => ({
         participantId,
-        amount: parseFloat(value.amount),
+        amount: parseMoneyInput(value.amount)!,
       }));
   };
 
@@ -407,7 +409,7 @@ export function QuickExpenseForm({
     setIsSubmitting(true);
 
     try {
-      const numAmount = parseFloat(amount);
+      const numAmount = parseMoneyInput(amount)!;
       const description = note.trim() || selectedCategory?.name || 'Gasto';
 
       const payload: CreateExpenseDto = {
@@ -530,17 +532,13 @@ export function QuickExpenseForm({
         <Label htmlFor="quick-amount" className="text-muted-foreground text-xs">
           Monto ({board.baseCurrency})
         </Label>
-        <Input
+        <MoneyInput
           id="quick-amount"
-          type="number"
-          inputMode="decimal"
-          step="0.01"
-          min="0"
           placeholder="0,00"
           value={amount}
-          onChange={(event) => setAmount(event.target.value)}
+          onChange={setAmount}
           className={cn(
-            'h-14 rounded-2xl text-2xl font-semibold tabular-nums',
+            'h-14 rounded-2xl text-2xl font-semibold',
             errors.amount && 'border-destructive',
           )}
           autoFocus
@@ -885,16 +883,12 @@ export function QuickExpenseForm({
                                 >
                                   {getParticipantName(participant)}
                                 </Label>
-                                <Input
-                                  type="number"
-                                  inputMode="decimal"
-                                  step="0.01"
-                                  min="0"
+                                <MoneyInput
                                   value={splitState?.amount || ''}
-                                  onChange={(event) =>
+                                  onChange={(value) =>
                                     updateManualSplitAmount(
                                       participant._id,
-                                      event.target.value,
+                                      value,
                                     )
                                   }
                                   disabled={!enabled}

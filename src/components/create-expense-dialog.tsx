@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -106,7 +108,7 @@ export function CreateExpenseDialog({
   useEffect(() => {
     if (expense) {
       setBudgetId(expense.budgetId || 'none');
-      setAmount(expense.amount.toString());
+      setAmount(formatMoneyInputFromNumber(expense.amount));
       setDescription(expense.description);
       setMerchantName(expense.merchantName || '');
       setCategory(expense.category || '');
@@ -235,8 +237,8 @@ export function CreateExpenseDialog({
     if (!amount.trim()) {
       newErrors.amount = 'El monto es obligatorio';
     } else {
-      const numAmount = parseFloat(amount);
-      if (isNaN(numAmount) || numAmount <= 0) {
+      const numAmount = parseMoneyInput(amount);
+      if (numAmount === null || numAmount <= 0) {
         newErrors.amount = 'El monto debe ser un número mayor a 0';
       }
     }
@@ -271,12 +273,12 @@ export function CreateExpenseDialog({
       if (enabledSplits.length === 0) {
         newErrors.splits = 'Debes incluir al menos un participante';
       } else {
-        const expenseAmount = parseFloat(amount) || 0;
+        const expenseAmount = parseMoneyInput(amount) || 0;
 
         if (splitType === SplitType.MANUAL) {
           const totalManualAmount = enabledSplits.reduce((sum, [, value]) => {
-            const amount = parseFloat(value.amount);
-            return sum + (isNaN(amount) ? 0 : amount);
+            const splitAmount = parseMoneyInput(value.amount);
+            return sum + (splitAmount === null ? 0 : splitAmount);
           }, 0);
           if (Math.abs(totalManualAmount - expenseAmount) > 0.01) {
             newErrors.splits = `La suma de las divisiones (${totalManualAmount.toFixed(
@@ -286,8 +288,8 @@ export function CreateExpenseDialog({
 
           // Validar que cada split tenga un monto válido
           for (const [participantId, value] of enabledSplits) {
-            const amount = parseFloat(value.amount);
-            if (isNaN(amount) || amount <= 0) {
+            const splitAmount = parseMoneyInput(value.amount);
+            if (splitAmount === null || splitAmount <= 0) {
               newErrors[`split-${participantId}`] =
                 'El monto debe ser mayor a 0';
             }
@@ -309,7 +311,7 @@ export function CreateExpenseDialog({
     const amountPerParticipant = totalAmount / enabledParticipants.length;
     return enabledParticipants.map((p) => ({
       participantId: p._id,
-      amount: parseFloat(amountPerParticipant.toFixed(2)),
+      amount: Number(amountPerParticipant.toFixed(2)),
     }));
   };
 
@@ -321,7 +323,7 @@ export function CreateExpenseDialog({
     setIsLoading(true);
 
     try {
-      const numAmount = parseFloat(amount);
+      const numAmount = parseMoneyInput(amount)!;
       const splits = isDivisible
         ? splitType === SplitType.EQUAL
           ? calculateEqualSplits(numAmount)
@@ -329,7 +331,7 @@ export function CreateExpenseDialog({
               .filter(([, value]) => value.enabled)
               .map(([participantId, value]) => ({
                 participantId,
-                amount: parseFloat(value.amount),
+                amount: parseMoneyInput(value.amount)!,
               }))
         : undefined;
 
@@ -407,7 +409,7 @@ export function CreateExpenseDialog({
   const handleAmountChange = (value: string) => {
     setAmount(value);
     if (isDivisible && splitType === SplitType.EQUAL) {
-      const numAmount = parseFloat(value) || 0;
+      const numAmount = parseMoneyInput(value) || 0;
       const enabledCount = Object.values(manualSplits).filter(
         (v) => v.enabled,
       ).length;
@@ -418,7 +420,7 @@ export function CreateExpenseDialog({
           if (newSplits[p._id]?.enabled) {
             newSplits[p._id] = {
               ...newSplits[p._id],
-              amount: amountPerParticipant.toFixed(2),
+              amount: formatMoneyInputFromNumber(amountPerParticipant),
             };
           }
         });
@@ -430,7 +432,7 @@ export function CreateExpenseDialog({
   const handleSplitTypeChange = (value: SplitType) => {
     setSplitType(value);
     if (isDivisible && value === SplitType.EQUAL) {
-      const numAmount = parseFloat(amount) || 0;
+      const numAmount = parseMoneyInput(amount) || 0;
       const enabledCount = Object.values(manualSplits).filter(
         (v) => v.enabled,
       ).length;
@@ -441,7 +443,7 @@ export function CreateExpenseDialog({
           if (newSplits[p._id]?.enabled) {
             newSplits[p._id] = {
               ...newSplits[p._id],
-              amount: amountPerParticipant.toFixed(2),
+              amount: formatMoneyInputFromNumber(amountPerParticipant),
             };
           }
         });
@@ -460,7 +462,7 @@ export function CreateExpenseDialog({
     newSplits[participantId].enabled = enabled;
 
     if (splitType === SplitType.EQUAL && enabled) {
-      const numAmount = parseFloat(amount) || 0;
+      const numAmount = parseMoneyInput(amount) || 0;
       const enabledCount = Object.values(newSplits).filter(
         (v) => v.enabled,
       ).length;
@@ -468,7 +470,8 @@ export function CreateExpenseDialog({
         const amountPerParticipant = numAmount / enabledCount;
         Object.keys(newSplits).forEach((pid) => {
           if (newSplits[pid].enabled) {
-            newSplits[pid].amount = amountPerParticipant.toFixed(2);
+            newSplits[pid].amount =
+              formatMoneyInputFromNumber(amountPerParticipant);
           }
         });
       }
@@ -520,14 +523,10 @@ export function CreateExpenseDialog({
 
             <div className="space-y-2">
               <Label htmlFor="amount">Monto *</Label>
-              <Input
+              <MoneyInput
                 id="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
                 value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                placeholder="0.00"
+                onChange={handleAmountChange}
                 disabled={isLoading}
               />
               {errors.amount && (
@@ -739,12 +738,13 @@ export function CreateExpenseDialog({
                       splits[p._id] = { amount: '', enabled: true };
                     });
                     // Calcular división igual si hay monto
-                    const numAmount = parseFloat(amount) || 0;
+                    const numAmount = parseMoneyInput(amount) || 0;
                     if (numAmount > 0 && participants.length > 0) {
                       const amountPerParticipant =
                         numAmount / participants.length;
                       Object.keys(splits).forEach((pid) => {
-                        splits[pid].amount = amountPerParticipant.toFixed(2);
+                        splits[pid].amount =
+                          formatMoneyInputFromNumber(amountPerParticipant);
                       });
                     }
                     setManualSplits(splits);
@@ -811,12 +811,9 @@ export function CreateExpenseDialog({
                         </div>
                         {splitType === SplitType.MANUAL && split.enabled && (
                           <div className="w-32">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
+                            <MoneyInput
                               value={split.amount}
-                              onChange={(e) => {
+                              onChange={(value) => {
                                 const newSplits = { ...manualSplits };
                                 if (!newSplits[participant._id]) {
                                   newSplits[participant._id] = {
@@ -824,11 +821,10 @@ export function CreateExpenseDialog({
                                     enabled: true,
                                   };
                                 }
-                                newSplits[participant._id].amount =
-                                  e.target.value;
+                                newSplits[participant._id].amount = value;
                                 setManualSplits(newSplits);
                               }}
-                              placeholder="0.00"
+                              placeholder="0,00"
                               disabled={isLoading || !split.enabled}
                             />
                           </div>
