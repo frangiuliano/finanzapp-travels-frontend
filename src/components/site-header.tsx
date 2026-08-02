@@ -1,6 +1,7 @@
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { BoardSwitcher } from '@/components/board-switcher';
+import { NotificationsBell } from '@/components/notifications-bell';
 import { useBoardsStore } from '@/store/boardsStore';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,7 @@ export function SiteHeader() {
             <span className="md:hidden">FinanzApp</span>
             <span className="hidden md:inline">{displayTitle}</span>
           </h1>
+          <NotificationsBell />
         </div>
         <div className="w-full md:hidden">
           <BoardSwitcher variant="header" />
