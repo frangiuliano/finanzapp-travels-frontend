@@ -29,6 +29,7 @@ import {
   CreateExpenseDto,
   UpdateExpenseDto,
   PaymentMethod,
+  getExpenseCategoryLabel,
 } from '@/types/expense';
 import { expensesService } from '@/services/expensesService';
 import { createExpenseWithOffline } from '@/services/createExpenseWithOffline';
@@ -110,7 +111,7 @@ export function CreateExpenseDialog({
       setAmount(formatMoneyInputFromNumber(expense.amount));
       setDescription(expense.description);
       setMerchantName(expense.merchantName || '');
-      setCategory(expense.category || '');
+      setCategory(getExpenseCategoryLabel(expense.category) || '');
       setTags(expense.tags?.join(', ') || '');
       setStatus(expense.status);
       setPaymentMethod(expense.paymentMethod || PaymentMethod.CASH);

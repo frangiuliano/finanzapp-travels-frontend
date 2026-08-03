@@ -24,6 +24,14 @@ export enum PaymentMethod {
   CARD = 'card',
 }
 
+export interface ExpensePopulatedCategory {
+  _id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  isActive?: boolean;
+}
+
 export interface ExpenseSplit {
   participantId: string;
   participant?: {
@@ -61,7 +69,9 @@ export interface Expense {
   description: string;
   merchantName?: string;
   tags?: string[];
-  category?: string;
+  // The backend returns a populated category object when categoryId is set,
+  // and a plain legacy free-text string otherwise.
+  category?: string | ExpensePopulatedCategory;
   categoryId?: string;
   paidByParticipantId: string;
   paidByParticipant?: {
@@ -129,6 +139,11 @@ export interface CreateExpenseDto {
   expenseDate?: string;
   clientRequestId?: string;
 }
+
+export const getExpenseCategoryLabel = (
+  category: Expense['category'],
+): string | undefined =>
+  typeof category === 'string' ? category : category?.name;
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {
   status?: ExpenseStatus;

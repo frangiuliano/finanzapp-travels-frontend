@@ -53,7 +53,11 @@ import {
 import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import { expensesService } from '@/services/expensesService';
 import type { Board } from '@/types/board';
-import { Expense, ExpenseStatus } from '@/types/expense';
+import {
+  Expense,
+  ExpenseStatus,
+  getExpenseCategoryLabel,
+} from '@/types/expense';
 import { PAYMENT_METHOD_KIND_LABELS } from '@/types/payment-method';
 import { formatCurrency, formatDate, getCurrentYearMonth } from '@/lib/utils';
 
@@ -453,7 +457,7 @@ export function ExpensesExplorerSection({
                           {expense.description}
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
-                          {expense.category || '—'}
+                          {getExpenseCategoryLabel(expense.category) || '—'}
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground md:table-cell">
                           {resolvePaymentMethodLabel(
