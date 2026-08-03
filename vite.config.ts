@@ -67,6 +67,8 @@ export default defineConfig(({ mode }) => {
             process.env.NODE_ENV === 'development'
               ? []
               : ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          skipWaiting: true,
+          clientsClaim: true,
           // Do not cache API responses: auth tokens and user data must stay fresh.
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//],
