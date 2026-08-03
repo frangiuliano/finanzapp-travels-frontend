@@ -99,10 +99,8 @@ export function TabAnimatedOutlet() {
             <div
               key={tabPath}
               className={cn(
-                'tab-content-panel absolute inset-0 flex flex-col overflow-y-auto overscroll-y-contain pb-[var(--mobile-nav-total)]',
-                isActive
-                  ? 'z-[1] opacity-100'
-                  : 'pointer-events-none z-0 opacity-0',
+                'tab-content-panel flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain pb-[var(--mobile-nav-total)]',
+                !isActive && 'hidden',
               )}
               aria-hidden={!isActive}
             >
@@ -112,7 +110,7 @@ export function TabAnimatedOutlet() {
         })}
 
         {!isMobileTabPath(path) && (
-          <div className="relative z-[1] flex flex-1 flex-col pb-[var(--mobile-nav-total)] md:pb-0">
+          <div className="relative z-[1] flex min-h-0 flex-1 flex-col pb-[var(--mobile-nav-total)] md:pb-0">
             {outlet}
           </div>
         )}

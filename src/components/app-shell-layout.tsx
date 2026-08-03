@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import { BoardsBootstrapError } from '@/components/boards-bootstrap-error';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { useClearStuckOverlayLocks } from '@/hooks/useClearStuckOverlayLocks';
 import { useBoardsBootstrap } from '@/hooks/useBoardsBootstrap';
 import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 import { useOfflineExpenseSync } from '@/hooks/useOfflineExpenseSync';
@@ -15,6 +16,7 @@ import { useBoardsStore } from '@/store/boardsStore';
 export function AppShellLayout() {
   useBoardsBootstrap();
   useOnboardingRedirect();
+  useClearStuckOverlayLocks();
   const bootstrapStatus = useBoardsStore((state) => state.bootstrapStatus);
   const pendingOfflineCount = useOfflineExpenseSync();
   const navMinimized = useScrollMinimize();
