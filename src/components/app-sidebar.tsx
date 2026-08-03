@@ -4,6 +4,7 @@ import {
   Home,
   Plane,
   PlusCircle,
+  Receipt,
   Settings2,
   SettingsIcon,
 } from 'lucide-react';
@@ -49,6 +50,11 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       title: 'Reportes',
       url: '/reports',
       icon: BarChart3,
+    },
+    {
+      title: 'Gastos',
+      url: '/expenses',
+      icon: Receipt,
     },
     {
       title: 'Viajes',

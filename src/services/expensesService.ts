@@ -9,6 +9,15 @@ import type {
   ParticipantDebtsResponse,
 } from '@/types/expense';
 
+export interface ExpenseListFilters {
+  budgetId?: string;
+  status?: ExpenseStatus;
+  categoryId?: string;
+  paymentMethodId?: string;
+  from?: string;
+  to?: string;
+}
+
 export const expensesService = {
   async createExpense(
     data: CreateExpenseDto,
@@ -27,10 +36,28 @@ export const expensesService = {
     tripId: string,
     budgetId?: string,
     status?: ExpenseStatus,
+    filters: ExpenseListFilters = {},
   ): Promise<{ expenses: Expense[] }> {
-    const params = new URLSearchParams({ tripId });
-    if (budgetId) params.append('budgetId', budgetId);
-    if (status) params.append('status', status);
+    return this.listExpenses(tripId, {
+      ...filters,
+      budgetId: filters.budgetId ?? budgetId,
+      status: filters.status ?? status,
+    });
+  },
+
+  async listExpenses(
+    boardId: string,
+    filters: ExpenseListFilters = {},
+  ): Promise<{ expenses: Expense[] }> {
+    const params = new URLSearchParams({ tripId: boardId, boardId });
+    if (filters.budgetId) params.set('budgetId', filters.budgetId);
+    if (filters.status) params.set('status', filters.status);
+    if (filters.categoryId) params.set('categoryId', filters.categoryId);
+    if (filters.paymentMethodId) {
+      params.set('paymentMethodId', filters.paymentMethodId);
+    }
+    if (filters.from) params.set('from', filters.from);
+    if (filters.to) params.set('to', filters.to);
 
     const response = await api.get(`/expenses?${params.toString()}`);
     return response.data;

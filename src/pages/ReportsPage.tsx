@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Receipt } from 'lucide-react';
 import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
 import { ConsolidatedReportSection } from '@/components/consolidated-report-section';
 import { CreditCycleReportSection } from '@/components/credit-cycle-report-section';
@@ -156,6 +156,25 @@ export default function ReportsPage() {
       </div>
 
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+
+      <Card className="border-dashed">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Receipt className="size-4" />
+            Explorar gastos
+          </CardTitle>
+          <CardDescription>
+            Tabla detallada con filtros por mes, tarjeta, categoría y estado.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild size="sm" className="rounded-xl">
+            <Link to={`/expenses?yearMonth=${yearMonth}&view=calendar`}>
+              Ver gastos de {yearMonth}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Tabs value={activeView} onValueChange={handleViewChange}>
         <TabsList className="grid w-full grid-cols-2 rounded-xl">

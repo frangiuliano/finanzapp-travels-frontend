@@ -18,6 +18,7 @@ import TravelPage from '@/pages/TravelPage';
 import SettingsPage from '@/pages/SettingsPage';
 import CapturePage from '@/pages/CapturePage';
 import ReportsPage from '@/pages/ReportsPage';
+import ExpensesPage from '@/pages/ExpensesPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import BoardSettingsPage from '@/pages/BoardSettingsPage';
 import BillingPeriodConfirmPage from '@/pages/BillingPeriodConfirmPage';
@@ -128,6 +129,7 @@ function AppRoutes() {
         <Route path="/capture" element={<CapturePage />} />
         <Route path="/simulate" element={<SimulateExpensePage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/travel" element={<TravelPage />} />
         <Route path="/boards" element={<Navigate to="/travel" replace />} />
         <Route path="/boards/settings" element={<BoardSettingsPage />} />

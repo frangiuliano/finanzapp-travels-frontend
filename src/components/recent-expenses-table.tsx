@@ -73,6 +73,7 @@ import {
 import type { PaymentMethod as BoardPaymentMethod } from '@/types/payment-method';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
   const header = column.columnDef.header;
@@ -287,6 +288,7 @@ interface RecentExpensesTableProps {
   onDelete?: (expenseId: string) => void;
   refreshTrigger?: number;
   onRefresh?: () => void;
+  viewAllHref?: string;
 }
 
 export function RecentExpensesTable({
@@ -300,6 +302,7 @@ export function RecentExpensesTable({
   onDelete,
   refreshTrigger,
   onRefresh,
+  viewAllHref,
 }: RecentExpensesTableProps) {
   const [showBoardCurrencyLocal, setShowBoardCurrencyLocal] = useState(() => {
     if (typeof window === 'undefined') return showBoardCurrency;
@@ -420,6 +423,16 @@ export function RecentExpensesTable({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {viewAllHref ? (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-xl"
+              >
+                <Link to={viewAllHref}>Ver todos</Link>
+              </Button>
+            ) : null}
             <label className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
               <Checkbox
                 checked={resolvedShowBoardCurrency}

@@ -342,6 +342,7 @@ export function EverydayBoardHome({
           yearMonth={yearMonth}
           monthView={monthView}
           paymentMethodMap={paymentMethodMap}
+          viewAllHref={`/expenses?yearMonth=${yearMonth}&view=${monthView}`}
           onRefresh={onRefresh}
           refreshTrigger={refreshTrigger}
           onEdit={handleEditExpense}
