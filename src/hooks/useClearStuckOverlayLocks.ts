@@ -1,7 +1,24 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-function clearStuckOverlayLocks() {
+function hasOpenOverlay(): boolean {
+  return Boolean(
+    document.querySelector(
+      [
+        '[data-state="open"][role="dialog"]',
+        '[data-state="open"][data-vaul-drawer]',
+        '[data-radix-menu-content][data-state="open"]',
+        '[data-radix-select-content][data-state="open"]',
+      ].join(','),
+    ),
+  );
+}
+
+export function clearStuckOverlayLocks() {
+  if (hasOpenOverlay()) {
+    return;
+  }
+
   document.body.style.pointerEvents = '';
   document.body.style.overflow = '';
   document.documentElement.style.pointerEvents = '';
@@ -11,19 +28,23 @@ function clearStuckOverlayLocks() {
 
   document
     .querySelectorAll<HTMLElement>(
-      '[data-radix-dialog-overlay], [data-radix-dialog-content], [data-vaul-overlay], [data-vaul-drawer]',
+      [
+        '.glass-overlay',
+        '[data-radix-dialog-overlay]',
+        '[data-vaul-overlay]',
+      ].join(','),
     )
     .forEach((element) => {
       const state = element.getAttribute('data-state');
-      if (state === 'closed') {
+      if (!state || state === 'closed') {
         element.style.pointerEvents = 'none';
       }
     });
 }
 
 /**
- * Radix/Vaul can leave body scroll/pointer locks after a modal closes
- * (e.g. fast route changes on mobile PWA). Clear them on shell mount and navigation.
+ * Radix/Vaul can leave body scroll/pointer locks after a modal closes.
+ * Clear them on navigation and before pointer events when no overlay is open.
  */
 export function useClearStuckOverlayLocks() {
   const location = useLocation();
@@ -31,4 +52,21 @@ export function useClearStuckOverlayLocks() {
   useEffect(() => {
     clearStuckOverlayLocks();
   }, [location.pathname]);
+
+  useEffect(() => {
+    const onPointerDownCapture = () => {
+      const bodyBlocked =
+        document.body.style.pointerEvents === 'none' ||
+        document.documentElement.style.pointerEvents === 'none' ||
+        document.body.hasAttribute('data-scroll-locked');
+
+      if (bodyBlocked && !hasOpenOverlay()) {
+        clearStuckOverlayLocks();
+      }
+    };
+
+    window.addEventListener('pointerdown', onPointerDownCapture, true);
+    return () =>
+      window.removeEventListener('pointerdown', onPointerDownCapture, true);
+  }, []);
 }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { notifyExpensesChanged } from '@/lib/expense-events';
 import { processOfflineExpenseQueue } from '@/services/createExpenseWithOffline';
 import {
   offlineExpenseQueue,
@@ -22,7 +21,6 @@ export function useOfflineExpenseSync(): number {
     const sync = async () => {
       const synced = await processOfflineExpenseQueue();
       if (synced > 0) {
-        notifyExpensesChanged();
         toast.success(
           synced === 1
             ? '1 gasto sincronizado'
