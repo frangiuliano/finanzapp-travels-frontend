@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BarChart3, Receipt } from 'lucide-react';
 import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
@@ -38,6 +39,7 @@ export default function ReportsPage() {
     useState<BoardCalendarReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const expensesChangedRefresh = useExpensesChangedRefresh();
 
   const handleViewChange = (value: string) => {
     const view = value as ReportsView;
@@ -88,7 +90,7 @@ export default function ReportsPage() {
     return () => {
       stale = true;
     };
-  }, [activeBoard, yearMonth, activeView]);
+  }, [activeBoard, yearMonth, activeView, expensesChangedRefresh]);
 
   const categoryItems = useMemo(
     () =>

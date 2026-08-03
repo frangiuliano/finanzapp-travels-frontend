@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import { Link } from 'react-router-dom';
 import {
   ChevronLeftIcon,
@@ -106,6 +107,7 @@ export function ExpensesExplorerSection({
   const [pageIndex, setPageIndex] = useState(0);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const expensesChangedRefresh = useExpensesChangedRefresh();
 
   const { paymentMethods } = useAvailablePaymentMethods(board._id);
   const { categories } = useBoardCategories(board._id);
@@ -197,6 +199,7 @@ export function ExpensesExplorerSection({
     categoryId,
     status,
     paymentMethodMap,
+    expensesChangedRefresh,
   ]);
 
   const pageSize = 15;

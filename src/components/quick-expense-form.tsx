@@ -24,6 +24,7 @@ import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { budgetsService } from '@/services/budgetsService';
 import { createExpenseWithOffline } from '@/services/createExpenseWithOffline';
 import { expensesService } from '@/services/expensesService';
+import { notifyExpensesChanged } from '@/lib/expense-events';
 import { recurringExpensesService } from '@/services/recurringExpensesService';
 import { installmentPlansService } from '@/services/installmentPlansService';
 import { fxService } from '@/services/fxService';
@@ -576,6 +577,7 @@ export function QuickExpenseForm({
         });
         toast.success('Gasto recurrente configurado');
         resetForm();
+        notifyExpensesChanged();
         onSuccess?.();
         return;
       }
@@ -604,6 +606,7 @@ export function QuickExpenseForm({
         });
         toast.success(`Compra en ${parsedInstallments} cuotas configurada`);
         resetForm();
+        notifyExpensesChanged();
         onSuccess?.();
         return;
       }

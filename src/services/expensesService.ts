@@ -1,3 +1,4 @@
+import { notifyExpensesChanged } from '@/lib/expense-events';
 import api from './api';
 import type {
   Expense,
@@ -29,6 +30,7 @@ export const expensesService = {
         ? { 'Idempotency-Key': idempotencyKey }
         : undefined,
     });
+    notifyExpensesChanged();
     return response.data;
   },
 
@@ -73,11 +75,13 @@ export const expensesService = {
     data: UpdateExpenseDto,
   ): Promise<{ message: string; expense: Expense }> {
     const response = await api.patch(`/expenses/${id}`, data);
+    notifyExpensesChanged();
     return response.data;
   },
 
   async deleteExpense(id: string): Promise<void> {
     await api.delete(`/expenses/${id}`);
+    notifyExpensesChanged();
   },
 
   async getTripExpenseSummary(
@@ -102,11 +106,13 @@ export const expensesService = {
     expense: Expense;
   }> {
     const response = await api.post(`/expenses/${id}/settle`);
+    notifyExpensesChanged();
     return response.data;
   },
 
   async skipRecurringExpense(id: string): Promise<{ message: string }> {
     const response = await api.post(`/expenses/${id}/skip`);
+    notifyExpensesChanged();
     return response.data;
   },
 
