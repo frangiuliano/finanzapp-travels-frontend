@@ -11,13 +11,18 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { MonthlyForecast } from '@/types/forecast';
+import type { HomeMonthView } from '@/lib/expense-month-attribution';
 import { formatCurrency, formatYearMonth } from '@/lib/utils';
 
 interface MonthlyPlanningCardsProps {
   forecast: MonthlyForecast;
+  monthView: HomeMonthView;
 }
 
-export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
+export function MonthlyPlanningCards({
+  forecast,
+  monthView,
+}: MonthlyPlanningCardsProps) {
   const { currency, yearMonth, isFutureMonth, actual, planned } = forecast;
   const monthLabel = formatYearMonth(yearMonth);
 
@@ -28,6 +33,10 @@ export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
     ? planned.totalOutflows
     : actual.totalExpenses;
   const remaining = planned.projectedRemaining;
+  const expenseHint =
+    monthView === 'cash_impact'
+      ? 'Gastos que impactan en tu bolsillo este mes'
+      : 'Gastos por fecha de compra';
 
   return (
     <div className="space-y-3">
@@ -74,7 +83,7 @@ export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
           <CardFooter className="text-sm text-muted-foreground">
             {isFutureMonth
               ? 'Fijos + cuotas del mes'
-              : `Real: ${formatCurrency(actual.totalExpenses, currency)} · Fijos/cuotas: ${formatCurrency(planned.totalOutflows, currency)}`}
+              : `${expenseHint} · Fijos/cuotas: ${formatCurrency(planned.totalOutflows, currency)}`}
           </CardFooter>
         </Card>
 
@@ -93,7 +102,7 @@ export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
             </div>
           </CardHeader>
           <CardFooter className="text-sm text-muted-foreground">
-            Ingresos − gastos/compromisos del mes
+            Ingresos − {expenseHint.toLowerCase()}
           </CardFooter>
         </Card>
       </div>

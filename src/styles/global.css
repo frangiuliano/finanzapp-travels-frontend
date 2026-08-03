@@ -114,6 +114,8 @@
     var(--mobile-nav-height) + var(--mobile-nav-bottom) +
       var(--mobile-nav-margin)
   );
+  --z-bottom-nav: 100;
+  --z-overlay: 110;
 
   --mobile-header-margin: 0.75rem;
   --mobile-header-top: calc(

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
+import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { MonthBudgetsProgress } from '@/components/month-budgets-progress';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
@@ -20,6 +21,12 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
+import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
+import {
+  readHomeMonthView,
+  writeHomeMonthView,
+  type HomeMonthView,
+} from '@/lib/expense-month-attribution';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
@@ -48,7 +55,11 @@ export function EverydayBoardHome({
   onRefresh,
 }: EverydayBoardHomeProps) {
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth());
+  const [monthView, setMonthView] = useState<HomeMonthView>(() =>
+    readHomeMonthView(),
+  );
   const { categories } = useBoardCategories(board._id);
+  const { paymentMethods } = useAvailablePaymentMethods(board._id);
 
   const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
   const [budgetProgress, setBudgetProgress] = useState<
@@ -60,6 +71,15 @@ export function EverydayBoardHome({
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+
+  const paymentMethodMap = useMemo(
+    () => new Map(paymentMethods.map((method) => [method._id, method])),
+    [paymentMethods],
+  );
+
+  useEffect(() => {
+    writeHomeMonthView(monthView);
+  }, [monthView]);
 
   useEffect(() => {
     if (board._id.startsWith('mock-')) {
@@ -74,7 +94,7 @@ export function EverydayBoardHome({
         const [forecastResult, progressResult, incomesResult] =
           await Promise.all([
             forecastService
-              .getMonthlyForecast(board._id, yearMonth)
+              .getMonthlyForecast(board._id, yearMonth, monthView)
               .then(({ forecast: f }) => f)
               .catch(() => null),
             boardMonthBudgetsService
@@ -117,20 +137,9 @@ export function EverydayBoardHome({
     return () => {
       stale = true;
     };
-  }, [board._id, yearMonth, refreshTrigger]);
+  }, [board._id, yearMonth, monthView, refreshTrigger]);
 
   const currency = forecast?.currency ?? board.baseCurrency;
-
-  const emptyMonthState = useMemo(() => {
-    if (isLoading || !forecast) return false;
-    return (
-      forecast.actual.totalIncomes === 0 &&
-      forecast.actual.totalExpenses === 0 &&
-      forecast.planned.totalIncomes === 0 &&
-      forecast.planned.totalOutflows === 0 &&
-      budgetProgress.length === 0
-    );
-  }, [isLoading, forecast, budgetProgress.length]);
 
   const handleIncomeCreated = () => {
     onRefresh();
@@ -209,6 +218,8 @@ export function EverydayBoardHome({
     <div className="space-y-6">
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
+      <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <Button className="rounded-xl" onClick={openCreateIncome}>
@@ -228,34 +239,11 @@ export function EverydayBoardHome({
           <Skeleton className="h-32 rounded-xl" />
         </div>
       ) : forecast ? (
-        <MonthlyPlanningCards forecast={forecast} />
+        <MonthlyPlanningCards forecast={forecast} monthView={monthView} />
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
             No se pudo cargar el resumen del mes. Reintentá en unos segundos.
-          </CardContent>
-        </Card>
-      )}
-
-      {emptyMonthState && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-base">Empezá el mes</CardTitle>
-            <CardDescription>
-              Registrá ingresos puntuales o configurá recurrentes, gastos fijos
-              y cuotas para ver la proyección del mes.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button size="sm" className="rounded-xl" onClick={openCreateIncome}>
-              Registrar ingreso
-            </Button>
-            <Button asChild size="sm" variant="outline" className="rounded-xl">
-              <Link to="/boards/settings">Config. tablero</Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="rounded-xl">
-              <Link to="/capture">Nuevo gasto</Link>
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -351,6 +339,9 @@ export function EverydayBoardHome({
         <RecentExpensesTable
           tripId={board._id}
           boardCurrency={currency}
+          yearMonth={yearMonth}
+          monthView={monthView}
+          paymentMethodMap={paymentMethodMap}
           onRefresh={onRefresh}
           refreshTrigger={refreshTrigger}
           onEdit={handleEditExpense}

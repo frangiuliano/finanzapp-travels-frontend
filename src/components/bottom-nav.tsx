@@ -103,7 +103,7 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
   return createPortal(
     <nav
       aria-label="Navegación principal"
-      className="pointer-events-none fixed inset-x-4 z-[100] md:hidden"
+      className="pointer-events-none fixed inset-x-4 z-[var(--z-bottom-nav)] md:hidden"
       style={{
         bottom: 'var(--mobile-nav-bottom)',
         WebkitTransform: 'translateZ(0)',

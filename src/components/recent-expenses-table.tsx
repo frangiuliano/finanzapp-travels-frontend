@@ -66,6 +66,11 @@ import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { expensesService } from '@/services/expensesService';
 import { ExpenseAmountDisplay } from '@/components/expense-amount-display';
+import {
+  expenseBelongsToYearMonth,
+  type HomeMonthView,
+} from '@/lib/expense-month-attribution';
+import type { PaymentMethod as BoardPaymentMethod } from '@/types/payment-method';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 
@@ -275,6 +280,9 @@ interface RecentExpensesTableProps {
   tripId: string;
   boardCurrency?: string;
   showBoardCurrency?: boolean;
+  yearMonth?: string;
+  monthView?: HomeMonthView;
+  paymentMethodMap?: Map<string, BoardPaymentMethod>;
   onEdit?: (expense: Expense) => void;
   onDelete?: (expenseId: string) => void;
   refreshTrigger?: number;
@@ -285,6 +293,9 @@ export function RecentExpensesTable({
   tripId,
   boardCurrency = DEFAULT_CURRENCY,
   showBoardCurrency = true,
+  yearMonth,
+  monthView = 'cash_impact',
+  paymentMethodMap,
   onEdit,
   onDelete,
   refreshTrigger,
@@ -348,6 +359,18 @@ export function RecentExpensesTable({
     fetchExpenses();
   }, [tripId, refreshTrigger]);
 
+  const filteredData =
+    yearMonth && paymentMethodMap
+      ? data.filter((expense) =>
+          expenseBelongsToYearMonth(
+            expense,
+            yearMonth,
+            monthView,
+            paymentMethodMap,
+          ),
+        )
+      : data;
+
   const columns = createColumns(
     tripId,
     boardCurrency,
@@ -358,7 +381,7 @@ export function RecentExpensesTable({
   );
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     state: {
       sorting,
@@ -385,9 +408,15 @@ export function RecentExpensesTable({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Gastos recientes</CardTitle>
+            <CardTitle>
+              {yearMonth ? 'Gastos del mes' : 'Gastos recientes'}
+            </CardTitle>
             <CardDescription>
-              Gastos recientes ordenados por fecha de creación
+              {yearMonth
+                ? monthView === 'cash_impact'
+                  ? `Gastos que impactan en ${yearMonth} (incluye tarjeta por ciclo de cierre)`
+                  : `Gastos con fecha de compra en ${yearMonth}`
+                : 'Gastos recientes ordenados por fecha de creación'}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -441,11 +470,13 @@ export function RecentExpensesTable({
           <div className="flex items-center justify-center py-8">
             <div className="text-muted-foreground">Cargando...</div>
           </div>
-        ) : data.length === 0 ? (
+        ) : filteredData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <WalletIcon className="mb-4 size-12 text-muted-foreground" />
             <p className="text-muted-foreground">
-              No hay gastos registrados aún
+              {yearMonth
+                ? 'No hay gastos para este mes con la vista seleccionada'
+                : 'No hay gastos registrados aún'}
             </p>
           </div>
         ) : (

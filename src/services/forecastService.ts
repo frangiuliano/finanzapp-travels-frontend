@@ -1,4 +1,5 @@
 import api from './api';
+import type { HomeMonthView } from '@/lib/expense-month-attribution';
 import type { MonthlyForecast } from '@/types/forecast';
 import type {
   ExpenseSimulationResult,
@@ -9,8 +10,9 @@ export const forecastService = {
   async getMonthlyForecast(
     boardId: string,
     yearMonth: string,
+    attribution: HomeMonthView = 'cash_impact',
   ): Promise<{ forecast: MonthlyForecast }> {
-    const params = new URLSearchParams({ boardId, yearMonth });
+    const params = new URLSearchParams({ boardId, yearMonth, attribution });
     const response = await api.get(`/forecast/monthly?${params.toString()}`);
     return response.data;
   },
