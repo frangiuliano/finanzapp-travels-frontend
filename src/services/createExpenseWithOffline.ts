@@ -46,6 +46,10 @@ export async function createExpenseWithOffline(
       if (!isRetryableNetworkError(error)) {
         throw error;
       }
+      console.warn(
+        '[offline-queue] Create expense failed while online; queuing for retry',
+        error,
+      );
     }
   }
 
