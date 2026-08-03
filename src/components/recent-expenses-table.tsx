@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Column,
   ColumnDef,
@@ -362,25 +362,39 @@ export function RecentExpensesTable({
     fetchExpenses();
   }, [tripId, refreshTrigger]);
 
-  const filteredData =
-    yearMonth && paymentMethodMap
-      ? data.filter((expense) =>
-          expenseBelongsToYearMonth(
-            expense,
-            yearMonth,
-            monthView,
-            paymentMethodMap,
-          ),
-        )
-      : data;
+  const filteredData = useMemo(() => {
+    if (!yearMonth || !paymentMethodMap) {
+      return data;
+    }
 
-  const columns = createColumns(
-    tripId,
-    boardCurrency,
-    resolvedShowBoardCurrency,
-    onEdit,
-    onDelete,
-    onRefresh,
+    return data.filter((expense) =>
+      expenseBelongsToYearMonth(
+        expense,
+        yearMonth,
+        monthView,
+        paymentMethodMap,
+      ),
+    );
+  }, [data, yearMonth, monthView, paymentMethodMap]);
+
+  const columns = useMemo(
+    () =>
+      createColumns(
+        tripId,
+        boardCurrency,
+        resolvedShowBoardCurrency,
+        onEdit,
+        onDelete,
+        onRefresh,
+      ),
+    [
+      tripId,
+      boardCurrency,
+      resolvedShowBoardCurrency,
+      onEdit,
+      onDelete,
+      onRefresh,
+    ],
   );
 
   const table = useReactTable({
@@ -395,6 +409,8 @@ export function RecentExpensesTable({
     },
     getRowId: (row) => row._id,
     enableRowSelection: true,
+    // Prevent infinite reset loops when filteredData identity changes.
+    autoResetPageIndex: false,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
