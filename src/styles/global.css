@@ -116,6 +116,8 @@
   );
   --z-bottom-nav: 100;
   --z-overlay: 110;
+  /* Portaled menus/selects must sit above dialog/sheet overlays. */
+  --z-popover: 120;
 
   --mobile-header-margin: 0.75rem;
   --mobile-header-top: calc(
