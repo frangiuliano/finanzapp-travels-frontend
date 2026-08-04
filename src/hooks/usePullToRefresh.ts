@@ -8,6 +8,26 @@ const MAX_PULL_DISTANCE = 90;
 /** Higher = more finger travel needed per pixel of visual movement. */
 const PULL_RESISTANCE = 1.6;
 
+/**
+ * The header is sticky and the bottom nav is fixed to the viewport, so on
+ * pages taller than the screen it's the window that actually scrolls, not
+ * the inner container (its own height just grows to fit its content). Reading
+ * only the container's scrollTop made every drag look like it started "at the
+ * top", arming the refresh gesture even deep into a scrolled page.
+ */
+function getWindowScrollTop(): number {
+  return (
+    window.scrollY ||
+    document.scrollingElement?.scrollTop ||
+    document.documentElement.scrollTop ||
+    0
+  );
+}
+
+function isScrolledToTop(container: HTMLElement): boolean {
+  return getWindowScrollTop() <= 0 && container.scrollTop <= 0;
+}
+
 export interface PullToRefreshState {
   /** Current visual pull distance in px (0 while idle or refreshing settles back to threshold). */
   pullDistance: number;
@@ -65,7 +85,7 @@ export function usePullToRefresh(
         startY.current = null;
         return;
       }
-      if (container.scrollTop > 0) {
+      if (!isScrolledToTop(container)) {
         startY.current = null;
         return;
       }
@@ -77,7 +97,7 @@ export function usePullToRefresh(
 
       const delta = event.touches[0].clientY - startY.current;
 
-      if (delta <= 0 || container.scrollTop > 0) {
+      if (delta <= 0 || !isScrolledToTop(container)) {
         if (pullDistanceRef.current > 0) reset();
         else startY.current = null;
         return;
