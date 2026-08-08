@@ -43,7 +43,7 @@ export default function ExpensesPage() {
 
   if (activeBoard._id.startsWith('mock-')) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div className="w-full flex-1 px-4 py-6 lg:px-6">
         <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-6 text-sm text-muted-foreground">
           Estás viendo mocks locales. Cambiá el tablero activo desde el selector
           para explorar gastos con la API.
@@ -53,7 +53,7 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6">
+    <div className="w-full flex-1 px-4 py-6 lg:px-6">
       <ExpensesExplorerSection
         board={activeBoard}
         initialYearMonth={initialYearMonth}

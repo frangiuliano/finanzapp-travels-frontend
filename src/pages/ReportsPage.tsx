@@ -136,7 +136,7 @@ export default function ReportsPage() {
 
   if (activeBoard._id.startsWith('mock-')) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-6">
+      <div className="w-full flex-1 px-4 py-6 lg:px-6">
         <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-6 text-sm text-muted-foreground">
           Estás viendo mocks locales. Cambiá el tablero activo desde el selector
           para validar reportes con la API.
@@ -146,7 +146,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+    <div className="w-full flex-1 space-y-6 px-4 py-6 lg:px-6">
       <div className="space-y-1">
         <h1 className="font-display text-2xl font-bold tracking-tight">
           Reportes
