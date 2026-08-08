@@ -17,6 +17,7 @@ export function boardToTrip(board: Board): Trip {
     baseCurrency: board.baseCurrency,
     createdAt: board.createdAt,
     userRole: board.userRole,
+    linkedEverydayBoardId: board.linkedEverydayBoardId,
     createdBy: board.createdBy,
   };
 }
@@ -31,6 +32,7 @@ export function tripToBoard(
     baseCurrency: trip.baseCurrency,
     createdAt: trip.createdAt,
     userRole: trip.userRole,
+    linkedEverydayBoardId: trip.linkedEverydayBoardId,
     createdBy: trip.createdBy,
     type: previous?.type ?? 'travel',
     isShared: previous?.isShared ?? false,

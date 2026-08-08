@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
 import { boardsService } from '@/services/boardsService';
 import { addBoardToStores, selectActiveBoard } from '@/lib/board-trip-sync';
 import type { Board } from '@/types/board';
+import { useBoardsStore } from '@/store/boardsStore';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import {
@@ -43,7 +44,19 @@ export function CreateTripDialog({
   const [name, setName] = useState('');
   const [baseCurrency, setBaseCurrency] = useState(DEFAULT_CURRENCY);
   const [isLoading, setIsLoading] = useState(false);
+  const boards = useBoardsStore((state) => state.boards);
+  const everydayBoards = boards.filter((board) => board.type === 'everyday');
+  const [parentBoardId, setParentBoardId] = useState(
+    () => everydayBoards[0]?._id ?? '',
+  );
   const [errors, setErrors] = useState<{ name?: string }>({});
+
+  useEffect(() => {
+    if (open && !parentBoardId && everydayBoards[0]) {
+      setParentBoardId(everydayBoards[0]._id);
+      setBaseCurrency(everydayBoards[0].baseCurrency as SupportedCurrency);
+    }
+  }, [open, parentBoardId, everydayBoards]);
 
   const validateForm = () => {
     const newErrors: { name?: string } = {};
@@ -72,6 +85,7 @@ export function CreateTripDialog({
         name: name.trim(),
         baseCurrency,
         type: 'travel',
+        parentBoardId: parentBoardId || undefined,
       });
 
       toast.success(result.message || 'Viaje creado exitosamente');
@@ -81,6 +95,7 @@ export function CreateTripDialog({
 
       setName('');
       setBaseCurrency(DEFAULT_CURRENCY);
+      setParentBoardId(everydayBoards[0]?._id ?? '');
       setErrors({});
 
       onSuccess?.(result.board);
@@ -106,6 +121,7 @@ export function CreateTripDialog({
     if (!newOpen) {
       setName('');
       setBaseCurrency(DEFAULT_CURRENCY);
+      setParentBoardId(everydayBoards[0]?._id ?? '');
       setErrors({});
     }
     onOpenChange(newOpen);
@@ -138,6 +154,47 @@ export function CreateTripDialog({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="parentBoard">Tablero principal</Label>
+            <Select
+              value={parentBoardId}
+              onValueChange={(value) => {
+                setParentBoardId(value);
+                const parent = everydayBoards.find(
+                  (board) => board._id === value,
+                );
+                if (
+                  parent &&
+                  SUPPORTED_CURRENCIES.includes(
+                    parent.baseCurrency as SupportedCurrency,
+                  )
+                ) {
+                  setBaseCurrency(parent.baseCurrency as SupportedCurrency);
+                }
+              }}
+              disabled={isLoading || everydayBoards.length === 0}
+            >
+              <SelectTrigger id="parentBoard">
+                <SelectValue placeholder="Sin tablero cotidiano" />
+              </SelectTrigger>
+              <SelectContent>
+                {everydayBoards.map((board) => (
+                  <SelectItem key={board._id} value={board._id}>
+                    {board.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {parentBoardId ? (
+              <p className="text-xs text-muted-foreground">
+                Usa la moneda del tablero principal para consolidar importes.
+              </p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Los gastos del viaje también aparecerán en este tablero.
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="baseCurrency">Moneda Base</Label>
             <Select
               value={baseCurrency}
@@ -146,7 +203,7 @@ export function CreateTripDialog({
                   setBaseCurrency(value as SupportedCurrency);
                 }
               }}
-              disabled={isLoading}
+              disabled={isLoading || Boolean(parentBoardId)}
             >
               <SelectTrigger>
                 <SelectValue />

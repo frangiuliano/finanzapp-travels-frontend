@@ -8,6 +8,8 @@ interface BoardApiRecord {
   name: string;
   baseCurrency: string;
   type?: BoardType;
+  parentBoardId?: string;
+  linkedEverydayBoardId?: string;
   createdAt: string;
   userRole?: ParticipantRole;
   createdBy?: Board['createdBy'];
@@ -27,6 +29,8 @@ function mapBoard(record: BoardApiRecord): Board {
     name: record.name,
     baseCurrency: record.baseCurrency,
     type: record.type ?? 'travel',
+    parentBoardId: record.parentBoardId,
+    linkedEverydayBoardId: record.linkedEverydayBoardId,
     isShared,
     createdAt: record.createdAt,
     userRole: record.userRole,
@@ -44,6 +48,7 @@ export interface CreateBoardInput {
   name: string;
   baseCurrency?: string;
   type?: BoardType;
+  parentBoardId?: string;
 }
 
 export const boardsService = {
@@ -56,6 +61,7 @@ export const boardsService = {
         name: data.name,
         baseCurrency: data.baseCurrency ?? 'USD',
         type: data.type ?? 'everyday',
+        parentBoardId: data.parentBoardId,
         isShared: false,
         createdAt: new Date().toISOString(),
         userRole: ParticipantRole.OWNER,
@@ -89,6 +95,20 @@ export const boardsService = {
     }>('/boards');
     const records = response.data.boards ?? response.data.trips ?? [];
     return { boards: records.map(mapBoard) };
+  },
+
+  async updateExpenseLink(
+    travelBoardId: string,
+    everydayBoardId: string | null,
+  ): Promise<{ message: string; board: Board }> {
+    const response = await api.patch<{
+      message: string;
+      board: BoardApiRecord;
+    }>(`/boards/${travelBoardId}/expense-link`, { everydayBoardId });
+    return {
+      message: response.data.message,
+      board: mapBoard(response.data.board),
+    };
   },
 
   async getBoardById(id: string): Promise<{ board: Board }> {

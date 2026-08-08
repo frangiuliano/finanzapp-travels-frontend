@@ -104,9 +104,19 @@ const createColumns = (
     {
       accessorKey: 'description',
       header: 'Descripción',
-      cell: ({ row }) => (
-        <div className="font-medium">{row.original.description}</div>
-      ),
+      cell: ({ row }) => {
+        const expense = row.original;
+        return (
+          <div className="font-medium">
+            {expense.description}
+            {expense.sourceBoardId && expense.sourceBoardId !== tripId ? (
+              <Badge variant="outline" className="ml-2 font-normal">
+                Viaje: {expense.sourceBoardName} · Tu parte
+              </Badge>
+            ) : null}
+          </div>
+        );
+      },
       enableHiding: false,
     },
     {
@@ -222,55 +232,63 @@ const createColumns = (
   if (onEdit || onDelete) {
     baseColumns.push({
       id: 'actions',
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
-              size="icon"
-            >
-              <MoreVerticalIcon />
-              <span className="sr-only">Abrir menú</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
-            {onEdit && (
-              <DropdownMenuItem onClick={() => onEdit(row.original)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
-            )}
-            {row.original.status === ExpenseStatus.PENDING && onRefresh && (
-              <DropdownMenuItem
-                onClick={async () => {
-                  try {
-                    await expensesService.settleExpense(row.original._id);
-                    toast.success('Gasto marcado como pagado');
-                    onRefresh();
-                  } catch {
-                    toast.error('Error al marcar el gasto como pagado');
-                  }
-                }}
+      cell: ({ row }) => {
+        if (
+          row.original.sourceBoardId &&
+          row.original.sourceBoardId !== tripId
+        ) {
+          return null;
+        }
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
+                size="icon"
               >
-                Marcar como pagado
-              </DropdownMenuItem>
-            )}
-            {onDelete && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onDelete(row.original._id)}
-                  className="text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Eliminar
+                <MoreVerticalIcon />
+                <span className="sr-only">Abrir menú</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-32">
+              {onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(row.original)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editar
                 </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+              )}
+              {row.original.status === ExpenseStatus.PENDING && onRefresh && (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await expensesService.settleExpense(row.original._id);
+                      toast.success('Gasto marcado como pagado');
+                      onRefresh();
+                    } catch {
+                      toast.error('Error al marcar el gasto como pagado');
+                    }
+                  }}
+                >
+                  Marcar como pagado
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDelete(row.original._id)}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
     });
   }
 
