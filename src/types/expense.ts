@@ -53,6 +53,11 @@ export interface Expense {
   _id: string;
   tripId: string;
   boardId?: string;
+  sourceBoardId?: string;
+  sourceBoardName?: string;
+  sourceBoardType?: 'everyday' | 'travel';
+  originalAmount?: number;
+  attributedAmount?: number;
   budgetId?: string;
   budget?: {
     _id: string;

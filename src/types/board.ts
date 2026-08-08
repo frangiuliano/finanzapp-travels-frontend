@@ -7,6 +7,8 @@ export interface Board {
   name: string;
   baseCurrency: string;
   type: BoardType;
+  parentBoardId?: string;
+  linkedEverydayBoardId?: string;
   isShared: boolean;
   createdAt: string;
   userRole?: ParticipantRole;

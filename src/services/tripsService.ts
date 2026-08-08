@@ -11,6 +11,7 @@ export interface Trip {
   baseCurrency: string;
   createdAt: string;
   userRole?: ParticipantRole;
+  linkedEverydayBoardId?: string;
   createdBy?: {
     firstName: string;
     lastName: string;

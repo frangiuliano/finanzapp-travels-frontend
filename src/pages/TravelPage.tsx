@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -33,7 +40,7 @@ import {
 } from '@/lib/board-trip-sync';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { leaveBoardWithConfirm } from '@/lib/leave-board';
-import { isBoardMocksEnabled } from '@/services/boardsService';
+import { boardsService, isBoardMocksEnabled } from '@/services/boardsService';
 import { toast } from 'sonner';
 import {
   Pencil,
@@ -59,6 +66,11 @@ export default function TravelPage() {
     () => boards.filter((board) => board.type === 'travel'),
     [boards],
   );
+  const everydayBoards = useMemo(
+    () => boards.filter((board) => board.type === 'everyday'),
+    [boards],
+  );
+  const updateBoard = useBoardsStore((state) => state.updateBoard);
 
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [budgetsByBoard, setBudgetsByBoard] = useState<
@@ -93,6 +105,19 @@ export default function TravelPage() {
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
 
   const mocksEnabled = isBoardMocksEnabled();
+
+  const handleExpenseLinkChange = async (travelBoard: Board, value: string) => {
+    try {
+      const { board, message } = await boardsService.updateExpenseLink(
+        travelBoard._id,
+        value === '__none__' ? null : value,
+      );
+      updateBoard(board);
+      toast.success(message);
+    } catch {
+      toast.error('No se pudo actualizar la vinculación del viaje');
+    }
+  };
 
   const activeTravelBoard = useMemo(() => {
     const preferredId =
@@ -514,6 +539,51 @@ export default function TravelPage() {
                         </div>
                       )}
                     </div>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">
+                          Incluir en mis finanzas cotidianas
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <Select
+                          value={
+                            activeTravelBoard.linkedEverydayBoardId ??
+                            '__none__'
+                          }
+                          onValueChange={(value) =>
+                            void handleExpenseLinkChange(
+                              activeTravelBoard,
+                              value,
+                            )
+                          }
+                          disabled={mocksEnabled}
+                        >
+                          <SelectTrigger className="w-full md:max-w-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">
+                              No incluir en otro tablero
+                            </SelectItem>
+                            {everydayBoards
+                              .filter(
+                                (board) =>
+                                  board.baseCurrency === trip.baseCurrency,
+                              )
+                              .map((board) => (
+                                <SelectItem key={board._id} value={board._id}>
+                                  {board.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Esta preferencia es personal. En el tablero elegido
+                          aparecerá solo tu parte de los gastos compartidos.
+                        </p>
+                      </CardContent>
+                    </Card>
 
                     <TripExpensesSection
                       board={activeTravelBoard}

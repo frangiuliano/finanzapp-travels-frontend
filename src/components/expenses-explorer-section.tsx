@@ -453,8 +453,19 @@ export function ExpensesExplorerSection({
                         <TableCell className="whitespace-nowrap text-muted-foreground">
                           {formatDate(expense.expenseDate || expense.createdAt)}
                         </TableCell>
-                        <TableCell className="max-w-[10rem] truncate font-medium sm:max-w-xs">
-                          {expense.description}
+                        <TableCell className="max-w-[10rem] font-medium sm:max-w-xs">
+                          <span className="block truncate">
+                            {expense.description}
+                          </span>
+                          {expense.sourceBoardId &&
+                          expense.sourceBoardId !== board._id ? (
+                            <Badge
+                              variant="outline"
+                              className="mt-1 max-w-full truncate font-normal"
+                            >
+                              Viaje: {expense.sourceBoardName} · Tu parte
+                            </Badge>
+                          ) : null}
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
                           {getExpenseCategoryLabel(expense.category) || '—'}
@@ -491,6 +502,10 @@ export function ExpensesExplorerSection({
                               size="icon"
                               className="size-8"
                               onClick={() => handleEdit(expense)}
+                              disabled={
+                                expense.sourceBoardId !== undefined &&
+                                expense.sourceBoardId !== board._id
+                              }
                               aria-label="Editar gasto"
                             >
                               <Pencil className="size-4" />
@@ -500,6 +515,10 @@ export function ExpensesExplorerSection({
                               size="icon"
                               className="size-8"
                               onClick={() => void handleDelete(expense._id)}
+                              disabled={
+                                expense.sourceBoardId !== undefined &&
+                                expense.sourceBoardId !== board._id
+                              }
                               aria-label="Eliminar gasto"
                             >
                               <Trash2 className="size-4 text-destructive" />
