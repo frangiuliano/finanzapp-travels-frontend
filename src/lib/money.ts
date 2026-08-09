@@ -5,8 +5,11 @@ export function formatMoneyInputString(input: string): string {
   if (!sanitized) return '';
 
   const lastComma = sanitized.lastIndexOf(',');
-  const lastDot = sanitized.lastIndexOf('.');
-  const decimalSeparatorIndex = Math.max(lastComma, lastDot);
+  // In the es-AR format a comma is the decimal separator. Dots may already
+  // have been inserted by this formatter, so treating the last dot as a
+  // decimal separator makes deleting digits leave stale grouping (for
+  // example, `1.000.00` instead of recomputing it as `100.000`).
+  const decimalSeparatorIndex = lastComma;
 
   let integerRaw: string;
   let decimalRaw: string | undefined;
