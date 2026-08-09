@@ -303,27 +303,25 @@ export function EverydayBoardHome({
                     <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
                       +{formatCurrency(income.amount, income.currency)}
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => openEditIncome(income)}
+                      aria-label="Editar ingreso"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     {!income.recurringIncomeId ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => openEditIncome(income)}
-                          aria-label="Editar ingreso"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => void handleDeleteIncome(income)}
-                          aria-label="Eliminar ingreso"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => void handleDeleteIncome(income)}
+                        aria-label="Eliminar ingreso"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     ) : null}
                   </div>
                 </li>

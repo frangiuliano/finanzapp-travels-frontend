@@ -164,7 +164,9 @@ export function CreateIncomeSheet({
       title={isEditing ? 'Editar ingreso' : 'Registrar ingreso'}
       description={
         isEditing
-          ? `Modificar ingreso puntual en ${resolvedCurrency}.`
+          ? income?.recurringIncomeId
+            ? `Modificar solo esta ocurrencia del ingreso recurrente en ${resolvedCurrency}.`
+            : `Modificar ingreso puntual en ${resolvedCurrency}.`
           : mode === 'one-time'
             ? `Ingreso puntual en ${resolvedCurrency}.`
             : `Se proyectará cada mes en los días elegidos.`
