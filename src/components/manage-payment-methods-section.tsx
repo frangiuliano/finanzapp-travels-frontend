@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
-import { AlertTriangle, Archive, Pencil, Plus } from 'lucide-react';
+import {
+  AlertTriangle,
+  Archive,
+  CalendarRange,
+  Pencil,
+  Plus,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -116,6 +123,7 @@ export function ManagePaymentMethodsSection({
   boardId,
   boardName,
 }: ManagePaymentMethodsSectionProps) {
+  const navigate = useNavigate();
   const [userMethods, setUserMethods] = useState<PaymentMethod[]>([]);
   const [boardMethods, setBoardMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -342,6 +350,22 @@ export function ManagePaymentMethodsSection({
               </p>
             </div>
             <div className="flex shrink-0 gap-1">
+              {method.kind === 'credit' && method.closingDay ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() =>
+                    navigate(
+                      `/billing-periods/confirm?paymentMethodId=${method._id}&mode=manage`,
+                    )
+                  }
+                  aria-label={`Gestionar ciclos de ${method.name}`}
+                >
+                  <CalendarRange className="size-4" />
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"

@@ -25,6 +25,15 @@ export const billingPeriodsService = {
     return response.data;
   },
 
+  async getNext(
+    paymentMethodId: string,
+  ): Promise<{ pending: BillingPeriodDefaults }> {
+    const response = await api.get('/billing-periods/next', {
+      params: { paymentMethodId },
+    });
+    return response.data;
+  },
+
   async confirm(
     data: ConfirmBillingPeriodDto,
   ): Promise<{ period: BillingPeriod }> {
