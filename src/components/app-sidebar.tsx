@@ -3,7 +3,6 @@ import {
   BarChart3,
   Home,
   Plane,
-  PlusCircle,
   Receipt,
   Settings2,
   SettingsIcon,
@@ -21,6 +20,9 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/authService';
 import { BoardSwitcher } from './board-switcher';
+import { Button } from '@/components/ui/button';
+import { openMovementCreator } from '@/lib/movement-events';
+import { Plus } from 'lucide-react';
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const user = useAuthStore((state) => state.user);
@@ -42,28 +44,19 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
       icon: Home,
     },
     {
-      title: 'Nuevo gasto',
-      url: '/capture',
-      icon: PlusCircle,
+      title: 'Movimientos',
+      url: '/expenses',
+      icon: Receipt,
     },
     {
       title: 'Reportes',
       url: '/reports',
       icon: BarChart3,
     },
-    {
-      title: 'Gastos',
-      url: '/expenses',
-      icon: Receipt,
-    },
-    {
-      title: 'Viajes',
-      url: '/travel',
-      icon: Plane,
-    },
   ];
 
   const navSecondary = [
+    { title: 'Viajes', url: '/travel', icon: Plane },
     {
       title: 'Configuración del tablero',
       url: '/boards/settings',
@@ -100,6 +93,14 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
         <BoardSwitcher />
       </SidebarHeader>
       <SidebarContent>
+        <div className="px-3 pt-2">
+          <Button
+            className="w-full justify-start"
+            onClick={openMovementCreator}
+          >
+            <Plus /> Nuevo movimiento
+          </Button>
+        </div>
         <NavMain items={navMain} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>

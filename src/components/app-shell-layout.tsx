@@ -12,6 +12,7 @@ import { useOfflineExpenseSync } from '@/hooks/useOfflineExpenseSync';
 import { useScrollMinimize } from '@/hooks/useScrollMinimize';
 import { OfflineSyncBanner } from '@/components/offline-sync-banner';
 import { useBoardsStore } from '@/store/boardsStore';
+import { CreateMovementSheet } from '@/components/create-movement-sheet';
 
 export function AppShellLayout() {
   useBoardsBootstrap();
@@ -36,6 +37,7 @@ export function AppShellLayout() {
         </div>
         <PWAInstallPrompt />
         <BottomNav minimized={navMinimized} />
+        <CreateMovementSheet />
       </SidebarInset>
     </SidebarProvider>
   );

@@ -136,7 +136,7 @@ export function QuickExpenseForm({
   const [paymentMethodId, setPaymentMethodId] = useState('');
   const [note, setNote] = useState('');
   const [expenseDate, setExpenseDate] = useState(todayIsoDate());
-  const [showDetails, setShowDetails] = useState(isDialog);
+  const [showDetails, setShowDetails] = useState(Boolean(expense));
   const [showTravelOptions, setShowTravelOptions] = useState(
     isDialog && board.type === 'travel',
   );
@@ -858,6 +858,23 @@ export function QuickExpenseForm({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="quick-note" className="text-muted-foreground text-xs">
+          Descripción
+        </Label>
+        <Input
+          id="quick-note"
+          placeholder="Ej. supermercado, almuerzo…"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          className={cn('rounded-xl', errors.note && 'border-destructive')}
+          maxLength={500}
+        />
+        {errors.note ? (
+          <p className="text-destructive text-xs">{errors.note}</p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
         <Label className="text-muted-foreground text-xs">Categoría</Label>
         <div className="flex flex-wrap gap-2">
           {categories.map((category) => {
@@ -1019,9 +1036,7 @@ export function QuickExpenseForm({
             showDetails && 'rotate-180',
           )}
         />
-        {mode === 'recurring' && isEveryday && !isEditing
-          ? 'Nota'
-          : 'Fecha y nota'}
+        Más opciones
       </button>
 
       {showDetails ? (
@@ -1043,26 +1058,6 @@ export function QuickExpenseForm({
               </p>
             </div>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="quick-note" className="text-xs">
-              Nota (opcional)
-            </Label>
-            <Input
-              id="quick-note"
-              placeholder="Ej. almuerzo, taxi al aeropuerto…"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              className={cn('rounded-xl', errors.note && 'border-destructive')}
-              maxLength={500}
-            />
-            {errors.note ? (
-              <p className="text-destructive text-xs">{errors.note}</p>
-            ) : (
-              <p className="text-muted-foreground text-[11px]">
-                Si no escribís nota, usamos el nombre de la categoría.
-              </p>
-            )}
-          </div>
         </div>
       ) : null}
 

@@ -16,8 +16,8 @@ const OPTIONS: Array<{
   label: string;
   icon: typeof Wallet;
 }> = [
-  { value: 'cash_impact', label: 'Impacto en bolsillo', icon: Wallet },
-  { value: 'calendar', label: 'Mes calendario', icon: CalendarDays },
+  { value: 'cash_impact', label: 'Mes de pago', icon: Wallet },
+  { value: 'calendar', label: 'Fecha de compra', icon: CalendarDays },
 ];
 
 export function HomeMonthViewToggle({

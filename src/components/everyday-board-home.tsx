@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Pencil, PlusIcon, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
@@ -145,11 +144,6 @@ export function EverydayBoardHome({
     onRefresh();
   };
 
-  const openCreateIncome = () => {
-    setEditingIncome(null);
-    setIsIncomeSheetOpen(true);
-  };
-
   const openEditIncome = (income: Income) => {
     setEditingIncome(income);
     setIsIncomeSheetOpen(true);
@@ -220,18 +214,6 @@ export function EverydayBoardHome({
 
       <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <Button className="rounded-xl" onClick={openCreateIncome}>
-            <PlusIcon className="size-4" />
-            Registrar ingreso
-          </Button>
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link to="/boards/settings">Config. tablero</Link>
-          </Button>
-        </div>
-      </div>
-
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Skeleton className="h-32 rounded-xl" />
@@ -269,7 +251,7 @@ export function EverydayBoardHome({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Ingresos del mes</CardTitle>
+          <CardTitle className="text-lg">Últimos ingresos</CardTitle>
           <CardDescription>
             Puntuales y recurrentes confirmados en {yearMonth}
           </CardDescription>
