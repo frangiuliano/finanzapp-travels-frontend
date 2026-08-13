@@ -29,10 +29,9 @@ export default function ExpensesPage() {
         <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Receipt className="size-7" />
         </div>
-        <h2 className="font-display text-2xl font-bold">Gastos</h2>
+        <h2 className="font-display text-2xl font-bold">Movimientos</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Creá tu primer tablero para explorar gastos con filtros por mes, medio
-          de pago y categoría.
+          Creá tu primer espacio para ver ingresos y gastos en un solo lugar.
         </p>
         <Button asChild className="rounded-xl">
           <Link to="/onboarding">Crear tablero</Link>

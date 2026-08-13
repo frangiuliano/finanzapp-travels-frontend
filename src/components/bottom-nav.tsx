@@ -6,17 +6,35 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Home, Plane, PlusCircle, UserRound } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Home,
+  Menu,
+  Plus,
+  Receipt,
+  Plane,
+  Settings2,
+  UserRound,
+} from 'lucide-react';
 import { glassTabBar } from '@/lib/glass';
 import { cn } from '@/lib/utils';
+import { openMovementCreator } from '@/lib/movement-events';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 
 const items = [
   { to: '/home', label: 'Home', icon: Home },
+  { to: '/expenses', label: 'Movimientos', icon: Receipt },
+  { to: '#create', label: 'Registrar', icon: Plus, action: true },
   { to: '/reports', label: 'Reportes', icon: BarChart3 },
-  { to: '/capture', label: 'Nuevo gasto', icon: PlusCircle },
-  { to: '/travel', label: 'Viajes', icon: Plane },
-  { to: '/account', label: 'Cuenta', icon: UserRound },
+  { to: '#more', label: 'Más', icon: Menu, action: true },
 ] as const;
 
 const INDICATOR_TRANSITION =
@@ -32,6 +50,8 @@ function triggerTabHaptic() {
 
 export function BottomNav({ minimized = false }: BottomNavProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -45,7 +65,9 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
     ready: false,
   });
 
-  const activeIndex = items.findIndex((item) => item.to === location.pathname);
+  const activeIndex = items.findIndex(
+    (item) => !('action' in item) && item.to === location.pathname,
+  );
 
   useLayoutEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -143,50 +165,148 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
                 }}
                 className="flex flex-1"
               >
-                <NavLink
-                  to={item.to}
-                  onClick={triggerTabHaptic}
-                  className={({ isActive }) =>
-                    cn(
-                      'relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-medium transition-colors duration-200',
-                      isActive
+                {'action' in item ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      item.to === '#create'
+                        ? openMovementCreator()
+                        : setMoreOpen(true)
+                    }
+                    aria-label={
+                      item.to === '#create'
+                        ? 'Registrar movimiento'
+                        : 'Abrir menú Más'
+                    }
+                    className={cn(
+                      'relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-medium',
+                      item.to === '#create'
                         ? 'text-primary'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span
-                        className={cn(
-                          'flex items-center justify-center rounded-full transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                          minimized ? 'size-7' : 'size-8',
-                          isActive && 'scale-105',
-                        )}
-                      >
-                        <Icon
-                          className="size-[1.15rem]"
-                          strokeWidth={isActive ? 2.4 : 2}
-                        />
-                      </span>
-                      <span
-                        className={cn(
-                          'leading-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                          minimized
-                            ? 'max-h-0 overflow-hidden opacity-0'
-                            : 'max-h-4 opacity-100',
-                        )}
-                      >
-                        {item.label}
-                      </span>
-                    </>
-                  )}
-                </NavLink>
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex items-center justify-center rounded-full',
+                        item.to === '#create'
+                          ? 'size-11 -translate-y-2 bg-primary text-primary-foreground shadow-lg ring-4 ring-background'
+                          : minimized
+                            ? 'size-7'
+                            : 'size-8',
+                      )}
+                    >
+                      <Icon
+                        className={
+                          item.to === '#create' ? 'size-6' : 'size-[1.15rem]'
+                        }
+                      />
+                    </span>
+                    <span
+                      className={cn(
+                        'leading-none',
+                        minimized && 'hidden',
+                        item.to === '#create' && '-mt-1',
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                ) : (
+                  <NavLink
+                    to={item.to}
+                    onClick={triggerTabHaptic}
+                    className={({ isActive }) =>
+                      cn(
+                        'relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-medium transition-colors duration-200',
+                        isActive
+                          ? 'text-primary'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span
+                          className={cn(
+                            'flex items-center justify-center rounded-full transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+                            minimized ? 'size-7' : 'size-8',
+                            isActive && 'scale-105',
+                          )}
+                        >
+                          <Icon
+                            className="size-[1.15rem]"
+                            strokeWidth={isActive ? 2.4 : 2}
+                          />
+                        </span>
+                        <span
+                          className={cn(
+                            'leading-none transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+                            minimized
+                              ? 'max-h-0 overflow-hidden opacity-0'
+                              : 'max-h-4 opacity-100',
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                )}
               </li>
             );
           })}
         </ul>
       </div>
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl px-4 pb-8">
+          <SheetHeader>
+            <SheetTitle>Más</SheetTitle>
+            <SheetDescription>
+              Funciones secundarias de FinanzApp.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-2 pt-4">
+            {[
+              {
+                to: '/travel',
+                icon: Plane,
+                title: 'Viajes',
+                text: 'Gastos compartidos y presupuestos.',
+              },
+              {
+                to: '/boards/settings',
+                icon: Settings2,
+                title: 'Configuración',
+                text: 'Configuración del espacio actual.',
+              },
+              {
+                to: '/account',
+                icon: UserRound,
+                title: 'Cuenta',
+                text: 'Perfil y preferencias.',
+              },
+            ].map((entry) => (
+              <Button
+                key={entry.to}
+                variant="ghost"
+                className="h-auto justify-start rounded-2xl p-4 text-left"
+                onClick={() => {
+                  setMoreOpen(false);
+                  navigate(entry.to);
+                }}
+              >
+                <entry.icon className="size-5" />
+                <span>
+                  <strong className="block">{entry.title}</strong>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {entry.text}
+                  </span>
+                </span>
+              </Button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </nav>,
     document.body,
   );
