@@ -41,6 +41,7 @@ import {
   getCurrentYearMonth,
   isDateInYearMonth,
 } from '@/lib/utils';
+import { useIncomesChangedRefresh } from '@/hooks/useIncomesChangedRefresh';
 
 interface EverydayBoardHomeProps {
   board: Board;
@@ -70,6 +71,7 @@ export function EverydayBoardHome({
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const incomesChangedRefresh = useIncomesChangedRefresh();
 
   const paymentMethodMap = useMemo(
     () => new Map(paymentMethods.map((method) => [method._id, method])),
@@ -136,7 +138,7 @@ export function EverydayBoardHome({
     return () => {
       stale = true;
     };
-  }, [board._id, yearMonth, monthView, refreshTrigger]);
+  }, [board._id, yearMonth, monthView, refreshTrigger, incomesChangedRefresh]);
 
   const currency = forecast?.currency ?? board.baseCurrency;
 

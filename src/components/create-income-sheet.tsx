@@ -17,6 +17,7 @@ import {
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/constants/currencies';
+import { notifyIncomesChanged } from '@/lib/income-events';
 
 interface CreateIncomeSheetProps {
   open: boolean;
@@ -144,6 +145,7 @@ export function CreateIncomeSheet({
         toast.success('Ingreso recurrente configurado');
       }
 
+      notifyIncomesChanged();
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {
