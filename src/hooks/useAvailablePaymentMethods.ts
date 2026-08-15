@@ -1,21 +1,48 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
 import { toast } from 'sonner';
+import {
+  PAYMENT_METHODS_CHANGED_EVENT,
+  type PaymentMethodsChangedDetail,
+} from '@/lib/payment-method-events';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import { PaymentMethod } from '@/types/payment-method';
 
-export function useAvailablePaymentMethods(boardId: string | undefined) {
+export function useAvailablePaymentMethods(
+  boardId: string | undefined,
+  currentPaymentMethodId?: string,
+) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [
+    unavailableCurrentPaymentMethodId,
+    setUnavailableCurrentPaymentMethodId,
+  ] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
 
   const loadPaymentMethods = useCallback(
     async (targetBoardId: string, cancelled: () => boolean) => {
       setIsLoading(true);
       try {
-        const { paymentMethods: methods } =
+        const { paymentMethods: availableMethods } =
           await paymentMethodsService.getAvailableForBoard(targetBoardId);
+        const methods = availableMethods.filter((method) => method.isActive);
+        const currentIsUnavailable = Boolean(
+          currentPaymentMethodId &&
+          !methods.some((method) => method._id === currentPaymentMethodId),
+        );
+
+        if (currentIsUnavailable && currentPaymentMethodId) {
+          const { paymentMethod } = await paymentMethodsService.getById(
+            currentPaymentMethodId,
+          );
+          methods.push(paymentMethod);
+        }
+
         if (!cancelled()) {
-          setPaymentMethods(methods.filter((method) => method.isActive));
+          setPaymentMethods(methods);
+          setUnavailableCurrentPaymentMethodId(
+            currentIsUnavailable ? currentPaymentMethodId : undefined,
+          );
         }
       } catch (error) {
         if (!cancelled()) {
@@ -25,28 +52,37 @@ export function useAvailablePaymentMethods(boardId: string | undefined) {
               'Error al cargar medios de pago disponibles',
           );
           setPaymentMethods([]);
+          setUnavailableCurrentPaymentMethodId(undefined);
         }
       } finally {
-        if (!cancelled()) {
-          setIsLoading(false);
-        }
+        if (!cancelled()) setIsLoading(false);
       }
     },
-    [],
+    [currentPaymentMethodId],
   );
 
   useEffect(() => {
     if (!boardId) {
       setPaymentMethods([]);
+      setUnavailableCurrentPaymentMethodId(undefined);
       setIsLoading(false);
       return;
     }
 
     let stale = false;
     void loadPaymentMethods(boardId, () => stale);
+    const handleChange = (event: Event) => {
+      const { boardId: changedBoardId } =
+        (event as CustomEvent<PaymentMethodsChangedDetail>).detail ?? {};
+      if (!changedBoardId || changedBoardId === boardId) {
+        void loadPaymentMethods(boardId, () => stale);
+      }
+    };
+    window.addEventListener(PAYMENT_METHODS_CHANGED_EVENT, handleChange);
 
     return () => {
       stale = true;
+      window.removeEventListener(PAYMENT_METHODS_CHANGED_EVENT, handleChange);
     };
   }, [boardId, loadPaymentMethods]);
 
@@ -55,12 +91,12 @@ export function useAvailablePaymentMethods(boardId: string | undefined) {
       setPaymentMethods([]);
       return;
     }
-
     await loadPaymentMethods(boardId, () => false);
   }, [boardId, loadPaymentMethods]);
 
   return {
     paymentMethods,
+    unavailableCurrentPaymentMethodId,
     isLoading,
     refetch,
   };

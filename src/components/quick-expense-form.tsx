@@ -129,7 +129,8 @@ export function QuickExpenseForm({
     paymentMethods,
     isLoading: paymentLoading,
     refetch: refetchPaymentMethods,
-  } = useAvailablePaymentMethods(board._id);
+    unavailableCurrentPaymentMethodId,
+  } = useAvailablePaymentMethods(board._id, expense?.paymentMethodId);
 
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -926,11 +927,14 @@ export function QuickExpenseForm({
         <div className="grid gap-2 sm:grid-cols-2">
           {paymentMethods.map((method) => {
             const isSelected = paymentMethodId === method._id;
+            const isHistoricalUnavailable =
+              unavailableCurrentPaymentMethodId === method._id;
             return (
               <button
                 key={method._id}
                 type="button"
                 onClick={() => setPaymentMethodId(method._id)}
+                disabled={isHistoricalUnavailable && !isSelected}
                 className={cn(
                   'rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
                   isSelected
@@ -941,7 +945,11 @@ export function QuickExpenseForm({
                 <span className="block font-medium leading-snug">
                   {formatPaymentMethodLabel(method)}
                 </span>
-                {method.kind === 'credit' && !method.closingDay ? (
+                {isHistoricalUnavailable ? (
+                  <span className="text-muted-foreground text-[11px]">
+                    Medio histórico · no disponible para nuevos gastos
+                  </span>
+                ) : method.kind === 'credit' && !method.closingDay ? (
                   <span className="text-muted-foreground text-[11px]">
                     Sin día de cierre
                   </span>

@@ -3,6 +3,7 @@ import {
   CreatePaymentMethodDto,
   PaymentMethod,
   PaymentMethodOwnerType,
+  PaymentMethodVisibility,
   UpdatePaymentMethodDto,
 } from '@/types/payment-method';
 
@@ -40,6 +41,18 @@ export const paymentMethodsService = {
       params.set('includeInactive', 'true');
     }
     const response = await api.get(`/payment-methods?${params.toString()}`);
+    return response.data;
+  },
+
+  async setBoardVisibility(
+    paymentMethodId: string,
+    boardId: string,
+    enabled: boolean,
+  ): Promise<{ message: string; visibility: PaymentMethodVisibility }> {
+    const response = await api.patch(
+      `/payment-methods/${encodeURIComponent(paymentMethodId)}/boards/${encodeURIComponent(boardId)}/visibility`,
+      { enabled },
+    );
     return response.data;
   },
 
