@@ -1,3 +1,5 @@
+import type { PaymentMethod as PaymentMethodDetails } from '@/types/payment-method';
+
 export enum ExpenseStatus {
   PAID = 'paid',
   PENDING = 'pending',
@@ -93,6 +95,7 @@ export interface Expense {
   paymentMethod: PaymentMethod;
   cardId?: string;
   paymentMethodId?: string;
+  paymentMethodDetails?: PaymentMethodDetails;
   card?: {
     _id: string;
     name: string;
