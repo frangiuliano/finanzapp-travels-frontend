@@ -45,14 +45,14 @@ export function ResponsiveFormSheet({
   if (isMobile && mobilePresentation === 'dialog') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[calc(100%-2rem)] overflow-hidden sm:max-w-md">
+        <DialogContent className="keyboard-aware-form-dialog w-[calc(100%-2rem)] sm:max-w-md">
           <DialogHeader className="shrink-0">
             <DialogTitle>{title}</DialogTitle>
             {description ? (
               <DialogDescription>{description}</DialogDescription>
             ) : null}
           </DialogHeader>
-          <div className="min-h-0 overflow-y-auto overscroll-contain pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] pr-1">
+          <div className="min-h-0 shrink overflow-y-auto overscroll-contain pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] pr-1">
             {children}
           </div>
         </DialogContent>
@@ -64,7 +64,7 @@ export function ResponsiveFormSheet({
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent>
-          <DrawerHeader className="text-left">
+          <DrawerHeader className="shrink-0 text-left">
             <DrawerTitle>{title}</DrawerTitle>
             {description ? (
               <DrawerDescription>{description}</DrawerDescription>

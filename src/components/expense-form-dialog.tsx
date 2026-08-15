@@ -37,14 +37,14 @@ export function ExpenseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-lg">
-        <DialogHeader className="border-b px-6 py-4">
+      <DialogContent className="keyboard-aware-form-dialog gap-0 p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>{expense ? 'Editar gasto' : 'Nuevo gasto'}</DialogTitle>
           <DialogDescription>
             {board.name} · {board.baseCurrency}
           </DialogDescription>
         </DialogHeader>
-        <div className="px-6 py-4">
+        <div className="min-h-0 shrink overflow-y-auto overscroll-contain px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
           <QuickExpenseForm
             key={expense?._id ?? 'new-expense'}
             board={board}
