@@ -332,3 +332,17 @@ html[data-nav-minimized='true'] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Portalled dialogs are positioned against the layout viewport. On iOS that
+ * viewport does not shrink with the software keyboard, so constrain them to
+ * the visual viewport exposed by useVisualViewportVariables instead.
+ */
+.keyboard-aware-dialog {
+  max-height: calc(
+    var(--visual-viewport-height, 100dvh) - env(safe-area-inset-top, 0px) -
+      env(safe-area-inset-bottom, 0px) - 2rem
+  ) !important;
+  scroll-padding-block: 1rem;
+  -webkit-overflow-scrolling: touch;
+}

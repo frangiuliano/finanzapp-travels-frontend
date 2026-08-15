@@ -27,6 +27,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 import { AppShellLayout } from '@/components/app-shell-layout';
 import { ReactNode } from 'react';
+import { useVisualViewportVariables } from '@/hooks/use-visual-viewport';
 
 function ProtectedApp({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -147,6 +148,8 @@ function AppRoutes() {
 }
 
 function App() {
+  useVisualViewportVariables();
+
   return (
     <BrowserRouter>
       <Toaster />
