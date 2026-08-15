@@ -14,6 +14,7 @@ export interface PaymentMethod {
   dueDay?: number;
   isActive: boolean;
   isDefault?: boolean;
+  enabled?: boolean;
   migratedFromCardId?: string;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +30,12 @@ export interface CreatePaymentMethodDto {
   brand?: string;
   closingDay?: number;
   dueDay?: number;
+}
+
+export interface PaymentMethodVisibility {
+  paymentMethodId: string;
+  boardId: string;
+  enabled: boolean;
 }
 
 export interface UpdatePaymentMethodDto {
