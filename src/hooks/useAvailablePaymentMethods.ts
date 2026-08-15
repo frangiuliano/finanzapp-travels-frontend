@@ -8,10 +8,16 @@ import {
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import { PaymentMethod } from '@/types/payment-method';
 
+interface AvailablePaymentMethodsOptions {
+  currentPaymentMethodId?: string;
+  currentPaymentMethod?: PaymentMethod;
+}
+
 export function useAvailablePaymentMethods(
   boardId: string | undefined,
-  currentPaymentMethodId?: string,
+  options: AvailablePaymentMethodsOptions = {},
 ) {
+  const { currentPaymentMethodId, currentPaymentMethod } = options;
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [
     unavailableCurrentPaymentMethodId,
@@ -31,11 +37,15 @@ export function useAvailablePaymentMethods(
           !methods.some((method) => method._id === currentPaymentMethodId),
         );
 
-        if (currentIsUnavailable && currentPaymentMethodId) {
-          const { paymentMethod } = await paymentMethodsService.getById(
-            currentPaymentMethodId,
-          );
-          methods.push(paymentMethod);
+        if (
+          currentIsUnavailable &&
+          currentPaymentMethod &&
+          currentPaymentMethod._id === currentPaymentMethodId
+        ) {
+          // Use the snapshot embedded in the expense. GET /payment-methods/:id
+          // is intentionally owner-only and cannot safely resolve another
+          // participant's hidden method.
+          methods.push(currentPaymentMethod);
         }
 
         if (!cancelled()) {
@@ -58,7 +68,7 @@ export function useAvailablePaymentMethods(
         if (!cancelled()) setIsLoading(false);
       }
     },
-    [currentPaymentMethodId],
+    [currentPaymentMethod, currentPaymentMethodId],
   );
 
   useEffect(() => {

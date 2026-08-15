@@ -1,3 +1,4 @@
+import type { PaymentMethod as BoardPaymentMethod } from '@/types/payment-method';
 export enum ExpenseStatus {
   PAID = 'paid',
   PENDING = 'pending',
@@ -93,6 +94,8 @@ export interface Expense {
   paymentMethod: PaymentMethod;
   cardId?: string;
   paymentMethodId?: string;
+  /** Populated snapshot returned with historical expenses when available. */
+  paymentMethodDetails?: BoardPaymentMethod;
   card?: {
     _id: string;
     name: string;

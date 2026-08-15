@@ -65,6 +65,31 @@ interface QuickExpenseFormProps {
   isDialog?: boolean;
 }
 
+function getHistoricalPaymentMethod(
+  expense: Expense | null | undefined,
+): BoardPaymentMethod | undefined {
+  if (!expense?.paymentMethodId) return undefined;
+  if (expense.paymentMethodDetails?._id === expense.paymentMethodId) {
+    return expense.paymentMethodDetails;
+  }
+
+  // Expense responses already expose legacy/populated card data. Reuse that
+  // board-authorized snapshot instead of requesting the owner-only endpoint.
+  if (!expense.card) return undefined;
+  // Legacy cards did not encode debit/credit; they represented credit cards.
+  const kind = 'credit';
+  return {
+    _id: expense.paymentMethodId,
+    ownerType: 'user',
+    kind,
+    name: expense.card.name,
+    lastFourDigits: expense.card.lastFourDigits,
+    isActive: true,
+    createdAt: '',
+    updatedAt: '',
+  };
+}
+
 function getParticipantName(participant: Participant): string {
   if (participant.guestName) {
     return participant.guestName;
@@ -125,12 +150,19 @@ export function QuickExpenseForm({
   const { categories, isLoading: categoriesLoading } = useBoardCategories(
     board._id,
   );
+  const historicalPaymentMethod = useMemo(
+    () => getHistoricalPaymentMethod(expense),
+    [expense],
+  );
   const {
     paymentMethods,
     isLoading: paymentLoading,
     refetch: refetchPaymentMethods,
     unavailableCurrentPaymentMethodId,
-  } = useAvailablePaymentMethods(board._id, expense?.paymentMethodId);
+  } = useAvailablePaymentMethods(board._id, {
+    currentPaymentMethodId: expense?.paymentMethodId,
+    currentPaymentMethod: historicalPaymentMethod,
+  });
 
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -925,6 +957,19 @@ export function QuickExpenseForm({
           </Button>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
+          {unavailableCurrentPaymentMethodId &&
+          !paymentMethods.some(
+            (method) => method._id === unavailableCurrentPaymentMethodId,
+          ) ? (
+            <div className="border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_12%,transparent)] rounded-xl border px-3 py-2.5 text-left text-sm">
+              <span className="block font-medium leading-snug">
+                Medio histórico seleccionado
+              </span>
+              <span className="text-muted-foreground text-[11px]">
+                Se conservará la referencia · datos no incluidos en el gasto
+              </span>
+            </div>
+          ) : null}
           {paymentMethods.map((method) => {
             const isSelected = paymentMethodId === method._id;
             const isHistoricalUnavailable =
