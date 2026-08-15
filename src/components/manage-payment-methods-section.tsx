@@ -21,7 +21,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
+import { cn } from '@/lib/utils';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
+import { useAuthStore } from '@/store/authStore';
 import {
   CreatePaymentMethodDto,
   PAYMENT_METHOD_KIND_LABELS,
@@ -124,8 +127,15 @@ export function ManagePaymentMethodsSection({
   boardName,
 }: ManagePaymentMethodsSectionProps) {
   const navigate = useNavigate();
+  const userId = useAuthStore((state) => state.user?.id);
   const [userMethods, setUserMethods] = useState<PaymentMethod[]>([]);
   const [boardMethods, setBoardMethods] = useState<PaymentMethod[]>([]);
+  const [participantMethods, setParticipantMethods] = useState<PaymentMethod[]>(
+    [],
+  );
+  const [visibilitySavingIds, setVisibilitySavingIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -138,12 +148,24 @@ export function ManagePaymentMethodsSection({
   const fetchMethods = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [userResult, boardResult] = await Promise.all([
-        paymentMethodsService.getUserMethods(),
+      const [participantResult, boardResult] = await Promise.all([
+        paymentMethodsService.getBoardParticipantMethods(boardId),
         paymentMethodsService.getByScope(boardId, 'board'),
       ]);
-      setUserMethods(
-        userResult.paymentMethods.filter((method) => method.isActive),
+      const activeParticipantMethods = participantResult.paymentMethods.filter(
+        (method) => method.isActive,
+      );
+      const belongsToCurrentUser = (method: PaymentMethod) => {
+        const ownerId =
+          typeof method.userId === 'object' ? method.userId._id : method.userId;
+        return ownerId === userId;
+      };
+
+      setUserMethods(activeParticipantMethods.filter(belongsToCurrentUser));
+      setParticipantMethods(
+        activeParticipantMethods.filter(
+          (method) => !belongsToCurrentUser(method),
+        ),
       );
       setBoardMethods(
         boardResult.paymentMethods.filter((method) => method.isActive),
@@ -155,10 +177,11 @@ export function ManagePaymentMethodsSection({
       );
       setUserMethods([]);
       setBoardMethods([]);
+      setParticipantMethods([]);
     } finally {
       setIsLoading(false);
     }
-  }, [boardId]);
+  }, [boardId, userId]);
 
   useEffect(() => {
     void fetchMethods();
@@ -241,6 +264,7 @@ export function ManagePaymentMethodsSection({
         );
         toast.success('Medio de pago actualizado');
         await fetchMethods();
+        notifyPaymentMethodsChanged(boardId);
 
         if (!wasPendingClosingDay || formData.closingDay.trim()) {
           setSheetOpen(false);
@@ -267,6 +291,7 @@ export function ManagePaymentMethodsSection({
         }
 
         await fetchMethods();
+        notifyPaymentMethodsChanged(boardId);
       }
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -296,6 +321,7 @@ export function ManagePaymentMethodsSection({
       await paymentMethodsService.archive(method._id);
       toast.success('Medio de pago archivado');
       await fetchMethods();
+      notifyPaymentMethodsChanged(boardId);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -305,7 +331,54 @@ export function ManagePaymentMethodsSection({
     }
   };
 
-  const renderMethodList = (methods: PaymentMethod[], emptyLabel: string) => {
+  const handleVisibilityChange = async (
+    method: PaymentMethod,
+    enabled: boolean,
+  ) => {
+    setVisibilitySavingIds((current) => new Set(current).add(method._id));
+    setUserMethods((current) =>
+      current.map((item) =>
+        item._id === method._id ? { ...item, enabled } : item,
+      ),
+    );
+    try {
+      await paymentMethodsService.setBoardVisibility(
+        method._id,
+        boardId,
+        enabled,
+      );
+      toast.success(
+        enabled
+          ? `${method.name} ya está disponible en ${boardName}`
+          : `${method.name} dejó de estar disponible en ${boardName}`,
+      );
+      await fetchMethods();
+      notifyPaymentMethodsChanged(boardId);
+    } catch (error) {
+      setUserMethods((current) =>
+        current.map((item) =>
+          item._id === method._id ? { ...item, enabled: method.enabled } : item,
+        ),
+      );
+      const axiosError = error as AxiosError<{ message?: string }>;
+      toast.error(
+        axiosError.response?.data?.message ||
+          'No se pudo cambiar la disponibilidad',
+      );
+    } finally {
+      setVisibilitySavingIds((current) => {
+        const next = new Set(current);
+        next.delete(method._id);
+        return next;
+      });
+    }
+  };
+
+  const renderMethodList = (
+    methods: PaymentMethod[],
+    emptyLabel: string,
+    options: { editable?: boolean; toggleVisibility?: boolean } = {},
+  ) => {
     if (methods.length === 0) {
       return (
         <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
@@ -348,9 +421,54 @@ export function ManagePaymentMethodsSection({
               <p className="text-xs text-muted-foreground">
                 {getOwnerLabel(method)}
               </p>
+              {options.toggleVisibility ? (
+                <p className="text-xs text-muted-foreground">
+                  {method.enabled !== false
+                    ? `Disponible en ${boardName}`
+                    : `No disponible en ${boardName}`}
+                </p>
+              ) : method.ownerType === 'user' ? (
+                <p className="text-xs text-muted-foreground">
+                  {method.enabled !== false
+                    ? 'Disponible en este tablero'
+                    : 'No disponible en este tablero'}
+                </p>
+              ) : null}
             </div>
-            <div className="flex shrink-0 gap-1">
-              {method.kind === 'credit' && method.closingDay ? (
+            <div className="flex shrink-0 items-center gap-1">
+              {options.toggleVisibility ? (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={method.enabled !== false}
+                  aria-label={`Usar ${method.name} en ${boardName}`}
+                  disabled={visibilitySavingIds.has(method._id)}
+                  onClick={() =>
+                    void handleVisibilityChange(
+                      method,
+                      method.enabled === false,
+                    )
+                  }
+                  className={cn(
+                    'relative h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+                    method.enabled !== false
+                      ? 'bg-primary'
+                      : 'bg-muted-foreground/30',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'absolute left-0.5 top-0.5 size-5 rounded-full bg-background shadow-sm transition-transform',
+                      method.enabled !== false
+                        ? 'translate-x-5'
+                        : 'translate-x-0',
+                    )}
+                  />
+                </button>
+              ) : null}
+              {options.editable &&
+              method.kind === 'credit' &&
+              method.closingDay ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -366,18 +484,20 @@ export function ManagePaymentMethodsSection({
                   <CalendarRange className="size-4" />
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => openEdit(method)}
-                aria-label={`Editar ${method.name}`}
-                disabled={method.isDefault}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              {!method.isDefault ? (
+              {options.editable ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => openEdit(method)}
+                  aria-label={`Editar ${method.name}`}
+                  disabled={method.isDefault}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              ) : null}
+              {options.editable && !method.isDefault ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -446,20 +566,42 @@ export function ManagePaymentMethodsSection({
         <div className="space-y-6">
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-muted-foreground">
-              Personales
-            </h4>
-            {renderMethodList(
-              userMethods,
-              'No tenés medios personales. Creá uno para usarlo en cualquier tablero.',
-            )}
-          </div>
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium text-muted-foreground">
-              Del tablero
+              Medios del tablero
             </h4>
             {renderMethodList(
               boardMethods,
               'No hay medios compartidos en este tablero.',
+              { editable: true },
+            )}
+          </div>
+          <div className="space-y-3">
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Mis medios personales
+              </h4>
+              <p className="mt-1 text-xs text-muted-foreground">
+                El medio sigue siendo personal. Elegí si querés usarlo en{' '}
+                {boardName}.
+              </p>
+            </div>
+            {renderMethodList(
+              userMethods,
+              'No tenés medios personales. Creá uno para usarlo en cualquier tablero.',
+              { editable: true, toggleVisibility: true },
+            )}
+          </div>
+          <div className="space-y-3">
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Medios de otros participantes
+              </h4>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Solo cada propietario puede cambiar su disponibilidad.
+              </p>
+            </div>
+            {renderMethodList(
+              participantMethods,
+              'Los demás participantes no tienen medios disponibles en este tablero.',
             )}
           </div>
         </div>
