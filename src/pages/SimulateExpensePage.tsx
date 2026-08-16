@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import { ArrowLeft, Calculator, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,7 +15,18 @@ import { useBoardsStore } from '@/store/boardsStore';
 import type { ExpenseSimulationResult } from '@/types/expense-simulation';
 import { getCurrentYearMonth } from '@/lib/utils';
 
+interface SimulatorLocationState {
+  expenseReturn?: {
+    presentation: 'modal';
+    pathname: string;
+  };
+}
+
 export default function SimulateExpensePage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const expenseReturn = (location.state as SimulatorLocationState | null)
+    ?.expenseReturn;
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const boards = useBoardsStore((state) => state.boards);
   const isLoadingBoards = useBoardsStore((state) => state.isLoading);
@@ -29,6 +40,18 @@ export default function SimulateExpensePage() {
     null,
   );
   const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleReturnToExpense = () => {
+    if (expenseReturn?.presentation === 'modal') {
+      navigate(expenseReturn.pathname, {
+        replace: true,
+        state: { openExpenseModal: true },
+      });
+      return;
+    }
+
+    navigate('/capture');
+  };
 
   if (!isLoadingBoards && !activeBoard) {
     return <EmptyBoardState />;
@@ -45,11 +68,14 @@ export default function SimulateExpensePage() {
   if (activeBoard.type !== 'everyday') {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-8 md:px-6">
-        <Button asChild variant="ghost" className="w-fit rounded-xl px-0">
-          <Link to="/capture">
-            <ArrowLeft className="mr-2 size-4" />
-            Volver
-          </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-fit rounded-xl px-0"
+          onClick={handleReturnToExpense}
+        >
+          <ArrowLeft className="mr-2 size-4" />
+          Volver
         </Button>
         <div className="rounded-2xl border border-dashed p-6 text-sm text-muted-foreground">
           El simulador de gastos está disponible solo en tableros cotidianos.
@@ -100,11 +126,14 @@ export default function SimulateExpensePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
-      <Button asChild variant="ghost" className="w-fit rounded-xl px-0">
-        <Link to="/capture">
-          <ArrowLeft className="mr-2 size-4" />
-          Volver a nuevo gasto
-        </Link>
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-fit rounded-xl px-0"
+        onClick={handleReturnToExpense}
+      >
+        <ArrowLeft className="mr-2 size-4" />
+        Volver a nuevo gasto
       </Button>
 
       <div className="space-y-1 text-center">

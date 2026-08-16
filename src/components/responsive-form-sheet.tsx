@@ -1,20 +1,7 @@
-import { ReactNode, useRef } from 'react';
+import { ReactNode } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useKeepFocusedInputVisible } from '@/hooks/use-keep-focused-input-visible';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer';
+import { Dialog } from '@/components/ui/dialog';
+import { FormDialogContent } from '@/components/form-dialog-content';
 import {
   Sheet,
   SheetContent,
@@ -29,8 +16,6 @@ interface ResponsiveFormSheetProps {
   title: string;
   description?: string;
   children: ReactNode;
-  /** En mobile: drawer desde abajo (default) o dialog centrado. */
-  mobilePresentation?: 'drawer' | 'dialog';
 }
 
 export function ResponsiveFormSheet({
@@ -39,51 +24,16 @@ export function ResponsiveFormSheet({
   title,
   description,
   children,
-  mobilePresentation = 'drawer',
 }: ResponsiveFormSheetProps) {
   const isMobile = useIsMobile();
-  const dialogBodyRef = useRef<HTMLDivElement>(null);
-  useKeepFocusedInputVisible(
-    dialogBodyRef,
-    open && isMobile && mobilePresentation === 'dialog',
-  );
-
-  if (isMobile && mobilePresentation === 'dialog') {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="form-dialog w-[calc(100%-2rem)] sm:max-w-md">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>{title}</DialogTitle>
-            {description ? (
-              <DialogDescription>{description}</DialogDescription>
-            ) : null}
-          </DialogHeader>
-          <div
-            ref={dialogBodyRef}
-            className="form-dialog-scroll-body min-h-0 shrink overflow-y-auto overscroll-contain pr-1"
-          >
-            {children}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
-          <DrawerHeader className="shrink-0 text-left">
-            <DrawerTitle>{title}</DrawerTitle>
-            {description ? (
-              <DrawerDescription>{description}</DrawerDescription>
-            ) : null}
-          </DrawerHeader>
-          <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))]">
-            {children}
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <FormDialogContent open={open} title={title} description={description}>
+          {children}
+        </FormDialogContent>
+      </Dialog>
     );
   }
 

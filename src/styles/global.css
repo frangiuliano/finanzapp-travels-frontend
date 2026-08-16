@@ -336,7 +336,9 @@ html[data-nav-minimized='true'] {
 /* Form dialogs keep stable outer geometry; only their body scrolls. */
 .form-dialog {
   display: flex;
-  max-height: 92vh;
+  max-height: calc(
+    92vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+  );
   flex-direction: column;
   overflow: hidden;
 }

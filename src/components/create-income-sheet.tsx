@@ -162,7 +162,6 @@ export function CreateIncomeSheet({
     <ResponsiveFormSheet
       open={open}
       onOpenChange={onOpenChange}
-      mobilePresentation="dialog"
       title={isEditing ? 'Editar ingreso' : 'Registrar ingreso'}
       description={
         isEditing

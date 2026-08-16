@@ -6,7 +6,6 @@ function hasBlockingOverlayOpen(): boolean {
     document.querySelector(
       [
         '[role="dialog"][data-state="open"]',
-        '[data-vaul-drawer-visible="true"]',
         // Select/Dropdown use RemoveScroll (body pointer-events: none).
         // Clearing those locks while they are open fights Radix in a loop.
         '[role="listbox"][data-state="open"]',
