@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Calculator, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
+import { InstallmentSimulatorDialog } from '@/components/installment-simulator-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,13 +15,13 @@ import { OPEN_MOVEMENT_CREATOR_EVENT } from '@/lib/movement-events';
 import { useBoardsStore } from '@/store/boardsStore';
 
 export function CreateMovementSheet() {
-  const navigate = useNavigate();
   const boards = useBoardsStore((state) => state.boards);
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const board = currentBoard ?? boards[0];
   const [chooserOpen, setChooserOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
 
   useEffect(() => {
     const open = () => setChooserOpen(true);
@@ -83,7 +83,8 @@ export function CreateMovementSheet() {
                 className="justify-start rounded-xl text-muted-foreground"
                 onClick={() => {
                   setChooserOpen(false);
-                  navigate('/simulate');
+                  setExpenseOpen(true);
+                  setSimulatorOpen(true);
                 }}
               >
                 <Calculator className="size-4" /> Simular compra en cuotas
@@ -96,6 +97,13 @@ export function CreateMovementSheet() {
         open={expenseOpen}
         onOpenChange={setExpenseOpen}
         board={board}
+        onOpenSimulator={() => setSimulatorOpen(true)}
+      />
+      <InstallmentSimulatorDialog
+        open={simulatorOpen}
+        onOpenChange={setSimulatorOpen}
+        board={board}
+        onBackToExpense={() => setSimulatorOpen(false)}
       />
       <CreateIncomeSheet
         open={incomeOpen}

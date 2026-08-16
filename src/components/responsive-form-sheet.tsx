@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useKeepFocusedInputVisible } from '@/hooks/use-keep-focused-input-visible';
 import {
   Dialog,
   DialogContent,
@@ -41,18 +42,28 @@ export function ResponsiveFormSheet({
   mobilePresentation = 'drawer',
 }: ResponsiveFormSheetProps) {
   const isMobile = useIsMobile();
+  const dialogBodyRef = useRef<HTMLDivElement>(null);
+  useKeepFocusedInputVisible(
+    dialogBodyRef,
+    open && isMobile && mobilePresentation === 'dialog',
+  );
 
   if (isMobile && mobilePresentation === 'dialog') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="form-dialog w-[calc(100%-2rem)] sm:max-w-md">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{title}</DialogTitle>
             {description ? (
               <DialogDescription>{description}</DialogDescription>
             ) : null}
           </DialogHeader>
-          <div className="mt-2">{children}</div>
+          <div
+            ref={dialogBodyRef}
+            className="form-dialog-scroll-body min-h-0 shrink overflow-y-auto overscroll-contain pr-1"
+          >
+            {children}
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -61,14 +72,16 @@ export function ResponsiveFormSheet({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[92vh]">
-          <DrawerHeader className="text-left">
+        <DrawerContent>
+          <DrawerHeader className="shrink-0 text-left">
             <DrawerTitle>{title}</DrawerTitle>
             {description ? (
               <DrawerDescription>{description}</DrawerDescription>
             ) : null}
           </DrawerHeader>
-          <div className="overflow-y-auto px-4 pb-8">{children}</div>
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-4 pb-[max(2rem,env(safe-area-inset-bottom,0px))]">
+            {children}
+          </div>
         </DrawerContent>
       </Drawer>
     );
@@ -76,7 +89,10 @@ export function ResponsiveFormSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
+      <SheetContent
+        side="right"
+        className="w-full max-w-md overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
+      >
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           {description ? (

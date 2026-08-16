@@ -332,3 +332,19 @@ html[data-nav-minimized='true'] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Form dialogs keep stable outer geometry; only their body scrolls. */
+.form-dialog {
+  display: flex;
+  max-height: 92vh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.form-dialog-scroll-body {
+  padding-bottom: calc(
+    1rem + env(safe-area-inset-bottom, 0px) + var(--keyboard-occlusion, 0px)
+  );
+  scroll-padding-block: 1rem;
+  -webkit-overflow-scrolling: touch;
+}

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { QuickExpenseForm } from '@/components/quick-expense-form';
+import { useKeepFocusedInputVisible } from '@/hooks/use-keep-focused-input-visible';
 import type { Board } from '@/types/board';
 import type { Budget } from '@/types/budget';
 import type { Expense } from '@/types/expense';
@@ -19,6 +21,7 @@ interface ExpenseFormDialogProps {
   participants?: Participant[];
   expense?: Expense | null;
   onSuccess?: () => void;
+  onOpenSimulator?: () => void;
 }
 
 export function ExpenseFormDialog({
@@ -29,7 +32,11 @@ export function ExpenseFormDialog({
   participants,
   expense,
   onSuccess,
+  onOpenSimulator,
 }: ExpenseFormDialogProps) {
+  const formBodyRef = useRef<HTMLDivElement>(null);
+  useKeepFocusedInputVisible(formBodyRef, open);
+
   const handleSuccess = () => {
     onSuccess?.();
     onOpenChange(false);
@@ -37,14 +44,17 @@ export function ExpenseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-lg">
-        <DialogHeader className="border-b px-6 py-4">
+      <DialogContent className="form-dialog gap-0 p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>{expense ? 'Editar gasto' : 'Nuevo gasto'}</DialogTitle>
           <DialogDescription>
             {board.name} · {board.baseCurrency}
           </DialogDescription>
         </DialogHeader>
-        <div className="px-6 py-4">
+        <div
+          ref={formBodyRef}
+          className="form-dialog-scroll-body min-h-0 shrink overflow-y-auto overscroll-contain px-6 py-4"
+        >
           <QuickExpenseForm
             key={expense?._id ?? 'new-expense'}
             board={board}
@@ -53,6 +63,7 @@ export function ExpenseFormDialog({
             prefilledParticipants={participants}
             isDialog
             onSuccess={handleSuccess}
+            onOpenSimulator={onOpenSimulator}
           />
         </div>
       </DialogContent>
