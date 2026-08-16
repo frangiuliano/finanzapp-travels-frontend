@@ -115,7 +115,6 @@ export function CreatePaymentMethodSheet({
     <ResponsiveFormSheet
       open={open}
       onOpenChange={onOpenChange}
-      mobilePresentation="dialog"
       title="Agregar tarjeta"
       description="Creá un medio de débito o crédito para usarlo al registrar gastos."
     >
