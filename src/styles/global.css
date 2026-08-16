@@ -333,26 +333,18 @@ html[data-nav-minimized='true'] {
   }
 }
 
-/*
- * Form dialogs opt into visual-viewport sizing. Keeping this out of the base
- * DialogContent avoids changing the layout of short, non-form dialogs.
- *
- * The container keeps its natural height until space runs out. It is anchored
- * near the top of the visible viewport so keyboard changes shrink only the
- * flexible form body instead of re-centering the whole dialog on every frame.
- */
-.keyboard-aware-form-dialog {
-  top: calc(
-    var(--visual-viewport-offset-top, 0px) + env(safe-area-inset-top, 0px) +
-      1rem
-  );
+/* Form dialogs keep stable outer geometry; only their body scrolls. */
+.form-dialog {
   display: flex;
-  max-height: calc(
-    var(--visual-viewport-height, 100dvh) - env(safe-area-inset-top, 0px) -
-      env(safe-area-inset-bottom, 0px) - 2rem
-  ) !important;
+  max-height: 92vh;
   flex-direction: column;
-  translate: -50% 0;
   overflow: hidden;
+}
+
+.form-dialog-scroll-body {
+  padding-bottom: calc(
+    1rem + env(safe-area-inset-bottom, 0px) + var(--keyboard-occlusion, 0px)
+  );
   scroll-padding-block: 1rem;
+  -webkit-overflow-scrolling: touch;
 }

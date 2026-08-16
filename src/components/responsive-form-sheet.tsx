@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useKeepFocusedInputVisible } from '@/hooks/use-keep-focused-input-visible';
 import {
   Dialog,
   DialogContent,
@@ -41,18 +42,26 @@ export function ResponsiveFormSheet({
   mobilePresentation = 'drawer',
 }: ResponsiveFormSheetProps) {
   const isMobile = useIsMobile();
+  const dialogBodyRef = useRef<HTMLDivElement>(null);
+  useKeepFocusedInputVisible(
+    dialogBodyRef,
+    open && isMobile && mobilePresentation === 'dialog',
+  );
 
   if (isMobile && mobilePresentation === 'dialog') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="keyboard-aware-form-dialog w-[calc(100%-2rem)] sm:max-w-md">
+        <DialogContent className="form-dialog w-[calc(100%-2rem)] sm:max-w-md">
           <DialogHeader className="shrink-0">
             <DialogTitle>{title}</DialogTitle>
             {description ? (
               <DialogDescription>{description}</DialogDescription>
             ) : null}
           </DialogHeader>
-          <div className="min-h-0 shrink overflow-y-auto overscroll-contain pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] pr-1">
+          <div
+            ref={dialogBodyRef}
+            className="form-dialog-scroll-body min-h-0 shrink overflow-y-auto overscroll-contain pr-1"
+          >
             {children}
           </div>
         </DialogContent>
