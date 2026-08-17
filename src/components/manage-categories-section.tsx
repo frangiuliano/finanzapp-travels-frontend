@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { categoriesService } from '@/services/categoriesService';
 import { Category } from '@/types/category';
 
@@ -205,7 +205,7 @@ export function ManageCategoriesSection({
         </ul>
       )}
 
-      <ResponsiveFormSheet
+      <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         title={editingCategory ? 'Editar categoría' : 'Nueva categoría'}
@@ -271,7 +271,7 @@ export function ManageCategoriesSection({
             </Button>
           </div>
         </div>
-      </ResponsiveFormSheet>
+      </ResponsiveFormDialog>
     </div>
   );
 }

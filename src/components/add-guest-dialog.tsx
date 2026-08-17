@@ -1,12 +1,6 @@
 import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -108,76 +102,76 @@ export function AddGuestDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Añadir Invitado</DialogTitle>
-          <DialogDescription>
-            Añade un invitado al viaje
-            {effectiveTripName && (
-              <>
-                {' '}
-                <strong>"{effectiveTripName}"</strong>
-              </>
-            )}
-            . Este invitado no recibirá un email automáticamente. Puedes
-            enviarle una invitación más tarde desde la tabla de participantes.
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
+    <ResponsiveFormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Añadir invitado"
+      description={
+        <>
+          Añade un invitado al viaje
+          {effectiveTripName && (
+            <>
+              {' '}
+              <strong>"{effectiveTripName}"</strong>
+            </>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="guestName">Nombre del invitado *</Label>
-            <Input
-              id="guestName"
-              type="text"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Juan Pérez"
-              disabled={isLoading}
-              autoFocus
-              minLength={2}
-              maxLength={100}
-            />
+          . Este invitado no recibirá un email automáticamente. Puedes enviarle
+          una invitación más tarde desde la tabla de participantes.
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
           </div>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="guestEmail">Email (opcional)</Label>
-            <Input
-              id="guestEmail"
-              type="email"
-              value={guestEmail}
-              onChange={(e) => setGuestEmail(e.target.value)}
-              placeholder="juan@email.com"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground">
-              Si proporcionas un email, podrás enviarle una invitación más tarde
-              para que se una al tablero.
-            </p>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="guestName">Nombre del invitado *</Label>
+          <Input
+            id="guestName"
+            type="text"
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="Juan Pérez"
+            disabled={isLoading}
+            autoFocus
+            minLength={2}
+            maxLength={100}
+          />
+        </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading || !effectiveTripId}>
-              {isLoading ? 'Añadiendo...' : 'Añadir Invitado'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <Label htmlFor="guestEmail">Email (opcional)</Label>
+          <Input
+            id="guestEmail"
+            type="email"
+            value={guestEmail}
+            onChange={(e) => setGuestEmail(e.target.value)}
+            placeholder="juan@email.com"
+            disabled={isLoading}
+          />
+          <p className="text-xs text-muted-foreground">
+            Si proporcionas un email, podrás enviarle una invitación más tarde
+            para que se una al tablero.
+          </p>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isLoading || !effectiveTripId}>
+            {isLoading ? 'Añadiendo...' : 'Añadir Invitado'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </ResponsiveFormDialog>
   );
 }

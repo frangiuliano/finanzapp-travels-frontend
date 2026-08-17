@@ -1,10 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { QuickExpenseForm } from '@/components/quick-expense-form';
 import type { Board } from '@/types/board';
 import type { Budget } from '@/types/budget';
@@ -36,26 +30,21 @@ export function ExpenseFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto p-0 sm:max-w-lg">
-        <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle>{expense ? 'Editar gasto' : 'Nuevo gasto'}</DialogTitle>
-          <DialogDescription>
-            {board.name} · {board.baseCurrency}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="px-6 py-4">
-          <QuickExpenseForm
-            key={expense?._id ?? 'new-expense'}
-            board={board}
-            expense={expense}
-            prefilledBudgets={budgets}
-            prefilledParticipants={participants}
-            isDialog
-            onSuccess={handleSuccess}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ResponsiveFormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={expense ? 'Editar gasto' : 'Nuevo gasto'}
+      description={`${board.name} · ${board.baseCurrency}`}
+    >
+      <QuickExpenseForm
+        key={expense?._id ?? 'new-expense'}
+        board={board}
+        expense={expense}
+        prefilledBudgets={budgets}
+        prefilledParticipants={participants}
+        isDialog
+        onSuccess={handleSuccess}
+      />
+    </ResponsiveFormDialog>
   );
 }

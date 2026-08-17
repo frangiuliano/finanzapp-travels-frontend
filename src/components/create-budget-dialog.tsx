@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
@@ -155,89 +149,85 @@ export function CreateBudgetDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {budget ? 'Editar Presupuesto' : 'Crear Nuevo Presupuesto'}
-          </DialogTitle>
-          <DialogDescription>
-            {budget
-              ? 'Modifica la información del presupuesto.'
-              : 'Completa la información para crear un nuevo presupuesto.'}
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveFormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={budget ? 'Editar presupuesto' : 'Añadir presupuesto'}
+      description={
+        budget
+          ? 'Modifica la información del presupuesto.'
+          : 'Completa la información para crear un nuevo presupuesto.'
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Nombre del Presupuesto *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej: Alojamiento"
+            disabled={isLoading}
+            autoFocus
+          />
+          {errors.name && (
+            <p className="text-sm text-destructive">{errors.name}</p>
+          )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre del Presupuesto *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Alojamiento"
-              disabled={isLoading}
-              autoFocus
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="amount">Monto *</Label>
+          <MoneyInput
+            id="amount"
+            value={amount}
+            onChange={setAmount}
+            disabled={isLoading}
+          />
+          {errors.amount && (
+            <p className="text-sm text-destructive">{errors.amount}</p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Monto *</Label>
-            <MoneyInput
-              id="amount"
-              value={amount}
-              onChange={setAmount}
-              disabled={isLoading}
-            />
-            {errors.amount && (
-              <p className="text-sm text-destructive">{errors.amount}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="currency">Moneda</Label>
+          <Select
+            value={currency}
+            onValueChange={(value) => setCurrency(value as SupportedCurrency)}
+            disabled={isLoading}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCY_OPTIONS.map((curr) => (
+                <SelectItem key={curr.value} value={curr.value}>
+                  {curr.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="currency">Moneda</Label>
-            <Select
-              value={currency}
-              onValueChange={(value) => setCurrency(value as SupportedCurrency)}
-              disabled={isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCY_OPTIONS.map((curr) => (
-                  <SelectItem key={curr.value} value={curr.value}>
-                    {curr.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading
-                ? budget
-                  ? 'Actualizando...'
-                  : 'Creando...'
-                : budget
-                  ? 'Actualizar Presupuesto'
-                  : 'Crear Presupuesto'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading
+              ? budget
+                ? 'Actualizando...'
+                : 'Creando...'
+              : budget
+                ? 'Actualizar Presupuesto'
+                : 'Crear Presupuesto'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </ResponsiveFormDialog>
   );
 }

@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
@@ -472,19 +466,19 @@ export function CreateExpenseDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {expense ? 'Editar gasto' : 'Crear nuevo gasto'}
-          </DialogTitle>
-          <DialogDescription>
-            {expense
-              ? 'Modifica la información del gasto.'
-              : 'Completa la información para registrar un nuevo gasto.'}
-          </DialogDescription>
-        </DialogHeader>
-
+    <>
+      <ResponsiveFormDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        title={expense ? 'Editar gasto' : 'Crear nuevo gasto'}
+        description={
+          expense
+            ? 'Modifica la información del gasto.'
+            : 'Completa la información para registrar un nuevo gasto.'
+        }
+        mobileClassName="sm:max-w-3xl"
+        desktopClassName="max-w-3xl"
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -863,7 +857,7 @@ export function CreateExpenseDialog({
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </ResponsiveFormDialog>
 
       <ManageCardsDialog
         open={isCardsDialogOpen}
@@ -892,6 +886,6 @@ export function CreateExpenseDialog({
           }
         }}
       />
-    </Dialog>
+    </>
   );
 }

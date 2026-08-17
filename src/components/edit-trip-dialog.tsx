@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -121,70 +115,66 @@ export function EditTripDialog({
   if (!trip) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Editar viaje</DialogTitle>
-          <DialogDescription>
-            Modificá la información del tablero de viaje.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveFormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Editar viaje"
+      description="Modificá la información del tablero de viaje."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Nombre del viaje *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej: Vacaciones en Europa"
+            disabled={isLoading}
+            autoFocus
+          />
+          {errors.name && (
+            <p className="text-sm text-destructive">{errors.name}</p>
+          )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre del viaje *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Vacaciones en Europa"
-              disabled={isLoading}
-              autoFocus
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="baseCurrency">Moneda Base</Label>
+          <Select
+            value={baseCurrency}
+            onValueChange={(value) => {
+              if (SUPPORTED_CURRENCIES.includes(value as SupportedCurrency)) {
+                setBaseCurrency(value as SupportedCurrency);
+              }
+            }}
+            disabled={isLoading}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCY_OPTIONS.map((currency) => (
+                <SelectItem key={currency.value} value={currency.value}>
+                  {currency.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="baseCurrency">Moneda Base</Label>
-            <Select
-              value={baseCurrency}
-              onValueChange={(value) => {
-                if (SUPPORTED_CURRENCIES.includes(value as SupportedCurrency)) {
-                  setBaseCurrency(value as SupportedCurrency);
-                }
-              }}
-              disabled={isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCY_OPTIONS.map((currency) => (
-                  <SelectItem key={currency.value} value={currency.value}>
-                    {currency.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Actualizando...' : 'Actualizar Viaje'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Actualizando...' : 'Actualizar Viaje'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </ResponsiveFormDialog>
   );
 }

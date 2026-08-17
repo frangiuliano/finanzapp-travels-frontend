@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { recurringExpensesService } from '@/services/recurringExpensesService';
 import type { RecurringExpense } from '@/types/recurring-expense';
@@ -213,7 +213,7 @@ export function ManageRecurringExpensesSection({
         </ul>
       )}
 
-      <ResponsiveFormSheet
+      <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         title={editingItem ? 'Editar gasto fijo' : 'Nuevo gasto fijo'}
@@ -282,7 +282,7 @@ export function ManageRecurringExpensesSection({
             {isSaving ? 'Guardando…' : 'Guardar'}
           </Button>
         </div>
-      </ResponsiveFormSheet>
+      </ResponsiveFormDialog>
     </div>
   );
 }

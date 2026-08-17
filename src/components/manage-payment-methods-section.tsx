@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
 import { cn } from '@/lib/utils';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
@@ -607,7 +607,7 @@ export function ManagePaymentMethodsSection({
         </div>
       )}
 
-      <ResponsiveFormSheet
+      <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={(open) => {
           setSheetOpen(open);
@@ -804,7 +804,7 @@ export function ManagePaymentMethodsSection({
             </Button>
           </div>
         </div>
-      </ResponsiveFormSheet>
+      </ResponsiveFormDialog>
     </div>
   );
 }

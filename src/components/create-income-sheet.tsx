@@ -7,7 +7,7 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { incomesService } from '@/services/incomesService';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
@@ -159,11 +159,10 @@ export function CreateIncomeSheet({
   };
 
   return (
-    <ResponsiveFormSheet
+    <ResponsiveFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      mobilePresentation="dialog"
-      title={isEditing ? 'Editar ingreso' : 'Registrar ingreso'}
+      title={isEditing ? 'Editar ingreso' : 'Nuevo ingreso'}
       description={
         isEditing
           ? income?.recurringIncomeId
@@ -277,6 +276,6 @@ export function CreateIncomeSheet({
           </Button>
         </div>
       </form>
-    </ResponsiveFormSheet>
+    </ResponsiveFormDialog>
   );
 }

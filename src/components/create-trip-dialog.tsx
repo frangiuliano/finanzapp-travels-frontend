@@ -1,12 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -128,111 +122,107 @@ export function CreateTripDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Nuevo tablero de viaje</DialogTitle>
-          <DialogDescription>
-            Creá un tablero para dividir gastos con otros durante un viaje.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveFormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Nuevo tablero de viaje"
+      description="Creá un tablero para dividir gastos con otros durante un viaje."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Nombre del viaje *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej: Vacaciones en Europa"
+            disabled={isLoading}
+            autoFocus
+          />
+          {errors.name && (
+            <p className="text-sm text-destructive">{errors.name}</p>
+          )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre del viaje *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Vacaciones en Europa"
-              disabled={isLoading}
-              autoFocus
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="parentBoard">Tablero principal</Label>
-            <Select
-              value={parentBoardId}
-              onValueChange={(value) => {
-                setParentBoardId(value);
-                const parent = everydayBoards.find(
-                  (board) => board._id === value,
-                );
-                if (
-                  parent &&
-                  SUPPORTED_CURRENCIES.includes(
-                    parent.baseCurrency as SupportedCurrency,
-                  )
-                ) {
-                  setBaseCurrency(parent.baseCurrency as SupportedCurrency);
-                }
-              }}
-              disabled={isLoading || everydayBoards.length === 0}
-            >
-              <SelectTrigger id="parentBoard">
-                <SelectValue placeholder="Sin tablero cotidiano" />
-              </SelectTrigger>
-              <SelectContent>
-                {everydayBoards.map((board) => (
-                  <SelectItem key={board._id} value={board._id}>
-                    {board.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {parentBoardId ? (
-              <p className="text-xs text-muted-foreground">
-                Usa la moneda del tablero principal para consolidar importes.
-              </p>
-            ) : null}
+        <div className="space-y-2">
+          <Label htmlFor="parentBoard">Tablero principal</Label>
+          <Select
+            value={parentBoardId}
+            onValueChange={(value) => {
+              setParentBoardId(value);
+              const parent = everydayBoards.find(
+                (board) => board._id === value,
+              );
+              if (
+                parent &&
+                SUPPORTED_CURRENCIES.includes(
+                  parent.baseCurrency as SupportedCurrency,
+                )
+              ) {
+                setBaseCurrency(parent.baseCurrency as SupportedCurrency);
+              }
+            }}
+            disabled={isLoading || everydayBoards.length === 0}
+          >
+            <SelectTrigger id="parentBoard">
+              <SelectValue placeholder="Sin tablero cotidiano" />
+            </SelectTrigger>
+            <SelectContent>
+              {everydayBoards.map((board) => (
+                <SelectItem key={board._id} value={board._id}>
+                  {board.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {parentBoardId ? (
             <p className="text-xs text-muted-foreground">
-              Los gastos del viaje también aparecerán en este tablero.
+              Usa la moneda del tablero principal para consolidar importes.
             </p>
-          </div>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Los gastos del viaje también aparecerán en este tablero.
+          </p>
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="baseCurrency">Moneda Base</Label>
-            <Select
-              value={baseCurrency}
-              onValueChange={(value) => {
-                if (SUPPORTED_CURRENCIES.includes(value as SupportedCurrency)) {
-                  setBaseCurrency(value as SupportedCurrency);
-                }
-              }}
-              disabled={isLoading || Boolean(parentBoardId)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCY_OPTIONS.map((currency) => (
-                  <SelectItem key={currency.value} value={currency.value}>
-                    {currency.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="baseCurrency">Moneda Base</Label>
+          <Select
+            value={baseCurrency}
+            onValueChange={(value) => {
+              if (SUPPORTED_CURRENCIES.includes(value as SupportedCurrency)) {
+                setBaseCurrency(value as SupportedCurrency);
+              }
+            }}
+            disabled={isLoading || Boolean(parentBoardId)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCY_OPTIONS.map((currency) => (
+                <SelectItem key={currency.value} value={currency.value}>
+                  {currency.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creando…' : 'Crear viaje'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Creando…' : 'Crear viaje'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </ResponsiveFormDialog>
   );
 }

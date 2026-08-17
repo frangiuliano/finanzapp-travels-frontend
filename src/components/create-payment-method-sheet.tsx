@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import {
   CreatePaymentMethodDto,
@@ -112,11 +112,10 @@ export function CreatePaymentMethodSheet({
   };
 
   return (
-    <ResponsiveFormSheet
+    <ResponsiveFormDialog
       open={open}
       onOpenChange={onOpenChange}
-      mobilePresentation="dialog"
-      title="Agregar tarjeta"
+      title="Nuevo medio de pago"
       description="Creá un medio de débito o crédito para usarlo al registrar gastos."
     >
       <div className="space-y-4">
@@ -241,6 +240,6 @@ export function CreatePaymentMethodSheet({
           </Button>
         </div>
       </div>
-    </ResponsiveFormSheet>
+    </ResponsiveFormDialog>
   );
 }

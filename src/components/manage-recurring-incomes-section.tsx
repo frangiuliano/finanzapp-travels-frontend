@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { formatDaysOfMonth } from '@/lib/format-days-of-month';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
@@ -216,7 +216,7 @@ export function ManageRecurringIncomesSection({
         </ul>
       )}
 
-      <ResponsiveFormSheet
+      <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         title={
@@ -287,7 +287,7 @@ export function ManageRecurringIncomesSection({
             {isSaving ? 'Guardando…' : 'Guardar'}
           </Button>
         </div>
-      </ResponsiveFormSheet>
+      </ResponsiveFormDialog>
     </div>
   );
 }

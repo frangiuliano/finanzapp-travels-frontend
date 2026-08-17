@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
 import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
-import { ResponsiveFormSheet } from '@/components/responsive-form-sheet';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { installmentPlansService } from '@/services/installmentPlansService';
 import type { InstallmentPlan } from '@/types/installment-plan';
@@ -229,7 +229,7 @@ export function ManageInstallmentPlansSection({
         </ul>
       )}
 
-      <ResponsiveFormSheet
+      <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         title={editingItem ? 'Editar plan de cuotas' : 'Nuevo plan de cuotas'}
@@ -324,7 +324,7 @@ export function ManageInstallmentPlansSection({
             {isSaving ? 'Guardando…' : 'Guardar'}
           </Button>
         </div>
-      </ResponsiveFormSheet>
+      </ResponsiveFormDialog>
     </div>
   );
 }

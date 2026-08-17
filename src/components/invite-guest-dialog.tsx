@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,74 +104,74 @@ export function InviteGuestDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Enviar Invitación a Invitado</DialogTitle>
-          <DialogDescription>
-            Envía una invitación por email a{' '}
-            <strong>{participant.guestName}</strong> para que se una al tablero.
-            Se enviará un email con un enlace para unirse al viaje.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveFormDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Enviar invitación a invitado"
+      description={
+        <>
+          Envía una invitación por email a{' '}
+          <strong>{participant.guestName}</strong> para que se una al tablero.
+          Se enviará un email con un enlace para unirse al viaje.
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {hasPendingInvitation && (
+          <div className="rounded-md bg-blue-500/15 p-3 text-sm text-blue-700 dark:text-blue-400">
+            Este invitado ya tiene una invitación pendiente.
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {hasPendingInvitation && (
-            <div className="rounded-md bg-blue-500/15 p-3 text-sm text-blue-700 dark:text-blue-400">
-              Este invitado ya tiene una invitación pendiente.
-            </div>
-          )}
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+        {!isGuest && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            Este participante ya tiene cuenta. No es necesario enviar
+            invitación.
+          </div>
+        )}
 
-          {!isGuest && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              Este participante ya tiene cuenta. No es necesario enviar
-              invitación.
-            </div>
-          )}
+        {isGuest && (
+          <div className="space-y-2">
+            <Label htmlFor="email">Email del invitado *</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="juan@email.com"
+              disabled={isLoading || hasPendingInvitation}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              Se enviará un email con un enlace para unirse al viaje. La
+              invitación expira en 7 días.
+            </p>
+          </div>
+        )}
 
-          {isGuest && (
-            <div className="space-y-2">
-              <Label htmlFor="email">Email del invitado *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="juan@email.com"
-                disabled={isLoading || hasPendingInvitation}
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground">
-                Se enviará un email con un enlace para unirse al viaje. La
-                invitación expira en 7 días.
-              </p>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !isGuest || hasPendingInvitation}
-            >
-              {isLoading ? 'Enviando...' : 'Enviar Invitación'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={isLoading || !isGuest || hasPendingInvitation}
+          >
+            {isLoading ? 'Enviando...' : 'Enviar Invitación'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </ResponsiveFormDialog>
   );
 }
