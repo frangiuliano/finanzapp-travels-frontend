@@ -1,5 +1,4 @@
 import { Check, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   CATEGORY_COLOR_PALETTE,
   isCategoryPaletteColor,
@@ -63,41 +62,36 @@ export function CategoryColorPicker({
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={cn('px-2', isCustomColor && 'bg-accent')}
-          onClick={() =>
-            document.getElementById('category-custom-color')?.click()
+      <label
+        className={cn(
+          'relative inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors',
+          'hover:bg-accent hover:text-accent-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
+          'has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50',
+          isCustomColor && 'border-foreground/40 bg-accent',
+        )}
+      >
+        <input
+          id="category-custom-color"
+          type="color"
+          value={
+            isCustomColor && isValidCategoryColor(value) ? value : '#64748B'
           }
-          aria-controls="category-custom-color"
+          onChange={(event) => onChange(event.target.value.toUpperCase())}
+          className="absolute inset-0 size-full cursor-pointer opacity-0"
           aria-label="Elegir otro color personalizado"
           disabled={disabled}
-        >
-          <Plus className="size-4" />
-          Otro color
-        </Button>
-        <div className="flex items-center gap-2">
-          <input
-            id="category-custom-color"
-            type="color"
-            value={
-              isCustomColor && isValidCategoryColor(value) ? value : '#64748B'
-            }
-            onChange={(event) => onChange(event.target.value.toUpperCase())}
-            className="size-11 cursor-pointer rounded-lg border bg-transparent p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed"
-            aria-label="Selector de color personalizado"
-            disabled={disabled}
+        />
+        {isCustomColor ? (
+          <span
+            className="size-5 rounded-full border border-foreground/20"
+            style={{ backgroundColor: value }}
+            aria-hidden="true"
           />
-          {isCustomColor ? (
-            <span className="text-sm text-muted-foreground" aria-live="polite">
-              Personalizado
-            </span>
-          ) : null}
-        </div>
-      </div>
+        ) : (
+          <Plus className="size-4" aria-hidden="true" />
+        )}
+        Otro color
+      </label>
     </fieldset>
   );
 }
