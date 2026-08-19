@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import type { ExpenseSimulatorInitialValues } from '@/components/expense-simulator-form';
+import { InstallmentSimulatorDialog } from '@/components/installment-simulator-dialog';
 import { Button } from '@/components/ui/button';
 import { EmptyBoardState } from '@/components/empty-board-state';
 import { QuickExpenseForm } from '@/components/quick-expense-form';
-import { Calculator, PlusCircle } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { useBoardsStore } from '@/store/boardsStore';
 
 export default function CapturePage() {
@@ -11,6 +14,9 @@ export default function CapturePage() {
   const boards = useBoardsStore((state) => state.boards);
   const isLoadingBoards = useBoardsStore((state) => state.isLoading);
   const activeBoard = currentBoard || boards[0] || null;
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [simulatorInitialValues, setSimulatorInitialValues] =
+    useState<ExpenseSimulatorInitialValues>();
 
   const handleSuccess = () => {
     navigate('/home');
@@ -65,15 +71,22 @@ export default function CapturePage() {
         </p>
       </div>
 
-      <QuickExpenseForm board={activeBoard} onSuccess={handleSuccess} />
+      <QuickExpenseForm
+        board={activeBoard}
+        onSuccess={handleSuccess}
+        onOpenSimulator={(values) => {
+          setSimulatorInitialValues(values);
+          setSimulatorOpen(true);
+        }}
+      />
 
       {activeBoard.type === 'everyday' ? (
-        <Button asChild variant="outline" className="w-full rounded-xl">
-          <Link to="/simulate">
-            <Calculator className="mr-2 size-4" />
-            Simular compra en cuotas
-          </Link>
-        </Button>
+        <InstallmentSimulatorDialog
+          open={simulatorOpen}
+          onOpenChange={setSimulatorOpen}
+          board={activeBoard}
+          initialValues={simulatorInitialValues}
+        />
       ) : null}
     </div>
   );

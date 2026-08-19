@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Calculator } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
+import type { ExpenseSimulatorInitialValues } from '@/components/expense-simulator-form';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { FormDialog } from '@/components/form-dialog';
+import { InstallmentSimulatorDialog } from '@/components/installment-simulator-dialog';
 import { Button } from '@/components/ui/button';
 import { OPEN_MOVEMENT_CREATOR_EVENT } from '@/lib/movement-events';
 import { useBoardsStore } from '@/store/boardsStore';
 
 export function CreateMovementSheet() {
-  const navigate = useNavigate();
   const boards = useBoardsStore((state) => state.boards);
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const board = currentBoard ?? boards[0];
   const [chooserOpen, setChooserOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  const [simulatorSource, setSimulatorSource] = useState<'chooser' | 'expense'>(
+    'chooser',
+  );
+  const [simulatorInitialValues, setSimulatorInitialValues] =
+    useState<ExpenseSimulatorInitialValues>();
 
   useEffect(() => {
     const open = () => setChooserOpen(true);
@@ -74,7 +80,9 @@ export function CreateMovementSheet() {
               className="justify-start rounded-xl text-muted-foreground"
               onClick={() => {
                 setChooserOpen(false);
-                navigate('/simulate');
+                setSimulatorSource('chooser');
+                setSimulatorInitialValues(undefined);
+                setSimulatorOpen(true);
               }}
             >
               <Calculator className="size-4" /> Simular compra en cuotas
@@ -86,12 +94,33 @@ export function CreateMovementSheet() {
         open={expenseOpen}
         onOpenChange={setExpenseOpen}
         board={board}
+        onOpenSimulator={(values) => {
+          setSimulatorSource('expense');
+          setSimulatorInitialValues(values);
+          setSimulatorOpen(true);
+        }}
       />
       <CreateIncomeSheet
         open={incomeOpen}
         onOpenChange={setIncomeOpen}
         boardId={board._id}
         currency={board.baseCurrency}
+      />
+      <InstallmentSimulatorDialog
+        open={simulatorOpen}
+        onOpenChange={(open) => {
+          setSimulatorOpen(open);
+          if (!open && simulatorSource === 'chooser') {
+            setChooserOpen(true);
+          }
+        }}
+        board={board}
+        initialValues={simulatorInitialValues}
+        backLabel={
+          simulatorSource === 'expense'
+            ? 'Volver a nuevo gasto'
+            : 'Volver a nuevo movimiento'
+        }
       />
     </>
   );

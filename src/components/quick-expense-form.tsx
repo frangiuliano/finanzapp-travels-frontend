@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import { ChevronDown, Loader2, Plus, Settings2 } from 'lucide-react';
+import {
+  Calculator,
+  ChevronDown,
+  Loader2,
+  Plus,
+  Settings2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatePaymentMethodSheet } from '@/components/create-payment-method-sheet';
 import { Button } from '@/components/ui/button';
@@ -63,6 +69,11 @@ interface QuickExpenseFormProps {
   prefilledBudgets?: Budget[];
   prefilledParticipants?: Participant[];
   isDialog?: boolean;
+  onOpenSimulator?: (values: {
+    label: string;
+    totalAmount: string;
+    startYearMonth: string;
+  }) => void;
 }
 
 function getParticipantName(participant: Participant): string {
@@ -120,6 +131,7 @@ export function QuickExpenseForm({
   prefilledBudgets,
   prefilledParticipants,
   isDialog = false,
+  onOpenSimulator,
 }: QuickExpenseFormProps) {
   const isEditing = Boolean(expense);
   const user = useAuthStore((state) => state.user);
@@ -1332,6 +1344,24 @@ export function QuickExpenseForm({
 
       {isTravel && errors.paidBy && !showTravelOptions ? (
         <p className="text-destructive text-xs">{errors.paidBy}</p>
+      ) : null}
+
+      {isEveryday && !isEditing && onOpenSimulator ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 rounded-xl"
+          onClick={() =>
+            onOpenSimulator({
+              label: note,
+              totalAmount: expenseCurrency === boardCurrency ? amount : '',
+              startYearMonth: getYearMonthFromIsoDate(expenseDate),
+            })
+          }
+        >
+          <Calculator className="mr-2 size-4" />
+          Simular compra en cuotas
+        </Button>
       ) : null}
 
       <Button
