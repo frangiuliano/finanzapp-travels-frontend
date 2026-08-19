@@ -6,7 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CategoryColorPicker } from '@/components/category-color-picker';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import {
+  DEFAULT_CATEGORY_COLOR,
+  isValidCategoryColor,
+} from '@/lib/category-colors';
 import { categoriesService } from '@/services/categoriesService';
 import { Category } from '@/types/category';
 
@@ -20,11 +25,11 @@ interface CategoryFormState {
   color: string;
 }
 
-const emptyForm: CategoryFormState = {
+const createEmptyForm = (): CategoryFormState => ({
   name: '',
   icon: '',
-  color: '',
-};
+  color: DEFAULT_CATEGORY_COLOR,
+});
 
 export function ManageCategoriesSection({
   boardId,
@@ -34,7 +39,7 @@ export function ManageCategoriesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState<CategoryFormState>(emptyForm);
+  const [formData, setFormData] = useState<CategoryFormState>(createEmptyForm);
 
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
@@ -59,7 +64,7 @@ export function ManageCategoriesSection({
 
   const openCreate = () => {
     setEditingCategory(null);
-    setFormData(emptyForm);
+    setFormData(createEmptyForm());
     setSheetOpen(true);
   };
 
@@ -68,7 +73,10 @@ export function ManageCategoriesSection({
     setFormData({
       name: category.name,
       icon: category.icon || '',
-      color: category.color || '',
+      color:
+        category.color && isValidCategoryColor(category.color)
+          ? category.color.toUpperCase()
+          : DEFAULT_CATEGORY_COLOR,
     });
     setSheetOpen(true);
   };
@@ -85,7 +93,7 @@ export function ManageCategoriesSection({
         await categoriesService.update(editingCategory._id, {
           name: formData.name.trim(),
           icon: formData.icon.trim() || undefined,
-          color: formData.color.trim() || undefined,
+          color: formData.color || DEFAULT_CATEGORY_COLOR,
         });
         toast.success('Categoría actualizada');
       } else {
@@ -93,13 +101,13 @@ export function ManageCategoriesSection({
           boardId,
           name: formData.name.trim(),
           icon: formData.icon.trim() || undefined,
-          color: formData.color.trim() || undefined,
+          color: formData.color || DEFAULT_CATEGORY_COLOR,
         });
         toast.success('Categoría creada');
       }
       setSheetOpen(false);
       setEditingCategory(null);
-      setFormData(emptyForm);
+      setFormData(createEmptyForm());
       await fetchCategories();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -236,18 +244,11 @@ export function ManageCategoriesSection({
               disabled={isSaving}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="category-color">Color (opcional)</Label>
-            <Input
-              id="category-color"
-              value={formData.color}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, color: event.target.value }))
-              }
-              placeholder="#f97316"
-              disabled={isSaving}
-            />
-          </div>
+          <CategoryColorPicker
+            value={formData.color}
+            onChange={(color) => setFormData((prev) => ({ ...prev, color }))}
+            disabled={isSaving}
+          />
           <div className="flex gap-2 pt-2">
             <Button
               type="button"
