@@ -22,6 +22,9 @@ export default function DashboardPage() {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalBudgetedExpenses, setTotalBudgetedExpenses] = useState(0);
   const [totalUnbudgetedExpenses, setTotalUnbudgetedExpenses] = useState(0);
+  const [budgetsStatus, setBudgetsStatus] = useState<
+    'loading' | 'success' | 'error'
+  >('loading');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const activeBoard = currentBoard || boards[0];
@@ -39,6 +42,7 @@ export default function DashboardPage() {
     let stale = false;
 
     const fetchData = async () => {
+      setBudgetsStatus('loading');
       setBudgets([]);
       setExpenses([]);
       setTotalExpenses(0);
@@ -46,34 +50,45 @@ export default function DashboardPage() {
       setTotalUnbudgetedExpenses(0);
 
       try {
-        const [budgetsResult, expensesResult] = await Promise.all([
-          budgetsService
-            .getAllBudgetsByTrip(activeBoard._id)
-            .then(({ budgets: items }) => items)
-            .catch(() => []),
-          expensesService
-            .getExpenses(activeBoard._id)
-            .then(({ expenses: items }) => items)
-            .catch(() => []),
+        const [budgetsResult, expensesResult] = await Promise.allSettled([
+          budgetsService.getAllBudgetsByTrip(activeBoard._id),
+          expensesService.getExpenses(activeBoard._id),
         ]);
 
         if (stale) return;
 
-        setBudgets(budgetsResult);
-        setExpenses(expensesResult);
+        if (budgetsResult.status === 'fulfilled') {
+          setBudgets(budgetsResult.value.budgets);
+          setBudgetsStatus('success');
+        } else {
+          console.error('Error al cargar presupuestos:', budgetsResult.reason);
+          setBudgets([]);
+          setBudgetsStatus('error');
+        }
 
-        const total = expensesResult.reduce(
+        const loadedExpenses =
+          expensesResult.status === 'fulfilled'
+            ? expensesResult.value.expenses
+            : [];
+
+        if (expensesResult.status === 'rejected') {
+          console.error('Error al cargar gastos:', expensesResult.reason);
+        }
+
+        setExpenses(loadedExpenses);
+
+        const total = loadedExpenses.reduce(
           (sum, expense) => sum + expense.amount,
           0,
         );
         setTotalExpenses(total);
 
-        const totalWithBudget = expensesResult
+        const totalWithBudget = loadedExpenses
           .filter((expense) => expense.budgetId)
           .reduce((sum, expense) => sum + expense.amount, 0);
         setTotalBudgetedExpenses(totalWithBudget);
 
-        const totalWithoutBudget = expensesResult
+        const totalWithoutBudget = loadedExpenses
           .filter((expense) => !expense.budgetId)
           .reduce((sum, expense) => sum + expense.amount, 0);
         setTotalUnbudgetedExpenses(totalWithoutBudget);
@@ -81,6 +96,7 @@ export default function DashboardPage() {
         if (!stale) {
           console.error('Error al cargar datos:', error);
           setBudgets([]);
+          setBudgetsStatus('error');
           setExpenses([]);
           setTotalExpenses(0);
           setTotalBudgetedExpenses(0);
@@ -146,13 +162,16 @@ export default function DashboardPage() {
               </div>
             ) : (
               <TripDashboardCards
+                tripId={activeBoard._id}
                 tripName={activeBoard.name}
                 budgets={budgets}
+                budgetsStatus={budgetsStatus}
                 totalExpenses={totalExpenses}
                 totalBudgetedExpenses={totalBudgetedExpenses}
                 totalUnbudgetedExpenses={totalUnbudgetedExpenses}
                 currency={activeBoard.baseCurrency}
                 expenses={expenses}
+                onBudgetsChange={handleRefresh}
               />
             )}
           </>
