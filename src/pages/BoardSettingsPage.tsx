@@ -72,7 +72,7 @@ export default function BoardSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
+    <div className="w-full flex-1 space-y-6 px-4 py-6 lg:px-6">
       <div className="space-y-1">
         <h1 className="font-display text-2xl font-bold tracking-tight">
           Configuración del tablero
