@@ -16,8 +16,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground antialiased;
+    min-height: 100dvh;
+    margin: 0;
     font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
     background-image:
       radial-gradient(

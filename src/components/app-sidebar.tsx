@@ -86,19 +86,35 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="px-2 pt-2 pb-1">
-          <p className="font-display text-sm font-bold tracking-tight text-primary">
-            FinanzApp
+          <p
+            className="font-display flex h-5 items-center text-sm font-bold tracking-tight text-primary group-data-[collapsible=icon]:justify-center"
+            aria-label="FinanzApp"
+          >
+            <span className="group-data-[collapsible=icon]:hidden">
+              FinanzApp
+            </span>
+            <span
+              aria-hidden="true"
+              className="hidden text-xs group-data-[collapsible=icon]:inline"
+            >
+              FA
+            </span>
           </p>
         </div>
         <BoardSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <div className="px-3 pt-2">
+        <div className="px-3 pt-2 group-data-[collapsible=icon]:px-2">
           <Button
-            className="w-full justify-start"
+            className="w-full justify-start group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
             onClick={openMovementCreator}
+            aria-label="Nuevo movimiento"
+            title="Nuevo movimiento"
           >
-            <Plus /> Nuevo movimiento
+            <Plus />
+            <span className="group-data-[collapsible=icon]:hidden">
+              Nuevo movimiento
+            </span>
           </Button>
         </div>
         <NavMain items={navMain} />
