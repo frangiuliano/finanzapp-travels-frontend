@@ -41,6 +41,8 @@ import { CardType } from '@/types/card';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import { formatDate } from '@/lib/utils';
 import { CreateBudgetDialog } from '@/components/create-budget-dialog';
+import { ExpenseFormDialog } from '@/components/expense-form-dialog';
+import type { Board } from '@/types/board';
 
 interface TripDashboardCardsProps {
   tripId: string;
@@ -53,6 +55,8 @@ interface TripDashboardCardsProps {
   currency: string;
   expenses: Expense[];
   onBudgetsChange: () => void;
+  board: Board;
+  budgetOnly?: boolean;
 }
 
 export function TripDashboardCards({
@@ -66,9 +70,12 @@ export function TripDashboardCards({
   currency,
   expenses,
   onBudgetsChange,
+  board,
+  budgetOnly = false,
 }: TripDashboardCardsProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
 
   const stats = useMemo(() => {
     const totalBudget = budgets.reduce((sum, budget) => sum + budget.amount, 0);
@@ -152,178 +159,207 @@ export function TripDashboardCards({
 
   return (
     <div className="space-y-4">
-      {budgetsStatus === 'loading' && (
-        <div
-          className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3"
-          aria-label="Cargando presupuesto"
-        >
-          <div className="flex items-center gap-3">
-            <Skeleton className="size-5 rounded-full" />
-            <Skeleton className="h-4 w-36" />
-          </div>
-          <Skeleton className="h-8 w-20" />
-        </div>
-      )}
-
-      {budgetsStatus === 'error' && (
-        <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <AlertCircleIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
-            <div>
-              <p className="text-sm font-medium">
-                No pudimos cargar el presupuesto
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Tus gastos siguen disponibles. Podés volver a intentar.
-              </p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={onBudgetsChange}>
-            <RefreshCwIcon className="mr-2 size-4" />
-            Reintentar
-          </Button>
-        </div>
-      )}
-
-      {budgetsStatus === 'success' && !hasBudgets && (
-        <div className="flex flex-col gap-3 rounded-xl border border-dashed px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <PiggyBankIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">Presupuesto opcional</p>
-              <p className="text-xs text-muted-foreground">
-                Podés definir uno si querés controlar cuánto gastar.
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="self-start sm:self-auto"
-            onClick={() => setIsBudgetDialogOpen(true)}
-          >
-            <PlusIcon className="mr-2 size-4" />
-            Agregar
-          </Button>
-        </div>
-      )}
-
-      <div
-        className={`grid gap-4 ${hasBudgets ? 'md:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-2'} *:data-[slot=card]:shadow-xs *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card`}
-      >
-        {hasBudgets && (
-          <Card className="@container/card">
-            <CardHeader className="relative">
-              <CardDescription>Presupuesto total</CardDescription>
-              <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                {formatCurrency(stats.totalBudget)}
-              </CardTitle>
-              <div className="absolute right-4 top-4">
-                <PiggyBankIcon className="size-6 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardFooter className="text-sm text-muted-foreground">
-              {stats.budgetCount === 1
-                ? '1 presupuesto configurado'
-                : `${stats.budgetCount} presupuestos configurados`}
-            </CardFooter>
-          </Card>
-        )}
-
-        <Card className="@container/card">
-          <CardHeader className="relative">
-            <CardDescription>Gastos Totales</CardDescription>
-            <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-              {formatCurrency(stats.totalExpenses)}
-            </CardTitle>
-            <div className="absolute right-4 top-4">
-              <WalletIcon className="size-6 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              Total gastado <TrendingUpIcon className="size-4" />
-            </div>
-            <div className="text-muted-foreground">En {tripName}</div>
-          </CardFooter>
-        </Card>
-
-        {hasBudgets && (
-          <Card className="@container/card">
-            <CardHeader className="relative">
-              <CardDescription>Gastado del presupuesto</CardDescription>
-              <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                {formatCurrency(stats.totalBudgetedExpenses)}
-              </CardTitle>
-              <div className="absolute right-4 top-4">
-                <TrendingUpIcon className="size-6 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span
-                  className={
-                    isOverBudget
-                      ? 'font-medium text-destructive'
-                      : 'text-muted-foreground'
-                  }
-                >
-                  {isOverBudget
-                    ? `${formatCurrency(Math.abs(remaining))} por encima`
-                    : `${formatCurrency(remaining)} restante`}
-                </span>
-                <span className="font-medium tabular-nums">
-                  {stats.budgetUsage === null
-                    ? stats.totalBudgetedExpenses > 0
-                      ? 'Superado'
-                      : '0%'
-                    : `${stats.budgetUsage.toFixed(1)}%`}
-                </span>
-              </div>
-              <Progress
-                value={
-                  stats.budgetUsage === null
-                    ? stats.totalBudgetedExpenses > 0
-                      ? 100
-                      : 0
-                    : stats.budgetUsage
-                }
-                aria-label="Progreso del presupuesto"
-              />
-              {stats.totalBudget === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  El presupuesto configurado tiene valor 0.
+      {!budgetOnly && (
+        <div className="space-y-3">
+          <Card className="bg-linear-to-br from-primary/10 via-card to-card shadow-sm">
+            <CardHeader className="relative px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:px-6 sm:py-5">
+              <div className="min-w-0 space-y-1.5">
+                <CardDescription>Gastos totales</CardDescription>
+                <CardTitle className="text-3xl font-semibold tabular-nums sm:text-4xl">
+                  {formatCurrency(stats.totalExpenses)}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {expenses.length === 0
+                    ? 'Todavía no registraste gastos en este viaje.'
+                    : `${expenses.length} gasto${expenses.length === 1 ? '' : 's'} registrado${expenses.length === 1 ? '' : 's'} en ${tripName}`}
                 </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {hasBudgets && (
-          <Card
-            className="@container/card cursor-pointer hover:bg-muted/50 transition-colors"
-            onClick={() => setIsDialogOpen(true)}
-          >
-            <CardHeader className="relative">
-              <CardDescription>Gastos Fuera de Presupuesto</CardDescription>
-              <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                {formatCurrency(stats.totalUnbudgetedExpenses)}
-              </CardTitle>
-              <div className="absolute right-4 top-4">
-                <BanknoteIcon className="size-6 text-muted-foreground" />
               </div>
+              <Button
+                className="hidden shrink-0 sm:inline-flex"
+                onClick={() => setIsExpenseDialogOpen(true)}
+              >
+                <PlusIcon className="mr-2 size-4" />
+                Registrar gasto
+              </Button>
+              <WalletIcon className="absolute right-4 top-4 size-6 text-primary/70 sm:hidden" />
             </CardHeader>
-            <CardFooter className="flex-col items-start gap-1 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                Gastos sin presupuesto asignado
-              </div>
-              <div className="text-muted-foreground">
-                No afectan el uso del presupuesto
-              </div>
-            </CardFooter>
           </Card>
-        )}
-      </div>
+          <Button
+            size="lg"
+            className="h-12 w-full sm:hidden"
+            onClick={() => setIsExpenseDialogOpen(true)}
+          >
+            <PlusIcon className="mr-2 size-5" />
+            Registrar gasto
+          </Button>
+          <ExpenseFormDialog
+            open={isExpenseDialogOpen}
+            onOpenChange={setIsExpenseDialogOpen}
+            board={board}
+            budgets={budgets}
+            onSuccess={onBudgetsChange}
+          />
+        </div>
+      )}
+
+      {!budgetOnly ? null : (
+        <>
+          {budgetsStatus === 'loading' && (
+            <div
+              className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3"
+              aria-label="Cargando presupuesto"
+            >
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-5 rounded-full" />
+                <Skeleton className="h-4 w-36" />
+              </div>
+              <Skeleton className="h-8 w-20" />
+            </div>
+          )}
+
+          {budgetsStatus === 'error' && (
+            <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <AlertCircleIcon className="mt-0.5 size-5 shrink-0 text-destructive" />
+                <div>
+                  <p className="text-sm font-medium">
+                    No pudimos cargar el presupuesto
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Tus gastos siguen disponibles. Podés volver a intentar.
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={onBudgetsChange}>
+                <RefreshCwIcon className="mr-2 size-4" />
+                Reintentar
+              </Button>
+            </div>
+          )}
+
+          {budgetsStatus === 'success' && !hasBudgets && (
+            <div className="flex flex-col gap-3 rounded-xl border border-dashed px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <PiggyBankIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Presupuesto opcional</p>
+                  <p className="text-xs text-muted-foreground">
+                    Podés definir uno si querés controlar cuánto gastar.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-start sm:self-auto"
+                onClick={() => setIsBudgetDialogOpen(true)}
+              >
+                <PlusIcon className="mr-2 size-4" />
+                Agregar
+              </Button>
+            </div>
+          )}
+
+          <div
+            className={`grid gap-4 ${hasBudgets ? 'md:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-2'} *:data-[slot=card]:shadow-xs *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card`}
+          >
+            {hasBudgets && (
+              <Card className="@container/card">
+                <CardHeader className="relative">
+                  <CardDescription>Presupuesto total</CardDescription>
+                  <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+                    {formatCurrency(stats.totalBudget)}
+                  </CardTitle>
+                  <div className="absolute right-4 top-4">
+                    <PiggyBankIcon className="size-6 text-muted-foreground" />
+                  </div>
+                </CardHeader>
+                <CardFooter className="text-sm text-muted-foreground">
+                  {stats.budgetCount === 1
+                    ? '1 presupuesto configurado'
+                    : `${stats.budgetCount} presupuestos configurados`}
+                </CardFooter>
+              </Card>
+            )}
+
+            {hasBudgets && (
+              <Card className="@container/card">
+                <CardHeader className="relative">
+                  <CardDescription>Gastado del presupuesto</CardDescription>
+                  <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+                    {formatCurrency(stats.totalBudgetedExpenses)}
+                  </CardTitle>
+                  <div className="absolute right-4 top-4">
+                    <TrendingUpIcon className="size-6 text-muted-foreground" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span
+                      className={
+                        isOverBudget
+                          ? 'font-medium text-destructive'
+                          : 'text-muted-foreground'
+                      }
+                    >
+                      {isOverBudget
+                        ? `${formatCurrency(Math.abs(remaining))} por encima`
+                        : `${formatCurrency(remaining)} restante`}
+                    </span>
+                    <span className="font-medium tabular-nums">
+                      {stats.budgetUsage === null
+                        ? stats.totalBudgetedExpenses > 0
+                          ? 'Superado'
+                          : '0%'
+                        : `${stats.budgetUsage.toFixed(1)}%`}
+                    </span>
+                  </div>
+                  <Progress
+                    value={
+                      stats.budgetUsage === null
+                        ? stats.totalBudgetedExpenses > 0
+                          ? 100
+                          : 0
+                        : stats.budgetUsage
+                    }
+                    aria-label="Progreso del presupuesto"
+                  />
+                  {stats.totalBudget === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      El presupuesto configurado tiene valor 0.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {hasBudgets && (
+              <Card
+                className="@container/card cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setIsDialogOpen(true)}
+              >
+                <CardHeader className="relative">
+                  <CardDescription>Gastos Fuera de Presupuesto</CardDescription>
+                  <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+                    {formatCurrency(stats.totalUnbudgetedExpenses)}
+                  </CardTitle>
+                  <div className="absolute right-4 top-4">
+                    <BanknoteIcon className="size-6 text-muted-foreground" />
+                  </div>
+                </CardHeader>
+                <CardFooter className="flex-col items-start gap-1 text-sm">
+                  <div className="line-clamp-1 flex gap-2 font-medium">
+                    Gastos sin presupuesto asignado
+                  </div>
+                  <div className="text-muted-foreground">
+                    No afectan el uso del presupuesto
+                  </div>
+                </CardFooter>
+              </Card>
+            )}
+          </div>
+        </>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">

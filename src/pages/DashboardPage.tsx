@@ -6,7 +6,7 @@ import { TripDashboardCards } from '@/components/trip-dashboard-cards';
 import { RecentExpensesTable } from '@/components/recent-expenses-table';
 import { StatisticsCards } from '@/components/statistics-cards';
 import { BudgetsOverview } from '@/components/budgets-overview';
-import { Separator } from '@/components/ui/separator';
+import { TripExpenseDistribution } from '@/components/trip-expense-distribution';
 import { budgetsService } from '@/services/budgetsService';
 import { expensesService } from '@/services/expensesService';
 import { useBoardsStore } from '@/store/boardsStore';
@@ -161,53 +161,85 @@ export default function DashboardPage() {
                 selector para validar el shell.
               </div>
             ) : (
-              <TripDashboardCards
-                tripId={activeBoard._id}
-                tripName={activeBoard.name}
-                budgets={budgets}
-                budgetsStatus={budgetsStatus}
-                totalExpenses={totalExpenses}
-                totalBudgetedExpenses={totalBudgetedExpenses}
-                totalUnbudgetedExpenses={totalUnbudgetedExpenses}
-                currency={activeBoard.baseCurrency}
-                expenses={expenses}
-                onBudgetsChange={handleRefresh}
-              />
+              <>
+                <TripDashboardCards
+                  board={activeBoard}
+                  tripId={activeBoard._id}
+                  tripName={activeBoard.name}
+                  budgets={budgets}
+                  budgetsStatus={budgetsStatus}
+                  totalExpenses={totalExpenses}
+                  totalBudgetedExpenses={totalBudgetedExpenses}
+                  totalUnbudgetedExpenses={totalUnbudgetedExpenses}
+                  currency={activeBoard.baseCurrency}
+                  expenses={expenses}
+                  onBudgetsChange={handleRefresh}
+                />
+                <div className="mt-4">
+                  <TripExpenseDistribution
+                    expenses={expenses}
+                    currency={activeBoard.baseCurrency}
+                    mode="categories"
+                  />
+                </div>
+              </>
             )}
           </>
         )}
       </div>
 
-      {!isEverydayBoard &&
-        !activeBoard._id.startsWith('mock-') &&
-        budgets.length > 0 && (
-          <>
-            <Separator />
-            <div className="px-4 lg:px-6">
-              <BudgetsOverview
-                tripName={activeBoard.name}
-                budgets={budgets}
-                expenses={expenses}
-              />
-            </div>
-          </>
-        )}
-
       {!isEverydayBoard && !activeBoard._id.startsWith('mock-') && (
-        <>
-          <Separator />
-          <div className="px-2 sm:px-4 pb-4 lg:px-6">
+        <div className="space-y-4 px-2 pb-4 sm:px-4 lg:px-6">
+          <div>
             <RecentExpensesTable
               tripId={activeBoard._id}
               refreshTrigger={refreshTrigger}
               onRefresh={handleRefresh}
             />
           </div>
-          <Separator />
-          <div className="px-2 sm:px-4 pt-4 lg:px-6">
+
+          <TripExpenseDistribution
+            expenses={expenses}
+            currency={activeBoard.baseCurrency}
+            mode="participants"
+          />
+
+          <div>
             <StatisticsCards />
           </div>
-        </>
+
+          <section className="space-y-3 pt-2">
+            <div>
+              <h3 className="font-display text-lg font-semibold">
+                Presupuesto
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Opcional para controlar el gasto del viaje.
+              </p>
+            </div>
+            <TripDashboardCards
+              board={activeBoard}
+              budgetOnly
+              tripId={activeBoard._id}
+              tripName={activeBoard.name}
+              budgets={budgets}
+              budgetsStatus={budgetsStatus}
+              totalExpenses={totalExpenses}
+              totalBudgetedExpenses={totalBudgetedExpenses}
+              totalUnbudgetedExpenses={totalUnbudgetedExpenses}
+              currency={activeBoard.baseCurrency}
+              expenses={expenses}
+              onBudgetsChange={handleRefresh}
+            />
+            {budgets.length > 0 && (
+              <BudgetsOverview
+                tripName={activeBoard.name}
+                budgets={budgets}
+                expenses={expenses}
+              />
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

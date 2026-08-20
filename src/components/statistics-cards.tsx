@@ -223,7 +223,7 @@ export function StatisticsCards() {
                 ))}
               </div>
             ) : (
-              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+              <div className="py-2 text-sm text-muted-foreground">
                 No hay gastos con tarjetas
               </div>
             )}
@@ -291,7 +291,7 @@ export function StatisticsCards() {
                 </div>
               </div>
             ) : (
-              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
+              <div className="py-2 text-sm text-muted-foreground">
                 No hay deudas pendientes
               </div>
             )}

@@ -518,9 +518,11 @@ export function RecentExpensesTable({
             <div className="text-muted-foreground">Cargando...</div>
           </div>
         ) : filteredData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <WalletIcon className="mb-4 size-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
+          <div className="flex items-center gap-3 py-2 text-left">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
+              <WalletIcon className="size-4 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">
               {yearMonth
                 ? 'No hay gastos para este mes con la vista seleccionada'
                 : 'No hay gastos registrados aún'}
