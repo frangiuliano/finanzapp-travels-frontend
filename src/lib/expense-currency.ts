@@ -12,8 +12,15 @@ export function getExpenseAmountInBoardCurrency(
   expense: ExpenseCurrencyFields,
   boardCurrency: string,
 ): number | null {
-  if (expense.displayFx) {
+  if (expense.displayFx?.boardCurrency === boardCurrency) {
     return expense.displayFx.amountInBoardCurrency;
+  }
+
+  // The stored rate is relative to the expense's actual board currency. If a
+  // caller asks for a different currency, reusing it would relabel the amount
+  // without converting it (for example, 42,000 ARS as 42,000 USD).
+  if (expense.displayFx) {
+    return null;
   }
 
   if (expense.currency === boardCurrency) {

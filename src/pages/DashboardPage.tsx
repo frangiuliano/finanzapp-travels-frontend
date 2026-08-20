@@ -193,6 +193,7 @@ export default function DashboardPage() {
           <div>
             <RecentExpensesTable
               tripId={activeBoard._id}
+              boardCurrency={activeBoard.baseCurrency}
               refreshTrigger={refreshTrigger}
               onRefresh={handleRefresh}
             />
