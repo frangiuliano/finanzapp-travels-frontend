@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Settings2, Trash2, LogOut, CalendarPlus } from 'lucide-react';
+import { Settings2, Trash2, LogOut, CalendarPlus, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,7 @@ import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { leaveBoardWithConfirm } from '@/lib/leave-board';
 import { forecastService } from '@/services/forecastService';
 import { formatYearMonth } from '@/lib/utils';
+import { archiveBoardWithConfirm } from '@/lib/archive-board';
 
 export default function BoardSettingsPage() {
   const [searchParams] = useSearchParams();
@@ -34,6 +35,7 @@ export default function BoardSettingsPage() {
   const activeBoard = currentBoard || boards[0] || null;
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isExtendingHorizon, setIsExtendingHorizon] = useState(false);
 
   const handleExtendHorizon = async () => {
@@ -209,6 +211,24 @@ export default function BoardSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {activeBoard.type !== 'everyday' ? (
+              <Button
+                variant="outline"
+                className="mr-2"
+                disabled={isArchiving}
+                onClick={async () => {
+                  setIsArchiving(true);
+                  try {
+                    await archiveBoardWithConfirm(activeBoard);
+                  } finally {
+                    setIsArchiving(false);
+                  }
+                }}
+              >
+                <Archive className="mr-2 h-4 w-4" />
+                {isArchiving ? 'Archivando…' : 'Archivar tablero'}
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               className="text-destructive hover:text-destructive"

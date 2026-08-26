@@ -23,6 +23,8 @@ import {
   SUPPORTED_CURRENCIES,
   SupportedCurrency,
 } from '@/constants/currencies';
+import { CategoryPicker } from '@/components/category-picker';
+import { MIN_BOARD_CATEGORIES } from '@/constants/default-categories';
 
 interface CreateTripDialogProps {
   open: boolean;
@@ -38,6 +40,11 @@ export function CreateTripDialog({
   const [name, setName] = useState('');
   const [baseCurrency, setBaseCurrency] = useState(DEFAULT_CURRENCY);
   const [isLoading, setIsLoading] = useState(false);
+  const [categoryNames, setCategoryNames] = useState<string[]>([
+    'Comida',
+    'Transporte',
+    'Ocio',
+  ]);
   const boards = useBoardsStore((state) => state.boards);
   const everydayBoards = boards.filter((board) => board.type === 'everyday');
   const [parentBoardId, setParentBoardId] = useState(
@@ -64,6 +71,10 @@ export function CreateTripDialog({
     }
 
     setErrors(newErrors);
+    if (categoryNames.length < MIN_BOARD_CATEGORIES) {
+      toast.error(`Seleccioná al menos ${MIN_BOARD_CATEGORIES} categorías`);
+      return false;
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -80,6 +91,7 @@ export function CreateTripDialog({
         baseCurrency,
         type: 'travel',
         parentBoardId: parentBoardId || undefined,
+        categoryNames,
       });
 
       toast.success(result.message || 'Viaje creado exitosamente');
@@ -91,6 +103,7 @@ export function CreateTripDialog({
       setBaseCurrency(DEFAULT_CURRENCY);
       setParentBoardId(everydayBoards[0]?._id ?? '');
       setErrors({});
+      setCategoryNames(['Comida', 'Transporte', 'Ocio']);
 
       onSuccess?.(result.board);
       onOpenChange(false);
@@ -117,6 +130,7 @@ export function CreateTripDialog({
       setBaseCurrency(DEFAULT_CURRENCY);
       setParentBoardId(everydayBoards[0]?._id ?? '');
       setErrors({});
+      setCategoryNames(['Comida', 'Transporte', 'Ocio']);
     }
     onOpenChange(newOpen);
   };
@@ -143,6 +157,12 @@ export function CreateTripDialog({
             <p className="text-sm text-destructive">{errors.name}</p>
           )}
         </div>
+
+        <CategoryPicker
+          value={categoryNames}
+          onChange={setCategoryNames}
+          disabled={isLoading}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="parentBoard">Tablero principal</Label>

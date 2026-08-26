@@ -11,6 +11,7 @@ interface BoardApiRecord {
   parentBoardId?: string;
   linkedEverydayBoardId?: string;
   createdAt: string;
+  archivedAt?: string;
   userRole?: ParticipantRole;
   createdBy?: Board['createdBy'];
   isShared?: boolean;
@@ -33,6 +34,7 @@ function mapBoard(record: BoardApiRecord): Board {
     linkedEverydayBoardId: record.linkedEverydayBoardId,
     isShared,
     createdAt: record.createdAt,
+    archivedAt: record.archivedAt,
     userRole: record.userRole,
     createdBy: record.createdBy,
   };
@@ -49,6 +51,7 @@ export interface CreateBoardInput {
   baseCurrency?: string;
   type?: BoardType;
   parentBoardId?: string;
+  categoryNames: string[];
 }
 
 export const boardsService = {
@@ -95,6 +98,31 @@ export const boardsService = {
     }>('/boards');
     const records = response.data.boards ?? response.data.trips ?? [];
     return { boards: records.map(mapBoard) };
+  },
+
+  async getArchivedBoards(): Promise<{ boards: Board[] }> {
+    if (isBoardMocksEnabled()) return { boards: [] };
+    const response = await api.get<{
+      boards?: BoardApiRecord[];
+      trips?: BoardApiRecord[];
+    }>('/boards/archived');
+    return {
+      boards: (response.data.boards ?? response.data.trips ?? []).map(mapBoard),
+    };
+  },
+
+  async archiveBoard(id: string): Promise<{ board: Board }> {
+    const response = await api.patch<{ board: BoardApiRecord }>(
+      `/boards/${id}/archive`,
+    );
+    return { board: mapBoard(response.data.board) };
+  },
+
+  async unarchiveBoard(id: string): Promise<{ board: Board }> {
+    const response = await api.patch<{ board: BoardApiRecord }>(
+      `/boards/${id}/unarchive`,
+    );
+    return { board: mapBoard(response.data.board) };
   },
 
   async updateExpenseLink(

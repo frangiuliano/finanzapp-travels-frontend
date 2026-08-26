@@ -11,6 +11,7 @@ export interface Board {
   linkedEverydayBoardId?: string;
   isShared: boolean;
   createdAt: string;
+  archivedAt?: string;
   userRole?: ParticipantRole;
   createdBy?: {
     firstName: string;

@@ -8,6 +8,8 @@ import {
   Home,
   Trash2,
   LogOut,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,6 +37,12 @@ import { deleteBoardWithConfirm } from '@/lib/delete-board';
 import { leaveBoardWithConfirm } from '@/lib/leave-board';
 import { glassCard } from '@/lib/glass';
 import { cn } from '@/lib/utils';
+import {
+  archiveBoardWithConfirm,
+  BOARDS_ARCHIVE_CHANGED_EVENT,
+  unarchiveBoard,
+} from '@/lib/archive-board';
+import { boardsService } from '@/services/boardsService';
 
 function BoardIcon({ type }: { type: Board['type'] }) {
   if (type === 'everyday') {
@@ -57,6 +65,26 @@ export function BoardSwitcher({
   const boards = useBoardsStore((state) => state.boards);
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const isLoading = useBoardsStore((state) => state.isLoading);
+  const [archivedBoards, setArchivedBoards] = React.useState<Board[]>([]);
+
+  const loadArchivedBoards = React.useCallback(async () => {
+    try {
+      const result = await boardsService.getArchivedBoards();
+      setArchivedBoards(result.boards);
+    } catch {
+      setArchivedBoards([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadArchivedBoards();
+    window.addEventListener(BOARDS_ARCHIVE_CHANGED_EVENT, loadArchivedBoards);
+    return () =>
+      window.removeEventListener(
+        BOARDS_ARCHIVE_CHANGED_EVENT,
+        loadArchivedBoards,
+      );
+  }, [loadArchivedBoards]);
 
   const activeBoard = currentBoard ?? boards[0] ?? null;
 
@@ -70,6 +98,12 @@ export function BoardSwitcher({
     e.stopPropagation();
     e.preventDefault();
     await leaveBoardWithConfirm(board);
+  };
+
+  const handleArchiveBoard = async (e: React.MouseEvent, board: Board) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await archiveBoardWithConfirm(board);
   };
 
   if (isLoading && boards.length === 0) {
@@ -190,14 +224,26 @@ export function BoardSwitcher({
                 </Badge>
               ) : null}
               {board.userRole === ParticipantRole.OWNER ? (
-                <button
-                  type="button"
-                  onClick={(e) => void handleDeleteBoard(e, board)}
-                  className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  title="Eliminar tablero"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </button>
+                <>
+                  {board.type !== 'everyday' ? (
+                    <button
+                      type="button"
+                      onClick={(e) => void handleArchiveBoard(e, board)}
+                      className="rounded-sm p-1 opacity-70 hover:opacity-100"
+                      title="Archivar tablero"
+                    >
+                      <Archive className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={(e) => void handleDeleteBoard(e, board)}
+                    className="rounded-sm p-1 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    title="Eliminar tablero"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </button>
+                </>
               ) : board.userRole === ParticipantRole.MEMBER ? (
                 <button
                   type="button"
@@ -211,6 +257,33 @@ export function BoardSwitcher({
             </div>
           </DropdownMenuItem>
         ))}
+        {archivedBoards.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
+              Archivados
+            </DropdownMenuLabel>
+            {archivedBoards.map((board) => (
+              <DropdownMenuItem key={board._id} className="gap-2 p-2">
+                <Archive className="size-4 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate">{board.name}</span>
+                {board.userRole === ParticipantRole.OWNER ? (
+                  <button
+                    type="button"
+                    title="Desarchivar tablero"
+                    className="rounded-sm p-1 opacity-70 hover:opacity-100"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void unarchiveBoard(board);
+                    }}
+                  >
+                    <ArchiveRestore className="size-4" />
+                  </button>
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="gap-2 p-2"

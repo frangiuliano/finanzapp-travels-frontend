@@ -34,15 +34,24 @@ import { addBoardToStores, selectActiveBoard } from '@/lib/board-trip-sync';
 import { boardsService } from '@/services/boardsService';
 import { participantsService } from '@/services/participantsService';
 import { BoardType } from '@/types/board';
+import { CategoryPicker } from '@/components/category-picker';
+import { MIN_BOARD_CATEGORIES } from '@/constants/default-categories';
 
-type WizardStep = 'type' | 'name' | 'currency' | 'invite';
+type WizardStep = 'type' | 'name' | 'currency' | 'categories' | 'invite';
 
-const STEPS: WizardStep[] = ['type', 'name', 'currency', 'invite'];
+const STEPS: WizardStep[] = [
+  'type',
+  'name',
+  'currency',
+  'categories',
+  'invite',
+];
 
 const STEP_LABELS: Record<WizardStep, string> = {
   type: 'Tipo',
   name: 'Nombre',
   currency: 'Moneda',
+  categories: 'Categorías',
   invite: 'Invitar',
 };
 
@@ -116,6 +125,11 @@ export function OnboardingWizard() {
   const [baseCurrency, setBaseCurrency] =
     useState<SupportedCurrency>(DEFAULT_CURRENCY);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [categoryNames, setCategoryNames] = useState<string[]>([
+    'Comida',
+    'Transporte',
+    'Hogar',
+  ]);
   const [nameError, setNameError] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -147,6 +161,11 @@ export function OnboardingWizard() {
       setNameError(null);
     }
 
+    if (step === 'categories' && categoryNames.length < MIN_BOARD_CATEGORIES) {
+      toast.error(`Seleccioná al menos ${MIN_BOARD_CATEGORIES} categorías`);
+      return;
+    }
+
     if (stepIndex < STEPS.length - 1) {
       setStepIndex((current) => current + 1);
     }
@@ -170,6 +189,7 @@ export function OnboardingWizard() {
         name: displayName,
         baseCurrency,
         type: boardType,
+        categoryNames,
       });
 
       addBoardToStores(board);
@@ -229,6 +249,7 @@ export function OnboardingWizard() {
           {step === 'type' && '¿Qué vas a organizar?'}
           {step === 'name' && '¿Cómo lo llamamos?'}
           {step === 'currency' && 'Moneda del tablero'}
+          {step === 'categories' && '¿Cómo vas a clasificar tus gastos?'}
           {step === 'invite' && '¿Lo compartís con alguien?'}
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -238,6 +259,8 @@ export function OnboardingWizard() {
             'Un nombre corto alcanza. Podés cambiarlo después.'}
           {step === 'currency' &&
             'Todos los totales y reportes de este tablero usan esta moneda.'}
+          {step === 'categories' &&
+            'Elegí solo las que tengan sentido para este tablero. Después podés crear otras.'}
           {step === 'invite' &&
             'Opcional: invitá a tu pareja o roomie por email. También podés hacerlo más tarde.'}
         </p>
@@ -251,6 +274,7 @@ export function OnboardingWizard() {
               selected={boardType === 'everyday'}
               onSelect={() => {
                 setBoardType('everyday');
+                setCategoryNames(['Comida', 'Transporte', 'Hogar']);
                 if (!name.trim()) setName(defaultNameForType('everyday'));
               }}
               title="Cotidiano"
@@ -262,6 +286,7 @@ export function OnboardingWizard() {
               selected={boardType === 'travel'}
               onSelect={() => {
                 setBoardType('travel');
+                setCategoryNames(['Comida', 'Transporte', 'Ocio']);
                 if (!name.trim()) setName(defaultNameForType('travel'));
               }}
               title="Viaje"
@@ -322,6 +347,14 @@ export function OnboardingWizard() {
           </div>
         )}
 
+        {step === 'categories' && (
+          <CategoryPicker
+            value={categoryNames}
+            onChange={setCategoryNames}
+            disabled={isSubmitting}
+          />
+        )}
+
         {step === 'invite' && (
           <div className="space-y-3">
             <div className="space-y-2">
@@ -354,7 +387,7 @@ export function OnboardingWizard() {
         )}
       </div>
 
-      <div className="pointer-events-none sticky bottom-[var(--mobile-nav-total)] z-10 px-3 md:bottom-0 md:px-0">
+      <div className="mt-auto px-3 pb-[calc(var(--mobile-nav-total)+0.5rem)] md:px-0 md:pb-2">
         <div
           className={cn(
             glassBar,
@@ -385,15 +418,17 @@ export function OnboardingWizard() {
               </Button>
             ) : (
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  onClick={() => void finishWizard(false)}
-                  disabled={isSubmitting}
-                >
-                  Omitir por ahora
-                </Button>
+                {inviteEmail.trim() ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => void finishWizard(false)}
+                    disabled={isSubmitting}
+                  >
+                    Crear sin invitar
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   className="rounded-xl"
