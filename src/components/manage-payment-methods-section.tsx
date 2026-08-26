@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { PaymentMethodInstitutionField } from '@/components/payment-method-institution-field';
 import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
 import { cn } from '@/lib/utils';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
@@ -44,6 +45,8 @@ interface PaymentMethodFormState {
   ownerType: PaymentMethodOwnerType;
   kind: PaymentMethodKind;
   name: string;
+  institution: string;
+  institutionCode: string;
   lastFourDigits: string;
   brand: string;
   closingDay: string;
@@ -53,6 +56,8 @@ const defaultForm: PaymentMethodFormState = {
   ownerType: 'user',
   kind: 'debit',
   name: '',
+  institution: '',
+  institutionCode: '',
   lastFourDigits: '',
   brand: '',
   closingDay: '',
@@ -80,6 +85,8 @@ function formStateFromMethod(method: PaymentMethod): PaymentMethodFormState {
     ownerType: method.ownerType,
     kind: method.kind,
     name: method.name,
+    institution: method.institution || '',
+    institutionCode: method.institutionCode || '',
     lastFourDigits: method.lastFourDigits || '',
     brand: method.brand || '',
     closingDay: method.closingDay ? String(method.closingDay) : '',
@@ -91,6 +98,8 @@ function buildUpdatePayload(
 ): UpdatePaymentMethodDto {
   const updatePayload: UpdatePaymentMethodDto = {
     name: formData.name.trim(),
+    institution: formData.institution.trim(),
+    institutionCode: formData.institutionCode || null,
     brand: formData.brand.trim() || undefined,
   };
 
@@ -214,6 +223,8 @@ export function ManagePaymentMethodsSection({
       ownerType: formData.ownerType,
       kind: formData.kind,
       name: formData.name.trim(),
+      institution: formData.institution.trim() || undefined,
+      institutionCode: formData.institutionCode || undefined,
       brand: formData.brand.trim() || undefined,
     };
 
@@ -418,6 +429,11 @@ export function ManagePaymentMethodsSection({
               <p className="text-xs text-muted-foreground">
                 {formatMethodSummary(method)}
               </p>
+              {method.institution ? (
+                <p className="text-xs text-muted-foreground">
+                  {method.institution}
+                </p>
+              ) : null}
               <p className="text-xs text-muted-foreground">
                 {getOwnerLabel(method)}
               </p>
@@ -693,6 +709,20 @@ export function ManagePaymentMethodsSection({
               disabled={isSaving}
             />
           </div>
+
+          <PaymentMethodInstitutionField
+            idPrefix="pm"
+            value={formData.institution}
+            institutionCode={formData.institutionCode || undefined}
+            onChange={(institutionCode, institution) =>
+              setFormData((prev) => ({
+                ...prev,
+                institution,
+                institutionCode: institutionCode || '',
+              }))
+            }
+            disabled={isSaving}
+          />
 
           {requiresDigits ? (
             <div className="space-y-2">

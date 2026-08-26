@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { PaymentMethodInstitutionField } from '@/components/payment-method-institution-field';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import {
   CreatePaymentMethodDto,
@@ -32,6 +33,8 @@ interface FormState {
   ownerType: PaymentMethodOwnerType;
   kind: PaymentMethodKind;
   name: string;
+  institution: string;
+  institutionCode: string;
   lastFourDigits: string;
   closingDay: string;
 }
@@ -40,6 +43,8 @@ const defaultForm: FormState = {
   ownerType: 'user',
   kind: 'debit',
   name: '',
+  institution: '',
+  institutionCode: '',
   lastFourDigits: '',
   closingDay: '',
 };
@@ -83,6 +88,8 @@ export function CreatePaymentMethodSheet({
       ownerType: formData.ownerType,
       kind: formData.kind,
       name: formData.name.trim(),
+      institution: formData.institution.trim() || undefined,
+      institutionCode: formData.institutionCode || undefined,
       lastFourDigits: formData.lastFourDigits.trim(),
     };
 
@@ -176,6 +183,20 @@ export function CreatePaymentMethodSheet({
             autoFocus
           />
         </div>
+
+        <PaymentMethodInstitutionField
+          idPrefix="pm-quick"
+          value={formData.institution}
+          institutionCode={formData.institutionCode || undefined}
+          onChange={(institutionCode, institution) =>
+            setFormData((prev) => ({
+              ...prev,
+              institution,
+              institutionCode: institutionCode || '',
+            }))
+          }
+          disabled={isSaving}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="pm-quick-digits">Últimos 4 dígitos</Label>

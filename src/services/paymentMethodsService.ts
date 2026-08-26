@@ -2,12 +2,20 @@ import api from './api';
 import {
   CreatePaymentMethodDto,
   PaymentMethod,
+  PaymentMethodInstitution,
   PaymentMethodOwnerType,
   PaymentMethodVisibility,
   UpdatePaymentMethodDto,
 } from '@/types/payment-method';
 
 export const paymentMethodsService = {
+  async getInstitutions(): Promise<{
+    institutions: PaymentMethodInstitution[];
+  }> {
+    const response = await api.get('/payment-methods/institutions');
+    return response.data;
+  },
+
   async getAvailableForBoard(
     boardId: string,
   ): Promise<{ paymentMethods: PaymentMethod[] }> {

@@ -1,6 +1,17 @@
 export type PaymentMethodOwnerType = 'user' | 'board';
 export type PaymentMethodKind = 'cash' | 'debit' | 'credit';
 
+export interface PaymentMethodInstitution {
+  code: string;
+  displayName: string;
+  legalName?: string;
+  bcraCode?: string;
+  type: 'bank' | 'wallet';
+  countryCode?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
 export interface PaymentMethod {
   _id: string;
   ownerType: PaymentMethodOwnerType;
@@ -8,6 +19,8 @@ export interface PaymentMethod {
   userId?: string | { _id: string; firstName: string; lastName: string };
   tripId?: string | { _id: string; name: string };
   name: string;
+  institution?: string;
+  institutionCode?: string;
   lastFourDigits?: string;
   brand?: string;
   closingDay?: number;
@@ -26,6 +39,8 @@ export interface CreatePaymentMethodDto {
   boardId?: string;
   tripId?: string;
   name: string;
+  institution?: string;
+  institutionCode?: string;
   lastFourDigits?: string;
   brand?: string;
   closingDay?: number;
@@ -40,6 +55,8 @@ export interface PaymentMethodVisibility {
 
 export interface UpdatePaymentMethodDto {
   name?: string;
+  institution?: string;
+  institutionCode?: string | null;
   lastFourDigits?: string;
   brand?: string;
   closingDay?: number;
