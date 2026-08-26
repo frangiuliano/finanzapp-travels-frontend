@@ -126,6 +126,9 @@ export function CreateIncomeSheet({
         });
         toast.success('Ingreso actualizado');
       } else if (mode === 'one-time') {
+        const isFutureIncome = Boolean(
+          incomeDate && new Date(incomeDate).getTime() > Date.now(),
+        );
         await incomesService.createIncome({
           boardId,
           label: label.trim(),
@@ -133,7 +136,11 @@ export function CreateIncomeSheet({
           currency: resolvedCurrency,
           incomeDate: incomeDate || undefined,
         });
-        toast.success('Ingreso registrado');
+        toast.success(
+          isFutureIncome
+            ? 'Ingreso futuro registrado como pendiente'
+            : 'Ingreso registrado',
+        );
       } else {
         await recurringIncomesService.create({
           boardId,

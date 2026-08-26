@@ -32,6 +32,7 @@ interface FormState {
   amount: string;
   daysOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
+  amountChangeYearMonth: string;
 }
 
 const emptyForm: FormState = {
@@ -39,6 +40,7 @@ const emptyForm: FormState = {
   amount: '',
   daysOfMonth: [1],
   amountChangeScope: 'from_month',
+  amountChangeYearMonth: getCurrentYearMonth(),
 };
 
 export function ManageRecurringIncomesSection({
@@ -87,6 +89,7 @@ export function ManageRecurringIncomesSection({
       amount: formatMoneyInputFromNumber(item.amount),
       daysOfMonth: item.daysOfMonth,
       amountChangeScope: 'from_month',
+      amountChangeYearMonth: getCurrentYearMonth(),
     });
     setSheetOpen(true);
   };
@@ -105,6 +108,10 @@ export function ManageRecurringIncomesSection({
       toast.error('Seleccioná al menos un día del mes');
       return;
     }
+    if (editingItem && !formData.amountChangeYearMonth) {
+      toast.error('Seleccioná el mes en que comienza el cambio');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -116,7 +123,7 @@ export function ManageRecurringIncomesSection({
         ...(editingItem
           ? {
               amountChangeScope: formData.amountChangeScope,
-              amountChangeYearMonth: getCurrentYearMonth(),
+              amountChangeYearMonth: formData.amountChangeYearMonth,
             }
           : {}),
       };
@@ -257,26 +264,51 @@ export function ManageRecurringIncomesSection({
             />
           </div>
           {editingItem ? (
-            <div className="space-y-2">
-              <Label>Cambio de monto</Label>
-              <Select
-                value={formData.amountChangeScope}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    amountChangeScope: value as 'this_month' | 'from_month',
-                  }))
-                }
-                disabled={isSaving}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="from_month">Desde este mes</SelectItem>
-                  <SelectItem value="this_month">Solo este mes</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-4 rounded-xl border p-3">
+              <div className="space-y-2">
+                <Label htmlFor="income-change-month">Aplicar en</Label>
+                <Input
+                  id="income-change-month"
+                  type="month"
+                  min={getCurrentYearMonth()}
+                  value={formData.amountChangeYearMonth}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      amountChangeYearMonth: event.target.value,
+                    }))
+                  }
+                  disabled={isSaving}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Podés programar hoy un cambio de sueldo para un mes futuro.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Alcance del cambio</Label>
+                <Select
+                  value={formData.amountChangeScope}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      amountChangeScope: value as 'this_month' | 'from_month',
+                    }))
+                  }
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="from_month">
+                      Desde el mes elegido
+                    </SelectItem>
+                    <SelectItem value="this_month">
+                      Solo el mes elegido
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           ) : null}
           <Button

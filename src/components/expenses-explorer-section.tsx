@@ -289,7 +289,7 @@ export function ExpensesExplorerSection({
               type: 'income' as const,
               date: income.incomeDate,
               label: income.label,
-              meta: 'Ingreso',
+              meta: `${income.recurringIncomeId ? 'Ingreso recurrente' : 'Ingreso puntual'} · ${income.status === 'pending' ? 'Pendiente' : 'Cobrado'}`,
               amount: income.amount,
               currency: income.currency,
               income,
@@ -358,7 +358,11 @@ export function ExpensesExplorerSection({
   };
 
   const handleDeleteIncome = async (incomeId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este ingreso?')) return;
+    const income = incomes.find((item) => item._id === incomeId);
+    const message = income?.recurringIncomeId
+      ? '¿Eliminar solo esta ocurrencia? La recurrencia de los demás meses continuará.'
+      : '¿Estás seguro de que deseas eliminar este ingreso?';
+    if (!confirm(message)) return;
     try {
       await incomesService.deleteIncome(incomeId);
       setIncomes((current) => current.filter((item) => item._id !== incomeId));
@@ -366,6 +370,24 @@ export function ExpensesExplorerSection({
       toast.success('Ingreso eliminado');
     } catch {
       toast.error('No se pudo eliminar el ingreso');
+    }
+  };
+
+  const handleSkipIncome = async (incomeId: string) => {
+    if (
+      !confirm(
+        '¿Omitir solo esta ocurrencia? La recurrencia continuará los demás meses.',
+      )
+    ) {
+      return;
+    }
+    try {
+      await incomesService.skipIncome(incomeId);
+      setIncomes((current) => current.filter((item) => item._id !== incomeId));
+      setDetail(null);
+      toast.success('Ocurrencia omitida');
+    } catch {
+      toast.error('No se pudo omitir esta ocurrencia');
     }
   };
 
@@ -889,9 +911,16 @@ export function ExpensesExplorerSection({
                   <dd className="font-medium">{detailMovement.meta}</dd>
                 </div>
               </dl>
-              <div className="flex gap-2">
+              {detailMovement.type === 'income' &&
+              detailMovement.income.recurringIncomeId ? (
+                <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  Este movimiento es una ocurrencia recurrente. Las acciones de
+                  abajo afectan solamente esta fecha.
+                </p>
+              ) : null}
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
-                  className="flex-1"
+                  className="w-full flex-1"
                   variant="outline"
                   onClick={() => {
                     setDetail(null);
@@ -903,11 +932,26 @@ export function ExpensesExplorerSection({
                     }
                   }}
                 >
-                  <Pencil className="size-4" /> Editar
+                  <Pencil className="size-4" />
+                  {detailMovement.type === 'income' &&
+                  detailMovement.income.recurringIncomeId
+                    ? 'Editar esta ocurrencia'
+                    : 'Editar'}
                 </Button>
+                {detailMovement.type === 'income' &&
+                detailMovement.income.recurringIncomeId &&
+                detailMovement.income.status === 'pending' ? (
+                  <Button
+                    className="w-full sm:w-auto"
+                    variant="outline"
+                    onClick={() => void handleSkipIncome(detailMovement.id)}
+                  >
+                    Omitir esta ocurrencia
+                  </Button>
+                ) : null}
                 <Button
                   variant="outline"
-                  className="text-destructive"
+                  className="w-full text-destructive sm:w-auto"
                   onClick={() =>
                     detailMovement.type === 'expense'
                       ? void handleDelete(detailMovement.id)
@@ -915,7 +959,12 @@ export function ExpensesExplorerSection({
                   }
                 >
                   <Trash2 className="size-4" />
-                  <span className="sr-only sm:not-sr-only">Eliminar</span>
+                  <span>
+                    {detailMovement.type === 'income' &&
+                    detailMovement.income.recurringIncomeId
+                      ? 'Eliminar esta ocurrencia'
+                      : 'Eliminar'}
+                  </span>
                 </Button>
               </div>
             </>
