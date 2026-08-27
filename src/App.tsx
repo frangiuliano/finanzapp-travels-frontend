@@ -28,6 +28,26 @@ import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 import { AppShellLayout } from '@/components/app-shell-layout';
 import { ReactNode } from 'react';
+import { getSafeAuthRedirect } from '@/lib/auth-redirect';
+
+function LoginRoute({
+  isAuthenticated,
+  emailVerified,
+}: {
+  isAuthenticated: boolean;
+  emailVerified?: boolean;
+}) {
+  const location = useLocation();
+  const redirect = getSafeAuthRedirect(
+    new URLSearchParams(location.search).get('redirect'),
+  );
+
+  return isAuthenticated && emailVerified ? (
+    <Navigate to={redirect} replace />
+  ) : (
+    <LoginPage />
+  );
+}
 
 function ProtectedApp({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -74,11 +94,10 @@ function AppRoutes() {
       <Route
         path="/login"
         element={
-          isAuthenticated && user?.emailVerified ? (
-            <Navigate to="/home" replace />
-          ) : (
-            <LoginPage />
-          )
+          <LoginRoute
+            isAuthenticated={isAuthenticated}
+            emailVerified={user?.emailVerified}
+          />
         }
       />
       <Route

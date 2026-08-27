@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,12 +14,14 @@ import { Label } from '@/components/ui/label';
 import { authService } from '@/services/authService';
 import axios from 'axios';
 import api from '@/services/api';
+import { getSafeAuthRedirect } from '@/lib/auth-redirect';
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +69,9 @@ export function LoginForm({
         // Si no se puede verificar, asumir que está verificado y continuar
       }
 
-      navigate('/home');
+      navigate(getSafeAuthRedirect(searchParams.get('redirect')), {
+        replace: true,
+      });
     } catch (err: unknown) {
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.message

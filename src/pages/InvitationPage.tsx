@@ -30,6 +30,7 @@ export default function InvitationPage() {
   const { token } = useParams<{ token: string }>();
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isLoading);
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [invitationInfo, setInvitationInfo] = useState<InvitationInfo | null>(
@@ -191,7 +192,7 @@ export default function InvitationPage() {
     }
   };
 
-  if (pageState === 'loading') {
+  if (pageState === 'loading' || isAuthLoading) {
     return (
       <div
         className={cn(
