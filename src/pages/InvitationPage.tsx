@@ -37,6 +37,7 @@ export default function InvitationPage() {
     null,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -76,6 +77,7 @@ export default function InvitationPage() {
   const handleAcceptInvitation = async () => {
     if (!token) return;
 
+    setAcceptError(null);
     setPageState('accepting');
     try {
       const result = await participantsService.acceptInvitation(token);
@@ -92,12 +94,19 @@ export default function InvitationPage() {
         }, 2000);
       }
     } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        navigate(
+          `/login?redirect=${encodeURIComponent(`/boards/invitation/${token}`)}`,
+        );
+        return;
+      }
+
       const message =
         axios.isAxiosError(err) && err.response?.data?.message
           ? err.response.data.message
           : 'Error al aceptar la invitación';
-      setErrorMessage(message);
-      setPageState('error');
+      setAcceptError(message);
+      setPageState('info');
     }
   };
 
@@ -474,6 +483,12 @@ export default function InvitationPage() {
                   aceptar esta invitación, cierra sesión y usa el email
                   correcto.
                 </p>
+              </div>
+            )}
+
+            {acceptError && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {acceptError}
               </div>
             )}
 
