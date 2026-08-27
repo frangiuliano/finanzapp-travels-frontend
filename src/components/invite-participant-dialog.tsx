@@ -8,12 +8,14 @@ import { participantsService } from '@/services/participantsService';
 import { useTripsStore } from '@/store/tripsStore';
 import { toast } from 'sonner';
 import { AxiosError } from 'axios';
+import type { BoardType } from '@/types/board';
 
 interface InviteParticipantDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tripId?: string;
   tripName?: string;
+  boardType?: BoardType;
   onSuccess?: () => void;
 }
 
@@ -22,6 +24,7 @@ export function InviteParticipantDialog({
   onOpenChange,
   tripId,
   tripName,
+  boardType = 'travel',
   onSuccess,
 }: InviteParticipantDialogProps) {
   const [email, setEmail] = useState('');
@@ -97,7 +100,8 @@ export function InviteParticipantDialog({
       title="Invitar participante"
       description={
         <>
-          Envía una invitación por email para unirse al viaje
+          Enviá una invitación por email para unirse al{' '}
+          {boardType === 'everyday' ? 'tablero cotidiano' : 'viaje'}
           {effectiveTripName && (
             <>
               {' '}

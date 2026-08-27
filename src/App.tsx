@@ -119,6 +119,7 @@ function AppRoutes() {
         }
       />
       <Route path="/trips/invitation/:token" element={<InvitationPage />} />
+      <Route path="/boards/invitation/:token" element={<InvitationPage />} />
       <Route
         element={
           <ProtectedApp>

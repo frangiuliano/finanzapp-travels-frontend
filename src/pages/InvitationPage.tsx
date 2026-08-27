@@ -44,6 +44,8 @@ export default function InvitationPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const isTravel = invitationInfo?.trip.type === 'travel';
+  const boardKind = isTravel ? 'viaje' : 'tablero cotidiano';
 
   const loadInvitationInfo = useCallback(async () => {
     if (!token) {
@@ -244,13 +246,13 @@ export default function InvitationPage() {
       >
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl">¡Te has unido al viaje!</CardTitle>
+            <CardTitle className="text-2xl">¡Te uniste al tablero!</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center py-4">
               <div className="text-4xl mb-4">🎉</div>
               <p className="text-lg font-semibold text-green-600">
-                ¡Bienvenido al viaje!
+                ¡Ya podés colaborar en {boardKind}!
               </p>
               <p className="text-sm text-muted-foreground mt-2">
                 Redirigiendo...
@@ -271,7 +273,7 @@ export default function InvitationPage() {
       >
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl">Uniéndote al viaje...</CardTitle>
+            <CardTitle className="text-2xl">Uniéndote al tablero...</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-center py-4">
@@ -297,8 +299,8 @@ export default function InvitationPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Crea tu cuenta</CardTitle>
             <CardDescription>
-              Para unirte al viaje "{invitationInfo.trip.name}", necesitas crear
-              una cuenta
+              Para unirte al {boardKind} "{invitationInfo.trip.name}", necesitás
+              crear una cuenta.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -400,7 +402,7 @@ export default function InvitationPage() {
                 <div className="text-center text-sm text-muted-foreground">
                   ¿Ya tienes cuenta?{' '}
                   <Link
-                    to={`/login?redirect=/trips/invitation/${token}`}
+                    to={`/login?redirect=/boards/invitation/${token}`}
                     className="text-primary hover:underline"
                   >
                     Inicia sesión
@@ -431,10 +433,10 @@ export default function InvitationPage() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <div className="text-center mb-2">
-              <span className="text-4xl">✈️</span>
+              <span className="text-4xl">{isTravel ? '✈️' : '💳'}</span>
             </div>
             <CardTitle className="text-2xl text-center">
-              Te han invitado a un viaje
+              Te invitaron a un {boardKind}
             </CardTitle>
             <CardDescription className="text-center">
               <strong>
@@ -499,7 +501,7 @@ export default function InvitationPage() {
                 </p>
                 <Button
                   onClick={() =>
-                    navigate(`/login?redirect=/trips/invitation/${token}`)
+                    navigate(`/login?redirect=/boards/invitation/${token}`)
                   }
                   className="w-full"
                 >
@@ -509,7 +511,7 @@ export default function InvitationPage() {
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-center text-muted-foreground">
-                  Necesitas crear una cuenta para unirte al viaje.
+                  Necesitás crear una cuenta para unirte al tablero.
                 </p>
                 <Button
                   onClick={() => setPageState('register')}
@@ -520,7 +522,7 @@ export default function InvitationPage() {
                 <div className="text-center text-sm text-muted-foreground">
                   ¿Ya tienes cuenta?{' '}
                   <Link
-                    to={`/login?redirect=/trips/invitation/${token}`}
+                    to={`/login?redirect=/boards/invitation/${token}`}
                     className="text-primary hover:underline"
                   >
                     Inicia sesión

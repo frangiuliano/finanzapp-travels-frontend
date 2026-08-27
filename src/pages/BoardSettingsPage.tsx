@@ -16,6 +16,7 @@ import { ManagePaymentMethodsSection } from '@/components/manage-payment-methods
 import { ManageRecurringIncomesSection } from '@/components/manage-recurring-incomes-section';
 import { ManageRecurringExpensesSection } from '@/components/manage-recurring-expenses-section';
 import { ManageInstallmentPlansSection } from '@/components/manage-installment-plans-section';
+import { ManageBoardParticipantsSection } from '@/components/manage-board-participants-section';
 import { useBoardsStore } from '@/store/boardsStore';
 import { ParticipantRole } from '@/services/tripsService';
 import { deleteBoardWithConfirm } from '@/lib/delete-board';
@@ -140,6 +141,18 @@ export default function BoardSettingsPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Card className="rounded-2xl border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-display text-lg">Participantes</CardTitle>
+          <CardDescription>
+            Invitá personas y administrá quién puede colaborar en este tablero.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ManageBoardParticipantsSection board={activeBoard} />
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl border-border/80 shadow-sm">
         <CardHeader className="pb-3">

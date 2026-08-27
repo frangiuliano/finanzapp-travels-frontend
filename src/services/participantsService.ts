@@ -8,10 +8,10 @@ import type {
 
 export const participantsService = {
   async inviteParticipant(
-    tripId: string,
+    boardId: string,
     email: string,
   ): Promise<{ invitation: Invitation }> {
-    const response = await api.post('/participants/invite', { tripId, email });
+    const response = await api.post('/participants/invite', { boardId, email });
     return response.data;
   },
 
@@ -35,25 +35,27 @@ export const participantsService = {
   },
 
   async getParticipants(
-    tripId: string,
+    boardId: string,
   ): Promise<{ participants: Participant[] }> {
-    const response = await api.get(`/participants/trip/${tripId}`);
+    const response = await api.get(`/participants/board/${boardId}`);
     return response.data;
   },
 
   async getPendingInvitations(
-    tripId: string,
+    boardId: string,
   ): Promise<{ invitations: Invitation[] }> {
-    const response = await api.get(`/participants/trip/${tripId}/invitations`);
+    const response = await api.get(
+      `/participants/board/${boardId}/invitations`,
+    );
     return { invitations: response.data };
   },
 
   async removeParticipant(
-    tripId: string,
+    boardId: string,
     participantId: string,
   ): Promise<void> {
     await api.delete(
-      `/participants/trip/${tripId}/participant/${participantId}`,
+      `/participants/board/${boardId}/participant/${participantId}`,
     );
   },
 

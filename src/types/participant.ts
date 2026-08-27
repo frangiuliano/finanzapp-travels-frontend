@@ -69,6 +69,7 @@ export interface InvitationInfo {
     _id: string;
     name: string;
     description?: string;
+    type: 'everyday' | 'travel';
   };
   inviter: {
     firstName: string;

@@ -17,7 +17,8 @@ export function isPublicAuthPath(path: string): boolean {
   return (
     path.startsWith('/auth/verify-email/') ||
     path.startsWith('/auth/reset-password') ||
-    path.startsWith('/trips/invitation/')
+    path.startsWith('/trips/invitation/') ||
+    path.startsWith('/boards/invitation/')
   );
 }
 
