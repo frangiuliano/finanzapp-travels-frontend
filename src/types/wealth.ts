@@ -75,6 +75,7 @@ export interface WealthOverview {
   >;
   recentEvents: WealthEvent[];
   investmentPositions: InvestmentPosition[];
+  investmentTransactions: InvestmentTransaction[];
 }
 
 export type InstrumentType =
@@ -103,4 +104,16 @@ export interface InvestmentPosition {
   averageCost: number;
   currentPrice: number;
   isOpen: boolean;
+}
+
+export interface InvestmentTransaction {
+  _id: string;
+  holdingId: string;
+  instrumentId: string;
+  type: 'buy' | 'sell';
+  quantity: number;
+  unitPrice: number;
+  fees: number;
+  occurredAt: string;
+  note?: string;
 }

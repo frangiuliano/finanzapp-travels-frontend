@@ -99,9 +99,12 @@ export const wealthService = {
       })
     ).data;
   },
-  async getInstruments(search = ''): Promise<FinancialInstrument[]> {
+  async getInstruments(
+    search = '',
+    currency?: string,
+  ): Promise<FinancialInstrument[]> {
     const response = await api.get('/wealth/instruments/catalog', {
-      params: { search },
+      params: { search, currency },
     });
     return response.data.instruments;
   },
@@ -120,8 +123,7 @@ export const wealthService = {
     data: {
       instrumentId: string;
       quantity: number;
-      averageCost: number;
-      currentPrice: number;
+      unitPrice: number;
     },
   ) {
     return (
@@ -161,5 +163,30 @@ export const wealthService = {
         params: { boardId },
       })
     ).data;
+  },
+  async updateTransaction(
+    boardId: string,
+    transactionId: string,
+    data: {
+      instrumentId: string;
+      type: 'buy' | 'sell';
+      quantity: number;
+      unitPrice: number;
+      fees?: number;
+      note?: string;
+    },
+  ) {
+    return (
+      await api.patch(
+        `/wealth/investments/transactions/${transactionId}`,
+        data,
+        { params: { boardId } },
+      )
+    ).data;
+  },
+  async deleteTransaction(boardId: string, transactionId: string) {
+    await api.delete(`/wealth/investments/transactions/${transactionId}`, {
+      params: { boardId },
+    });
   },
 };
