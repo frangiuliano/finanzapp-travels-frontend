@@ -16,6 +16,7 @@ import {
   Plane,
   Settings2,
   UserRound,
+  PiggyBank,
 } from 'lucide-react';
 import { glassTabBar } from '@/lib/glass';
 import { cn } from '@/lib/utils';
@@ -267,6 +268,12 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
           </SheetHeader>
           <div className="grid gap-2 pt-4">
             {[
+              {
+                to: '/wealth',
+                icon: PiggyBank,
+                title: 'Patrimonio',
+                text: 'Ahorros, tenencias y objetivos.',
+              },
               {
                 to: '/travel',
                 icon: Plane,

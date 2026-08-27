@@ -23,6 +23,7 @@ import OnboardingPage from '@/pages/OnboardingPage';
 import BoardSettingsPage from '@/pages/BoardSettingsPage';
 import BillingPeriodConfirmPage from '@/pages/BillingPeriodConfirmPage';
 import SimulateExpensePage from '@/pages/SimulateExpensePage';
+import WealthPage from '@/pages/WealthPage';
 import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 import { AppShellLayout } from '@/components/app-shell-layout';
@@ -131,6 +132,7 @@ function AppRoutes() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/travel" element={<TravelPage />} />
+        <Route path="/wealth" element={<WealthPage />} />
         <Route path="/boards" element={<Navigate to="/travel" replace />} />
         <Route path="/boards/settings" element={<BoardSettingsPage />} />
         <Route
