@@ -147,6 +147,15 @@ export const wealthService = {
       )
     ).data;
   },
+  async refreshPositionPrice(boardId: string, positionId: string) {
+    return (
+      await api.post(
+        `/wealth/investments/positions/${positionId}/refresh-price`,
+        undefined,
+        { params: { boardId } },
+      )
+    ).data as { currentPrice: number; capturedAt: string };
+  },
   async trade(
     boardId: string,
     holdingId: string,

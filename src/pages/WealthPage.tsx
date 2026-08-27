@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AxiosError } from 'axios';
 import {
   ArrowDownToLine,
@@ -147,6 +147,7 @@ export default function WealthPage() {
   const [instrumentId, setInstrumentId] = useState('');
   const [instrumentSearch, setInstrumentSearch] = useState('');
   const [isInstrumentSearchOpen, setIsInstrumentSearchOpen] = useState(false);
+  const instrumentComboboxRef = useRef<HTMLDivElement>(null);
   const [createCustomInstrument, setCreateCustomInstrument] = useState(false);
   const [instrumentSymbol, setInstrumentSymbol] = useState('');
   const [instrumentName, setInstrumentName] = useState('');
@@ -244,7 +245,7 @@ export default function WealthPage() {
       } catch {
         toast.error('No se pudo buscar instrumentos');
       }
-    }, 250);
+    }, 500);
     return () => window.clearTimeout(timeout);
   }, [
     createCustomInstrument,
@@ -253,6 +254,21 @@ export default function WealthPage() {
     instrumentSearch,
     selectedHolding,
   ]);
+
+  useEffect(() => {
+    if (!isInstrumentSearchOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (
+        instrumentComboboxRef.current &&
+        !instrumentComboboxRef.current.contains(event.target as Node)
+      ) {
+        setIsInstrumentSearchOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    return () =>
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+  }, [isInstrumentSearchOpen]);
 
   const openBalance = (holding: Holding) => {
     resetForm();
@@ -309,6 +325,30 @@ export default function WealthPage() {
     setSelectedPosition(position);
     setUnitPrice(String(position.currentPrice).replace('.', ','));
     setDialogMode('price');
+  };
+
+  const refreshPositionPrice = async () => {
+    if (!selectedPosition) return;
+    setIsSaving(true);
+    try {
+      const result = await wealthService.refreshPositionPrice(
+        activeBoard!._id,
+        selectedPosition._id,
+      );
+      setUnitPrice(String(result.currentPrice).replace('.', ','));
+      toast.success('Cotización actualizada');
+      closeDialog();
+      setIsLoading(true);
+      await load();
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      toast.error(
+        axiosError.response?.data?.message ||
+          'No se pudo obtener la cotización automática',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openEditTransaction = async (
@@ -1372,7 +1412,7 @@ export default function WealthPage() {
               ) : (
                 <>
                   <Field label="Instrumento">
-                    <div className="relative">
+                    <div ref={instrumentComboboxRef} className="relative">
                       <Input
                         role="combobox"
                         aria-expanded={isInstrumentSearchOpen}
@@ -1380,6 +1420,12 @@ export default function WealthPage() {
                         autoComplete="off"
                         value={instrumentSearch}
                         onFocus={() => setIsInstrumentSearchOpen(true)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape') {
+                            setIsInstrumentSearchOpen(false);
+                            event.currentTarget.blur();
+                          }
+                        }}
                         onChange={(event) => {
                           setInstrumentSearch(event.target.value);
                           setInstrumentId('');
@@ -1477,6 +1523,23 @@ export default function WealthPage() {
                 value={unitPrice}
                 onChange={setUnitPrice}
               />
+              {selectedPosition.instrumentId.provider === 'twelve_data' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={() => void refreshPositionPrice()}
+                >
+                  <RefreshCw
+                    className={`mr-2 size-4 ${isSaving ? 'animate-spin' : ''}`}
+                  />
+                  Obtener cotización automática
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Este instrumento usa actualización manual.
+                </p>
+              )}
             </>
           ) : null}
           {dialogMode === 'trade' && selectedPosition ? (

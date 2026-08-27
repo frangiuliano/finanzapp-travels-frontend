@@ -94,6 +94,11 @@ export interface FinancialInstrument {
   type: InstrumentType;
   currency: string;
   exchange?: string;
+  micCode?: string;
+  provider?: 'twelve_data';
+  providerSymbol?: string;
+  lastPrice?: number;
+  lastPriceAt?: string;
 }
 
 export interface InvestmentPosition {
