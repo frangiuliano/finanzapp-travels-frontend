@@ -13,6 +13,7 @@ export interface Holding {
   currency: string;
   currentBalance: number;
   allocatedBalance: number;
+  cashBalance?: number;
   availableBalance: number;
   isActive: boolean;
   createdAt: string;
@@ -73,4 +74,33 @@ export interface WealthOverview {
     { balance: number; allocated: number; available: number }
   >;
   recentEvents: WealthEvent[];
+  investmentPositions: InvestmentPosition[];
+}
+
+export type InstrumentType =
+  | 'stock'
+  | 'etf'
+  | 'cedear'
+  | 'bond'
+  | 'mutual_fund'
+  | 'crypto'
+  | 'other';
+
+export interface FinancialInstrument {
+  _id: string;
+  symbol: string;
+  name: string;
+  type: InstrumentType;
+  currency: string;
+  exchange?: string;
+}
+
+export interface InvestmentPosition {
+  _id: string;
+  holdingId: string;
+  instrumentId: FinancialInstrument;
+  quantity: number;
+  averageCost: number;
+  currentPrice: number;
+  isOpen: boolean;
 }

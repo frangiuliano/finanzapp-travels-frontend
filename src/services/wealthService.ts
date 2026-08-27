@@ -1,5 +1,11 @@
 import api from './api';
-import type { GoalStatus, HoldingType, WealthOverview } from '@/types/wealth';
+import type {
+  FinancialInstrument,
+  GoalStatus,
+  HoldingType,
+  InstrumentType,
+  WealthOverview,
+} from '@/types/wealth';
 
 export const wealthService = {
   async getOverview(): Promise<WealthOverview> {
@@ -66,5 +72,53 @@ export const wealthService = {
     },
   ): Promise<WealthOverview> {
     return (await api.post(`/wealth/goals/${goalId}/contributions`, data)).data;
+  },
+  async getInstruments(search = ''): Promise<FinancialInstrument[]> {
+    const response = await api.get('/wealth/instruments/catalog', {
+      params: { search },
+    });
+    return response.data.instruments;
+  },
+  async createInstrument(data: {
+    symbol: string;
+    name: string;
+    type: InstrumentType;
+    currency: string;
+    exchange?: string;
+  }): Promise<FinancialInstrument> {
+    return (await api.post('/wealth/instruments/catalog', data)).data;
+  },
+  async createPosition(
+    holdingId: string,
+    data: {
+      instrumentId: string;
+      quantity: number;
+      averageCost: number;
+      currentPrice: number;
+    },
+  ) {
+    return (await api.post(`/wealth/investments/${holdingId}/positions`, data))
+      .data;
+  },
+  async updatePositionPrice(positionId: string, currentPrice: number) {
+    return (
+      await api.patch(`/wealth/investments/positions/${positionId}/price`, {
+        currentPrice,
+      })
+    ).data;
+  },
+  async trade(
+    holdingId: string,
+    data: {
+      instrumentId: string;
+      type: 'buy' | 'sell';
+      quantity: number;
+      unitPrice: number;
+      fees?: number;
+    },
+  ) {
+    return (
+      await api.post(`/wealth/investments/${holdingId}/transactions`, data)
+    ).data;
   },
 };

@@ -4,6 +4,7 @@ import {
   ArrowDownToLine,
   Landmark,
   Pause,
+  Pencil,
   PiggyBank,
   Play,
   Plus,
@@ -41,13 +42,25 @@ import { CURRENCY_OPTIONS } from '@/constants/currencies';
 import { parseMoneyInput } from '@/lib/money';
 import { wealthService } from '@/services/wealthService';
 import type {
+  FinancialInstrument,
   Holding,
   HoldingType,
   SavingsGoal,
   WealthOverview,
+  InvestmentPosition,
+  InstrumentType,
 } from '@/types/wealth';
 
-type DialogMode = 'holding' | 'balance' | 'goal' | 'contribution' | null;
+type DialogMode =
+  | 'holding'
+  | 'edit_holding'
+  | 'balance'
+  | 'goal'
+  | 'position'
+  | 'price'
+  | 'trade'
+  | 'contribution'
+  | null;
 
 const HOLDING_LABELS: Record<HoldingType, string> = {
   bank_account: 'Cuenta bancaria',
@@ -77,6 +90,16 @@ const GOAL_ICONS = [
   '🏖️',
   '💰',
 ];
+
+const INSTRUMENT_LABELS: Record<InstrumentType, string> = {
+  stock: 'Acción',
+  etf: 'ETF',
+  cedear: 'CEDEAR',
+  bond: 'Bono',
+  mutual_fund: 'Fondo común',
+  crypto: 'Criptomoneda',
+  other: 'Otro',
+};
 
 function money(amount: number, currency: string) {
   return new Intl.NumberFormat('es-AR', {
@@ -114,6 +137,20 @@ export default function WealthPage() {
     'contribution' | 'withdrawal'
   >('contribution');
   const [note, setNote] = useState('');
+  const [instruments, setInstruments] = useState<FinancialInstrument[]>([]);
+  const [instrumentId, setInstrumentId] = useState('');
+  const [instrumentSearch, setInstrumentSearch] = useState('');
+  const [createCustomInstrument, setCreateCustomInstrument] = useState(false);
+  const [instrumentSymbol, setInstrumentSymbol] = useState('');
+  const [instrumentName, setInstrumentName] = useState('');
+  const [instrumentType, setInstrumentType] = useState<InstrumentType>('stock');
+  const [instrumentExchange, setInstrumentExchange] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [unitPrice, setUnitPrice] = useState('');
+  const [averageCost, setAverageCost] = useState('');
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+  const [selectedPosition, setSelectedPosition] =
+    useState<InvestmentPosition | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -140,6 +177,18 @@ export default function WealthPage() {
     setHoldingId('');
     setContributionKind('contribution');
     setNote('');
+    setInstrumentId('');
+    setInstrumentSearch('');
+    setCreateCustomInstrument(false);
+    setInstrumentSymbol('');
+    setInstrumentName('');
+    setInstrumentType('stock');
+    setInstrumentExchange('');
+    setQuantity('');
+    setUnitPrice('');
+    setAverageCost('');
+    setTradeType('buy');
+    setSelectedPosition(null);
     setSelectedHolding(null);
     setSelectedGoal(null);
   };
@@ -165,11 +214,31 @@ export default function WealthPage() {
     [contributionKind, overview?.holdings, selectedGoal],
   );
 
+  const filteredInstruments = useMemo(() => {
+    const search = instrumentSearch.trim().toLocaleLowerCase('es');
+    if (!search) return instruments;
+    return instruments.filter((instrument) =>
+      [instrument.symbol, instrument.name, INSTRUMENT_LABELS[instrument.type]]
+        .join(' ')
+        .toLocaleLowerCase('es')
+        .includes(search),
+    );
+  }, [instrumentSearch, instruments]);
+
   const openBalance = (holding: Holding) => {
     resetForm();
     setSelectedHolding(holding);
     setAmount(String(holding.currentBalance).replace('.', ','));
     setDialogMode('balance');
+  };
+
+  const openEditHolding = (holding: Holding) => {
+    resetForm();
+    setSelectedHolding(holding);
+    setName(holding.name);
+    setInstitution(holding.institution || '');
+    setHoldingType(holding.type);
+    setDialogMode('edit_holding');
   };
 
   const openContribution = (goal: SavingsGoal) => {
@@ -181,6 +250,39 @@ export default function WealthPage() {
     );
     setHoldingId(first?._id ?? '');
     setDialogMode('contribution');
+  };
+
+  const openPosition = async (holding: Holding) => {
+    resetForm();
+    setSelectedHolding(holding);
+    setDialogMode('position');
+    try {
+      const loaded = await wealthService.getInstruments();
+      setInstruments(
+        loaded.filter((item) => item.currency === holding.currency),
+      );
+    } catch {
+      toast.error('No se pudo cargar el catálogo de instrumentos');
+    }
+  };
+
+  const openTrade = (position: InvestmentPosition) => {
+    resetForm();
+    setSelectedPosition(position);
+    setSelectedHolding(
+      overview?.holdings.find((item) => item._id === position.holdingId) ??
+        null,
+    );
+    setInstrumentId(position.instrumentId._id);
+    setUnitPrice(String(position.currentPrice).replace('.', ','));
+    setDialogMode('trade');
+  };
+
+  const openPrice = (position: InvestmentPosition) => {
+    resetForm();
+    setSelectedPosition(position);
+    setUnitPrice(String(position.currentPrice).replace('.', ','));
+    setDialogMode('price');
   };
 
   const submit = async () => {
@@ -199,6 +301,13 @@ export default function WealthPage() {
           currentBalance: parsedAmount,
         });
         toast.success('Tenencia agregada');
+      } else if (dialogMode === 'edit_holding' && selectedHolding) {
+        if (!name.trim()) throw new Error('Ingresá un nombre');
+        await wealthService.updateHolding(selectedHolding._id, {
+          name: name.trim(),
+          institution: institution.trim(),
+        });
+        toast.success('Tenencia actualizada');
       } else if (dialogMode === 'balance' && selectedHolding) {
         if (parsedAmount === null) throw new Error('Ingresá el saldo actual');
         await wealthService.adjustBalance(selectedHolding._id, {
@@ -236,6 +345,66 @@ export default function WealthPage() {
             ? 'Aporte registrado'
             : 'Dinero liberado',
         );
+      } else if (dialogMode === 'position' && selectedHolding) {
+        const parsedQuantity = Number(quantity.replace(',', '.'));
+        const parsedCost = parseMoneyInput(averageCost);
+        const parsedPrice = parseMoneyInput(unitPrice);
+        let resolvedInstrumentId = instrumentId;
+        if (createCustomInstrument) {
+          if (!instrumentSymbol.trim() || !instrumentName.trim()) {
+            throw new Error('Completá símbolo y nombre del instrumento');
+          }
+          const created = await wealthService.createInstrument({
+            symbol: instrumentSymbol.trim(),
+            name: instrumentName.trim(),
+            type: instrumentType,
+            currency: selectedHolding.currency,
+            exchange: instrumentExchange.trim() || undefined,
+          });
+          resolvedInstrumentId = created._id;
+        }
+        if (
+          !resolvedInstrumentId ||
+          parsedQuantity <= 0 ||
+          parsedCost === null ||
+          parsedPrice === null
+        ) {
+          throw new Error('Completá instrumento, nominales, costo y precio');
+        }
+        await wealthService.createPosition(selectedHolding._id, {
+          instrumentId: resolvedInstrumentId,
+          quantity: parsedQuantity,
+          averageCost: parsedCost,
+          currentPrice: parsedPrice,
+        });
+        toast.success('Posición agregada');
+      } else if (
+        dialogMode === 'trade' &&
+        selectedHolding &&
+        selectedPosition
+      ) {
+        const parsedQuantity = Number(quantity.replace(',', '.'));
+        const parsedPrice = parseMoneyInput(unitPrice);
+        if (parsedQuantity <= 0 || parsedPrice === null) {
+          throw new Error('Completá nominales y precio');
+        }
+        await wealthService.trade(selectedHolding._id, {
+          instrumentId: selectedPosition.instrumentId._id,
+          type: tradeType,
+          quantity: parsedQuantity,
+          unitPrice: parsedPrice,
+        });
+        toast.success(
+          tradeType === 'buy' ? 'Compra registrada' : 'Venta registrada',
+        );
+      } else if (dialogMode === 'price' && selectedPosition) {
+        const parsedPrice = parseMoneyInput(unitPrice);
+        if (parsedPrice === null) throw new Error('Ingresá el precio actual');
+        await wealthService.updatePositionPrice(
+          selectedPosition._id,
+          parsedPrice,
+        );
+        toast.success('Precio actualizado');
       }
       closeDialog();
       setIsLoading(true);
@@ -344,8 +513,9 @@ export default function WealthPage() {
       </div>
 
       <Tabs defaultValue="holdings">
-        <TabsList className="grid w-full grid-cols-3 rounded-xl">
+        <TabsList className="grid w-full grid-cols-4 rounded-xl">
           <TabsTrigger value="holdings">Tenencias</TabsTrigger>
+          <TabsTrigger value="investments">Inversiones</TabsTrigger>
           <TabsTrigger value="goals">Objetivos</TabsTrigger>
           <TabsTrigger value="activity">Actividad</TabsTrigger>
         </TabsList>
@@ -389,6 +559,16 @@ export default function WealthPage() {
                           variant="ghost"
                           size="icon"
                           className="size-8"
+                          onClick={() => openEditHolding(holding)}
+                          aria-label={`Editar ${holding.name}`}
+                        >
+                          <Pencil className="size-4 text-muted-foreground" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
                           onClick={() => void archiveHolding(holding)}
                           aria-label={`Eliminar ${holding.name}`}
                         >
@@ -417,7 +597,9 @@ export default function WealthPage() {
                       className="w-full"
                       onClick={() => openBalance(holding)}
                     >
-                      Actualizar saldo
+                      {holding.type === 'investment'
+                        ? 'Actualizar efectivo'
+                        : 'Actualizar saldo'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -428,6 +610,145 @@ export default function WealthPage() {
               icon={PiggyBank}
               title="Todavía no cargaste ahorros"
               text="Agregá cuentas, billeteras, efectivo o inversiones."
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="investments" className="mt-5 space-y-4">
+          <div>
+            <h2 className="font-display text-lg font-semibold">
+              Mis inversiones
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Registrá instrumentos, nominales y precios. La valuación se suma
+              automáticamente al resumen de Patrimonio.
+            </p>
+          </div>
+          {overview?.holdings.some(
+            (holding) => holding.type === 'investment',
+          ) ? (
+            <div className="space-y-4">
+              {overview.holdings
+                .filter((holding) => holding.type === 'investment')
+                .map((holding) => {
+                  const positions = overview.investmentPositions.filter(
+                    (position) => position.holdingId === holding._id,
+                  );
+                  return (
+                    <Card key={holding._id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <CardTitle className="text-base">
+                              {holding.name}
+                            </CardTitle>
+                            <CardDescription>
+                              {holding.institution || 'Cuenta de inversión'} ·{' '}
+                              Efectivo{' '}
+                              {money(
+                                holding.cashBalance ?? 0,
+                                holding.currency,
+                              )}
+                            </CardDescription>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold tabular-nums">
+                              {money(holding.currentBalance, holding.currency)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              valuación total
+                            </p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {positions.length ? (
+                          positions.map((position) => {
+                            const marketValue =
+                              position.quantity * position.currentPrice;
+                            const result =
+                              marketValue -
+                              position.quantity * position.averageCost;
+                            return (
+                              <div
+                                key={position._id}
+                                className="grid gap-2 rounded-xl border p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+                              >
+                                <div>
+                                  <p className="font-medium">
+                                    {position.instrumentId.symbol}{' '}
+                                    <Badge variant="secondary" className="ml-1">
+                                      {
+                                        INSTRUMENT_LABELS[
+                                          position.instrumentId.type
+                                        ]
+                                      }
+                                    </Badge>
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {position.instrumentId.name} ·{' '}
+                                    {position.quantity.toLocaleString('es-AR', {
+                                      maximumFractionDigits: 8,
+                                    })}{' '}
+                                    nominales
+                                  </p>
+                                </div>
+                                <div className="text-left sm:text-right">
+                                  <p className="font-medium tabular-nums">
+                                    {money(marketValue, holding.currency)}
+                                  </p>
+                                  <p
+                                    className={`text-xs ${
+                                      result >= 0
+                                        ? 'text-emerald-600'
+                                        : 'text-destructive'
+                                    }`}
+                                  >
+                                    {result >= 0 ? '+' : ''}
+                                    {money(result, holding.currency)}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openPrice(position)}
+                                  >
+                                    Actualizar precio
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openTrade(position)}
+                                  >
+                                    Comprar / vender
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Todavía no registraste instrumentos en esta cuenta.
+                          </p>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void openPosition(holding)}
+                        >
+                          <Plus className="mr-1 size-4" /> Agregar posición
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={TrendingUp}
+              title="Creá una tenencia de inversión"
+              text="Después vas a poder agregar acciones, ETF, CEDEAR, bonos y otros instrumentos."
             />
           )}
         </TabsContent>
@@ -647,11 +968,19 @@ export default function WealthPage() {
         title={
           dialogMode === 'holding'
             ? 'Nueva tenencia'
-            : dialogMode === 'balance'
-              ? 'Actualizar saldo'
-              : dialogMode === 'goal'
-                ? 'Nuevo objetivo'
-                : 'Registrar aporte'
+            : dialogMode === 'edit_holding'
+              ? 'Editar tenencia'
+              : dialogMode === 'balance'
+                ? 'Actualizar saldo'
+                : dialogMode === 'goal'
+                  ? 'Nuevo objetivo'
+                  : dialogMode === 'position'
+                    ? 'Agregar posición'
+                    : dialogMode === 'price'
+                      ? 'Actualizar precio'
+                      : dialogMode === 'trade'
+                        ? 'Registrar operación'
+                        : 'Registrar aporte'
         }
         description={
           dialogMode === 'contribution'
@@ -701,6 +1030,19 @@ export default function WealthPage() {
                 value={amount}
                 onChange={setAmount}
               />
+            </>
+          ) : null}
+          {dialogMode === 'edit_holding' ? (
+            <>
+              <Field label="Nombre">
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <Field label="Institución (opcional)">
+                <Input
+                  value={institution}
+                  onChange={(e) => setInstitution(e.target.value)}
+                />
+              </Field>
             </>
           ) : null}
           {dialogMode === 'balance' ? (
@@ -783,6 +1125,194 @@ export default function WealthPage() {
                   Del 1 al 10: 1 es la prioridad más alta y 10 la más baja.
                 </p>
               </Field>
+            </>
+          ) : null}
+          {dialogMode === 'position' ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {selectedHolding?.name} · Los nominales y el precio actual se
+                usarán para calcular la valuación.
+              </p>
+              {createCustomInstrument ? (
+                <div className="space-y-4 rounded-xl border p-3">
+                  <Field label="Símbolo">
+                    <Input
+                      value={instrumentSymbol}
+                      onChange={(event) =>
+                        setInstrumentSymbol(event.target.value.toUpperCase())
+                      }
+                      placeholder="Ej: KO"
+                    />
+                  </Field>
+                  <Field label="Nombre">
+                    <Input
+                      value={instrumentName}
+                      onChange={(event) =>
+                        setInstrumentName(event.target.value)
+                      }
+                      placeholder="Ej: Coca-Cola"
+                    />
+                  </Field>
+                  <Field label="Tipo de instrumento">
+                    <Select
+                      value={instrumentType}
+                      onValueChange={(value) =>
+                        setInstrumentType(value as InstrumentType)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(INSTRUMENT_LABELS).map(
+                          ([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ),
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Mercado (opcional)">
+                    <Input
+                      value={instrumentExchange}
+                      onChange={(event) =>
+                        setInstrumentExchange(event.target.value)
+                      }
+                      placeholder="Ej: NASDAQ, BYMA"
+                    />
+                  </Field>
+                </div>
+              ) : (
+                <>
+                  <Field label="Buscar instrumento">
+                    <Input
+                      value={instrumentSearch}
+                      onChange={(event) =>
+                        setInstrumentSearch(event.target.value)
+                      }
+                      placeholder="Ej: AAPL, ETF, bono..."
+                    />
+                  </Field>
+                  <Field label="Instrumento">
+                    <Select
+                      value={instrumentId}
+                      onValueChange={setInstrumentId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccioná un instrumento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredInstruments.map((instrument) => (
+                          <SelectItem
+                            key={instrument._id}
+                            value={instrument._id}
+                          >
+                            {instrument.symbol} · {instrument.name} ·{' '}
+                            {INSTRUMENT_LABELS[instrument.type]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </>
+              )}
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0"
+                onClick={() => {
+                  setCreateCustomInstrument((value) => !value);
+                  setInstrumentId('');
+                }}
+              >
+                {createCustomInstrument
+                  ? 'Elegir del catálogo'
+                  : 'No está en el catálogo: crear instrumento'}
+              </Button>
+              <Field label="Cantidad de nominales">
+                <Input
+                  type="number"
+                  min="0.00000001"
+                  step="any"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                  placeholder="Ej: 10"
+                />
+              </Field>
+              <AmountField
+                label="Costo promedio por nominal"
+                value={averageCost}
+                onChange={setAverageCost}
+              />
+              <AmountField
+                label="Precio actual por nominal"
+                value={unitPrice}
+                onChange={setUnitPrice}
+              />
+            </>
+          ) : null}
+          {dialogMode === 'price' && selectedPosition ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {selectedPosition.instrumentId.symbol} · El nuevo precio
+                recalculará la valuación sin registrar una operación.
+              </p>
+              <AmountField
+                label="Precio actual por nominal"
+                value={unitPrice}
+                onChange={setUnitPrice}
+              />
+            </>
+          ) : null}
+          {dialogMode === 'trade' && selectedPosition ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                {selectedPosition.instrumentId.symbol} ·{' '}
+                {selectedPosition.quantity.toLocaleString('es-AR', {
+                  maximumFractionDigits: 8,
+                })}{' '}
+                nominales actuales
+              </p>
+              <Field label="Operación">
+                <Select
+                  value={tradeType}
+                  onValueChange={(value) =>
+                    setTradeType(value as 'buy' | 'sell')
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="buy">Compra</SelectItem>
+                    <SelectItem value="sell">Venta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Cantidad de nominales">
+                <Input
+                  type="number"
+                  min="0.00000001"
+                  max={
+                    tradeType === 'sell' ? selectedPosition.quantity : undefined
+                  }
+                  step="any"
+                  value={quantity}
+                  onChange={(event) => setQuantity(event.target.value)}
+                />
+              </Field>
+              <AmountField
+                label="Precio por nominal"
+                value={unitPrice}
+                onChange={setUnitPrice}
+              />
+              {tradeType === 'buy' ? (
+                <p className="text-xs text-muted-foreground">
+                  La compra se descuenta del efectivo disponible en la cuenta.
+                </p>
+              ) : null}
             </>
           ) : null}
           {dialogMode === 'contribution' ? (
