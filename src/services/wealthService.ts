@@ -8,44 +8,63 @@ import type {
 } from '@/types/wealth';
 
 export const wealthService = {
-  async getOverview(): Promise<WealthOverview> {
-    const response = await api.get('/wealth');
+  async getOverview(boardId: string): Promise<WealthOverview> {
+    const response = await api.get('/wealth', { params: { boardId } });
     return response.data;
   },
-  async createHolding(data: {
-    name: string;
-    type: HoldingType;
-    institution?: string;
-    currency: string;
-    currentBalance: number;
-  }) {
-    return (await api.post('/wealth/holdings', data)).data;
+  async createHolding(
+    boardId: string,
+    data: {
+      name: string;
+      type: HoldingType;
+      institution?: string;
+      currency: string;
+      currentBalance: number;
+    },
+  ) {
+    return (await api.post('/wealth/holdings', data, { params: { boardId } }))
+      .data;
   },
   async updateHolding(
+    boardId: string,
     id: string,
     data: { name?: string; type?: HoldingType; institution?: string },
   ) {
-    return (await api.patch(`/wealth/holdings/${id}`, data)).data;
+    return (
+      await api.patch(`/wealth/holdings/${id}`, data, { params: { boardId } })
+    ).data;
   },
-  async adjustBalance(id: string, data: { balance: number; note?: string }) {
-    return (await api.post(`/wealth/holdings/${id}/balance-adjustments`, data))
+  async adjustBalance(
+    boardId: string,
+    id: string,
+    data: { balance: number; note?: string },
+  ) {
+    return (
+      await api.post(`/wealth/holdings/${id}/balance-adjustments`, data, {
+        params: { boardId },
+      })
+    ).data;
+  },
+  async archiveHolding(boardId: string, id: string) {
+    await api.delete(`/wealth/holdings/${id}`, { params: { boardId } });
+  },
+  async createGoal(
+    boardId: string,
+    data: {
+      name: string;
+      targetAmount: number;
+      currency: string;
+      targetDate?: string;
+      plannedMonthlyContribution?: number;
+      priority?: number;
+      icon?: string;
+    },
+  ) {
+    return (await api.post('/wealth/goals', data, { params: { boardId } }))
       .data;
   },
-  async archiveHolding(id: string) {
-    await api.delete(`/wealth/holdings/${id}`);
-  },
-  async createGoal(data: {
-    name: string;
-    targetAmount: number;
-    currency: string;
-    targetDate?: string;
-    plannedMonthlyContribution?: number;
-    priority?: number;
-    icon?: string;
-  }) {
-    return (await api.post('/wealth/goals', data)).data;
-  },
   async updateGoal(
+    boardId: string,
     id: string,
     data: {
       name?: string;
@@ -57,12 +76,15 @@ export const wealthService = {
       status?: GoalStatus;
     },
   ) {
-    return (await api.patch(`/wealth/goals/${id}`, data)).data;
+    return (
+      await api.patch(`/wealth/goals/${id}`, data, { params: { boardId } })
+    ).data;
   },
-  async archiveGoal(id: string) {
-    await api.delete(`/wealth/goals/${id}`);
+  async archiveGoal(boardId: string, id: string) {
+    await api.delete(`/wealth/goals/${id}`, { params: { boardId } });
   },
   async contribute(
+    boardId: string,
     goalId: string,
     data: {
       holdingId: string;
@@ -71,7 +93,11 @@ export const wealthService = {
       note?: string;
     },
   ): Promise<WealthOverview> {
-    return (await api.post(`/wealth/goals/${goalId}/contributions`, data)).data;
+    return (
+      await api.post(`/wealth/goals/${goalId}/contributions`, data, {
+        params: { boardId },
+      })
+    ).data;
   },
   async getInstruments(search = ''): Promise<FinancialInstrument[]> {
     const response = await api.get('/wealth/instruments/catalog', {
@@ -89,6 +115,7 @@ export const wealthService = {
     return (await api.post('/wealth/instruments/catalog', data)).data;
   },
   async createPosition(
+    boardId: string,
     holdingId: string,
     data: {
       instrumentId: string;
@@ -97,17 +124,29 @@ export const wealthService = {
       currentPrice: number;
     },
   ) {
-    return (await api.post(`/wealth/investments/${holdingId}/positions`, data))
-      .data;
-  },
-  async updatePositionPrice(positionId: string, currentPrice: number) {
     return (
-      await api.patch(`/wealth/investments/positions/${positionId}/price`, {
-        currentPrice,
+      await api.post(`/wealth/investments/${holdingId}/positions`, data, {
+        params: { boardId },
       })
     ).data;
   },
+  async updatePositionPrice(
+    boardId: string,
+    positionId: string,
+    currentPrice: number,
+  ) {
+    return (
+      await api.patch(
+        `/wealth/investments/positions/${positionId}/price`,
+        {
+          currentPrice,
+        },
+        { params: { boardId } },
+      )
+    ).data;
+  },
   async trade(
+    boardId: string,
     holdingId: string,
     data: {
       instrumentId: string;
@@ -118,7 +157,9 @@ export const wealthService = {
     },
   ) {
     return (
-      await api.post(`/wealth/investments/${holdingId}/transactions`, data)
+      await api.post(`/wealth/investments/${holdingId}/transactions`, data, {
+        params: { boardId },
+      })
     ).data;
   },
 };
