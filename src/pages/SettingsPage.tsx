@@ -56,6 +56,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isCancellingEmailChange, setIsCancellingEmailChange] = useState(false);
   const [isUpdatingTelegramBoard, setIsUpdatingTelegramBoard] = useState(false);
 
   const boards = useBoardsStore((state) => state.boards);
@@ -169,8 +170,12 @@ export default function SettingsPage() {
           accessToken,
         );
       }
-
-      toast.success('Perfil actualizado exitosamente');
+      setEmail(updatedUser.email);
+      toast.success(
+        updatedUser.pendingEmail
+          ? `Perfil actualizado. Confirma el enlace enviado a ${updatedUser.pendingEmail}.`
+          : 'Perfil actualizado exitosamente',
+      );
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -178,6 +183,25 @@ export default function SettingsPage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCancelEmailChange = async () => {
+    if (!user?.pendingEmail || !accessToken) return;
+    setIsCancellingEmailChange(true);
+    try {
+      const result = await authService.cancelEmailChange();
+      setAuth({ ...user, pendingEmail: undefined }, accessToken);
+      setEmail(user.email);
+      toast.success(result.message);
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      toast.error(
+        axiosError.response?.data?.message ||
+          'No se pudo cancelar el cambio de email',
+      );
+    } finally {
+      setIsCancellingEmailChange(false);
     }
   };
 
@@ -259,8 +283,27 @@ export default function SettingsPage() {
                 disabled={isSaving}
               />
               <p className="text-xs text-muted-foreground">
-                Puedes modificar tu email cuando lo necesites.
+                El email actual no cambiará hasta que confirmes la nueva
+                dirección.
               </p>
+              {user?.pendingEmail && (
+                <div className="flex flex-col items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Cambio pendiente: {user.pendingEmail}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isCancellingEmailChange || isSaving}
+                    onClick={handleCancelEmailChange}
+                  >
+                    {isCancellingEmailChange
+                      ? 'Cancelando…'
+                      : 'Cancelar cambio de email'}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <Button type="submit" disabled={isSaving}>

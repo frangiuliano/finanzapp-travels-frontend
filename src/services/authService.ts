@@ -76,4 +76,15 @@ export const authService = {
     const response = await api.patch('/auth/profile', data);
     return response.data;
   },
+
+  async confirmEmailChange(token: string) {
+    const response = await api.post('/auth/confirm-email-change', { token });
+    useAuthStore.getState().clearAuth();
+    return response.data as { message: string };
+  },
+
+  async cancelEmailChange() {
+    const response = await api.delete('/auth/pending-email-change');
+    return response.data as { message: string };
+  },
 };

@@ -29,6 +29,7 @@ const authEndpoints = [
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify-email',
+  '/auth/confirm-email-change',
   '/auth/refresh',
 ];
 

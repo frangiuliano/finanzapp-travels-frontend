@@ -24,6 +24,7 @@ import BoardSettingsPage from '@/pages/BoardSettingsPage';
 import BillingPeriodConfirmPage from '@/pages/BillingPeriodConfirmPage';
 import SimulateExpensePage from '@/pages/SimulateExpensePage';
 import WealthPage from '@/pages/WealthPage';
+import ConfirmEmailChangePage from '@/pages/ConfirmEmailChangePage';
 import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
 import { AppShellLayout } from '@/components/app-shell-layout';
@@ -117,6 +118,10 @@ function AppRoutes() {
         element={<EmailVerificationPage />}
       />
       <Route path="/verify-email" element={<EmailVerificationPage />} />
+      <Route
+        path="/auth/confirm-email-change"
+        element={<ConfirmEmailChangePage />}
+      />
       <Route
         path="/forgot-password"
         element={

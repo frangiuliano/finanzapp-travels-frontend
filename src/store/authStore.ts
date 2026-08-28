@@ -8,6 +8,7 @@ interface User {
   firstName: string;
   lastName: string;
   emailVerified: boolean;
+  pendingEmail?: string;
   activeBoardId?: string | null;
 }
 
