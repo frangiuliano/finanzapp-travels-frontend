@@ -19,7 +19,14 @@ export function useOfflineExpenseSync(): number {
     const unsubscribe = subscribeOfflineQueue(userId, setPendingCount);
 
     const sync = async () => {
-      const synced = await processOfflineExpenseQueue();
+      const { synced, purged } = await processOfflineExpenseQueue();
+      if (purged > 0) {
+        toast.error(
+          purged === 1
+            ? 'Se descartó 1 gasto pendiente por pasar demasiado tiempo sin sincronizar'
+            : `Se descartaron ${purged} gastos pendientes por pasar demasiado tiempo sin sincronizar`,
+        );
+      }
       if (synced > 0) {
         toast.success(
           synced === 1

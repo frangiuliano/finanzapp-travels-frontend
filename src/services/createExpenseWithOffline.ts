@@ -48,7 +48,7 @@ export async function createExpenseWithOffline(
       }
       console.warn(
         '[offline-queue] Create expense failed while online; queuing for retry',
-        error,
+        error instanceof Error ? error.message : String(error),
       );
     }
   }
@@ -68,14 +68,22 @@ export async function createExpenseWithOffline(
   return { mode: 'queued', clientRequestId };
 }
 
-export async function processOfflineExpenseQueue(): Promise<number> {
-  if (!navigator.onLine) {
-    return 0;
-  }
+export interface OfflineSyncResult {
+  synced: number;
+  purged: number;
+}
 
+export async function processOfflineExpenseQueue(): Promise<OfflineSyncResult> {
   const userId = useAuthStore.getState().user?.id;
   if (!userId) {
-    return 0;
+    return { synced: 0, purged: 0 };
+  }
+
+  const purgedEntries = await offlineExpenseQueue.purgeStaleEntries(userId);
+  const purged = purgedEntries.length;
+
+  if (!navigator.onLine) {
+    return { synced: 0, purged };
   }
 
   const entries = await offlineExpenseQueue.getAllForUser(userId);
@@ -109,5 +117,5 @@ export async function processOfflineExpenseQueue(): Promise<number> {
     }
   }
 
-  return synced;
+  return { synced, purged };
 }
