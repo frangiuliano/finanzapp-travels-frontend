@@ -182,14 +182,18 @@ export default function InvitationPage() {
         lastName: trimmedLastName,
       });
 
-      if (token) {
-        await participantsService.acceptInvitation(token);
-      }
-
-      setPageState('success');
-      setTimeout(() => {
-        navigate('/verify-email');
-      }, 2000);
+      const postVerificationRedirect = `/boards/invitation/${token}`;
+      localStorage.setItem(
+        'finanzapp-post-verification-redirect',
+        postVerificationRedirect,
+      );
+      navigate('/verify-email', {
+        replace: true,
+        state: {
+          registrationEmail: invitationInfo.userEmail,
+          postVerificationRedirect,
+        },
+      });
     } catch (err: unknown) {
       const message =
         axios.isAxiosError(err) && err.response?.data?.message

@@ -115,14 +115,16 @@ export function SignupForm({
     setIsLoading(true);
 
     try {
-      await authService.register({
+      const result = await authService.register({
         email,
         username: trimmedUsername,
         password,
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
       });
-      navigate('/verify-email');
+      navigate('/verify-email', {
+        state: { registrationEmail: result.email },
+      });
     } catch (err: unknown) {
       const errorMessage =
         axios.isAxiosError(err) && err.response?.data?.message

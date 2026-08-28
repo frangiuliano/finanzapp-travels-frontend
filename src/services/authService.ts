@@ -27,11 +27,12 @@ export const authService = {
 
   async register(data: RegisterData) {
     const response = await api.post('/auth/register', data);
-    const { accessToken, user } = response.data;
-    useAuthStore.getState().setAuth(user, accessToken);
-    const fullUser = await authService.getCurrentUser();
-    useAuthStore.getState().setAuth(fullUser, accessToken);
-    return { user: fullUser, accessToken };
+    return response.data as { message: string; email: string };
+  },
+
+  async resendVerification(email: string) {
+    const response = await api.post('/auth/resend-verification', { email });
+    return response.data as { message: string };
   },
 
   async logout() {

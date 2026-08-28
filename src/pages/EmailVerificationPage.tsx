@@ -5,7 +5,12 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
+import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+  useParams,
+} from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 import {
@@ -16,7 +21,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import api from '@/services/api';
+import { getSafeAuthRedirect } from '@/lib/auth-redirect';
+
+const POST_VERIFICATION_REDIRECT_KEY = 'finanzapp-post-verification-redirect';
 
 const DEFAULT_VERIFY_ERROR =
   'Error al verificar el email. El enlace puede haber expirado o ser inválido.';
@@ -51,12 +60,28 @@ function VerificationResultLayout({
 
 export default function EmailVerificationPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { token: tokenFromRoute } = useParams<{ token?: string }>();
   const token = tokenFromRoute || searchParams.get('token');
   const redirectStatus = searchParams.get('status');
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const navigationState = location.state as {
+    registrationEmail?: string;
+    postVerificationRedirect?: string;
+  } | null;
+  const [resendEmail, setResendEmail] = useState(
+    user?.email ?? navigationState?.registrationEmail ?? '',
+  );
+  const storedPostVerificationRedirect = localStorage.getItem(
+    POST_VERIFICATION_REDIRECT_KEY,
+  );
+  const requestedPostVerificationRedirect =
+    navigationState?.postVerificationRedirect ?? storedPostVerificationRedirect;
+  const postVerificationRedirect = getSafeAuthRedirect(
+    requestedPostVerificationRedirect ?? null,
+  );
   const [isVerifying, setIsVerifying] = useState(Boolean(token));
   const [verificationStatus, setVerificationStatus] = useState<
     'idle' | 'success' | 'error'
@@ -72,18 +97,16 @@ export default function EmailVerificationPage() {
         if (preferHome && useAuthStore.getState().isAuthenticated) {
           navigate('/home');
         } else {
-          navigate('/login');
+          const redirect = requestedPostVerificationRedirect
+            ? `?redirect=${encodeURIComponent(postVerificationRedirect)}`
+            : '';
+          localStorage.removeItem(POST_VERIFICATION_REDIRECT_KEY);
+          navigate(`/login${redirect}`);
         }
       }, 2000);
     },
-    [navigate],
+    [navigate, postVerificationRedirect, requestedPostVerificationRedirect],
   );
-
-  useEffect(() => {
-    if (!token && !isAuthenticated && !redirectStatus) {
-      navigate('/login');
-    }
-  }, [token, isAuthenticated, redirectStatus, navigate]);
 
   useEffect(() => {
     if (redirectStatus !== 'success') {
@@ -217,15 +240,16 @@ export default function EmailVerificationPage() {
   }, [token, verifyEmail, hasVerified, redirectStatus]);
 
   const handleResendEmail = async () => {
-    if (!isAuthenticated) {
-      navigate('/login');
+    const email = resendEmail.trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setErrorMessage('Ingresa un email válido para reenviar la verificación.');
       return;
     }
 
     setIsResending(true);
     setErrorMessage(null);
     try {
-      await api.post('/auth/resend-verification');
+      await api.post('/auth/resend-verification', { email });
       alert(
         'Email de verificación reenviado. Por favor, revisa tu bandeja de entrada.',
       );
@@ -321,7 +345,7 @@ export default function EmailVerificationPage() {
             <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
               {errorMessage}
             </div>
-            {isAuthenticated && (
+            {resendEmail && (
               <Button
                 onClick={handleResendEmail}
                 className="w-full"
@@ -366,7 +390,7 @@ export default function EmailVerificationPage() {
               <div className="text-4xl mb-4">📧</div>
               <p className="text-sm text-muted-foreground">
                 Por favor, revisa tu bandeja de entrada y haz clic en el enlace
-                de verificación que te enviamos a <strong>{user?.email}</strong>
+                de verificación que te enviamos a <strong>{resendEmail}</strong>
               </p>
             </div>
 
@@ -379,18 +403,23 @@ export default function EmailVerificationPage() {
               </ul>
             </div>
 
-            {isAuthenticated && (
-              <Button
-                onClick={handleResendEmail}
-                className="w-full"
-                variant="outline"
-                disabled={isResending}
-              >
-                {isResending
-                  ? 'Reenviando...'
-                  : 'Reenviar email de verificación'}
-              </Button>
-            )}
+            <Input
+              type="email"
+              value={resendEmail}
+              onChange={(event) => setResendEmail(event.target.value)}
+              placeholder="tu@email.com"
+              autoComplete="email"
+              aria-label="Email de la cuenta"
+            />
+
+            <Button
+              onClick={handleResendEmail}
+              className="w-full"
+              variant="outline"
+              disabled={isResending || !resendEmail}
+            >
+              {isResending ? 'Reenviando...' : 'Reenviar email de verificación'}
+            </Button>
 
             <div className="text-center text-sm">
               <button

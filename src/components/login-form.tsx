@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authService } from '@/services/authService';
 import axios from 'axios';
-import api from '@/services/api';
 import { getSafeAuthRedirect } from '@/lib/auth-redirect';
 
 export function LoginForm({
@@ -30,10 +29,18 @@ export function LoginForm({
   const [isResending, setIsResending] = useState(false);
 
   const handleResendVerification = async () => {
+    const email = emailOrUsername.trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setError(
+        'Ingresa el email de la cuenta, en lugar del nombre de usuario, para reenviar la verificación.',
+      );
+      return;
+    }
+
     setIsResending(true);
     setError(null);
     try {
-      await api.post('/auth/resend-verification');
+      await authService.resendVerification(email);
       setError(null);
       alert(
         'Email de verificación reenviado. Por favor, revisa tu bandeja de entrada.',
@@ -58,17 +65,6 @@ export function LoginForm({
     try {
       await authService.login({ emailOrUsername, password });
 
-      try {
-        const userResponse = await api.get('/auth/me');
-        if (!userResponse.data?.emailVerified) {
-          setEmailNotVerified(true);
-          setIsLoading(false);
-          return;
-        }
-      } catch {
-        // Si no se puede verificar, asumir que está verificado y continuar
-      }
-
       navigate(getSafeAuthRedirect(searchParams.get('redirect')), {
         replace: true,
       });
@@ -77,6 +73,9 @@ export function LoginForm({
         axios.isAxiosError(err) && err.response?.data?.message
           ? err.response.data.message
           : 'Error al iniciar sesión. Por favor, intenta de nuevo.';
+      if (errorMessage.toLowerCase().includes('verificar tu email')) {
+        setEmailNotVerified(true);
+      }
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -111,6 +110,7 @@ export function LoginForm({
                     Por favor, verifica tu email antes de continuar. Revisa tu
                     bandeja de entrada y haz clic en el enlace de verificación.
                   </p>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
                   <Button
                     type="button"
                     onClick={handleResendVerification}
