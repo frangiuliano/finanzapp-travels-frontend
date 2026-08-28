@@ -206,9 +206,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-8">
+    <div className="w-full flex-1 space-y-4 px-4 py-6 lg:px-6">
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight">
+        <h1 className="font-display text-2xl font-bold tracking-tight">
           Cuenta
         </h1>
         <p className="text-muted-foreground">

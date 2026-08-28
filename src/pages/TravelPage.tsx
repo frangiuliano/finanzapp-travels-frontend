@@ -348,8 +348,8 @@ export default function TravelPage() {
 
   return (
     <Fragment>
-      <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 pt-0">
-        <div className="flex flex-col gap-4 px-2 sm:px-4 pt-4 lg:px-6 md:flex-row md:items-center md:justify-between">
+      <div className="w-full flex-1 space-y-4 px-4 py-6 lg:px-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold">Viajes</h1>
             <p className="text-muted-foreground">
@@ -388,7 +388,7 @@ export default function TravelPage() {
           </div>
         </div>
 
-        <div className="mx-2 sm:mx-4 lg:mx-6 rounded-xl border border-border/80 bg-muted/30 px-4 py-3 text-sm">
+        <div className="rounded-xl border border-border/80 bg-muted/30 px-4 py-3 text-sm">
           <p className="text-muted-foreground">
             Los gastos de viaje se incluyen en el consolidado mensual.{' '}
             <Link
@@ -404,18 +404,18 @@ export default function TravelPage() {
         <Separator />
 
         {mocksEnabled && (
-          <div className="mx-2 sm:mx-4 lg:mx-6 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
             Modo mocks activo (`VITE_BOARD_MOCKS=true`). Los tableros de viaje
             son locales.
           </div>
         )}
 
         {isLoadingBoards ? (
-          <div className="px-2 sm:px-4 py-8 text-center lg:px-6">
+          <div className="py-8 text-center">
             <p className="text-muted-foreground">Cargando…</p>
           </div>
         ) : travelBoards.length === 0 ? (
-          <div className="px-2 sm:px-4 py-8 text-center lg:px-6 space-y-4">
+          <div className="space-y-4 py-8 text-center">
             <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Plane className="size-6" />
             </div>
@@ -441,7 +441,7 @@ export default function TravelPage() {
             )}
           </div>
         ) : travelBoards.length > 1 ? (
-          <div className="px-2 sm:px-4 lg:px-6">
+          <div>
             <p className="mb-3 text-sm text-muted-foreground">
               Seleccioná un viaje para gestionar
             </p>
@@ -466,11 +466,11 @@ export default function TravelPage() {
 
         {activeTravelBoard && activeTrip ? (
           isLoadingDetails && !budgetsByBoard[activeTravelBoard._id] ? (
-            <div className="px-2 sm:px-4 py-8 text-center lg:px-6">
+            <div className="py-8 text-center">
               <p className="text-muted-foreground">Cargando detalles…</p>
             </div>
           ) : (
-            <div className="px-2 sm:px-4 pb-4 lg:px-6 space-y-6">
+            <div className="space-y-6">
               {(() => {
                 const trip = activeTrip;
                 const budgets = budgetsByBoard[trip._id] || [];
