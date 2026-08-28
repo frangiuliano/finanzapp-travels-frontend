@@ -134,8 +134,8 @@ export default function DashboardPage() {
   const handleRefresh = () => setRefreshTrigger((prev) => prev + 1);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-2 sm:p-4 pt-0">
-      <div className="px-2 sm:px-4 pt-4 lg:px-6">
+    <div className="w-full flex-1 space-y-4 px-4 py-6 lg:px-6">
+      <div>
         <div className="mb-4 sm:mb-6">
           <h2 className="font-display text-xl sm:text-2xl font-bold">
             {activeBoard.name}
@@ -189,7 +189,7 @@ export default function DashboardPage() {
       </div>
 
       {!isEverydayBoard && !activeBoard._id.startsWith('mock-') && (
-        <div className="space-y-4 px-2 pb-4 sm:px-4 lg:px-6">
+        <div className="space-y-4">
           <div>
             <RecentExpensesTable
               tripId={activeBoard._id}
