@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { formatDaysOfMonth } from '@/lib/format-days-of-month';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
@@ -52,6 +53,10 @@ export function ManageRecurringIncomesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RecurringIncome | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RecurringIncome | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<FormState>(emptyForm);
 
   const fetchItems = useCallback(async () => {
@@ -150,11 +155,11 @@ export function ManageRecurringIncomesSection({
   };
 
   const handleDelete = async (item: RecurringIncome) => {
-    if (!confirm(`¿Eliminar el ingreso recurrente "${item.label}"?`)) return;
-
+    setIsDeleting(true);
     try {
       await recurringIncomesService.delete(item._id);
       toast.success('Ingreso recurrente eliminado');
+      setDeleteTarget(null);
       await fetchItems();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -162,6 +167,8 @@ export function ManageRecurringIncomesSection({
         axiosError.response?.data?.message ||
           'Error al eliminar ingreso recurrente',
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -213,7 +220,8 @@ export function ManageRecurringIncomesSection({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void handleDelete(item)}
+                  onClick={() => setDeleteTarget(item)}
+                  aria-label={`Eliminar ${item.label}`}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -320,6 +328,24 @@ export function ManageRecurringIncomesSection({
           </Button>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar ingreso recurrente'
+        }
+        description="Se eliminará la regla recurrente y sus ocurrencias pendientes. Los ingresos que ya confirmaste se conservarán. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar recurrencia"
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget) return handleDelete(deleteTarget);
+        }}
+      />
     </div>
   );
 }
