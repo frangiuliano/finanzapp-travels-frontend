@@ -1,6 +1,11 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/services/api';
+import { isDefiniteAuthFailure } from '@/lib/network';
+import {
+  getOfflineIdentity,
+  clearOfflineIdentity,
+} from '@/lib/offlineIdentity';
 
 const publicPaths = new Set([
   '/login',
@@ -25,11 +30,16 @@ export function isPublicAuthPath(path: string): boolean {
 
 let bootstrapPromise: Promise<void> | null = null;
 
+function logoutForInvalidSession(): void {
+  useAuthStore.getState().clearAuth();
+  clearOfflineIdentity();
+}
+
 async function runAuthBootstrap(): Promise<void> {
   const {
     accessToken: currentToken,
     setAuth,
-    clearAuth,
+    setOfflineAuth,
   } = useAuthStore.getState();
 
   if (currentToken) {
@@ -50,21 +60,31 @@ async function runAuthBootstrap(): Promise<void> {
         }
       }
       return;
-    } catch {
-      // refresh failed, try /me with current token
+    } catch (error) {
+      // A network/server hiccup doesn't prove the session is invalid —
+      // keep the session we already had in memory and try again later.
+      if (!isDefiniteAuthFailure(error)) {
+        return;
+      }
+      // refresh explicitly rejected, try /me with the current token as a
+      // last resort before giving up
     }
 
+    // The refresh token is already confirmed invalid at this point. The
+    // current access token might still have a minute or two left, so try
+    // it once as a grace period — but any outcome other than a working
+    // token means there's no valid path forward, so log out either way.
     try {
       const response = await api.get('/auth/me');
       const token = useAuthStore.getState().accessToken;
       if (response.data && token) {
         setAuth(response.data, token);
-      } else {
-        clearAuth();
+        return;
       }
     } catch {
-      clearAuth();
+      // fall through to logout below
     }
+    logoutForInvalidSession();
     return;
   }
 
@@ -84,12 +104,26 @@ async function runAuthBootstrap(): Promise<void> {
         // keep partial user from refresh
       }
     } else {
-      clearAuth();
+      logoutForInvalidSession();
     }
-  } catch {
-    const path = window.location.pathname;
-    if (!isPublicAuthPath(path)) {
-      clearAuth();
+  } catch (error) {
+    if (isDefiniteAuthFailure(error)) {
+      // The server explicitly rejected the session — no cached identity
+      // should survive that.
+      const path = window.location.pathname;
+      if (!isPublicAuthPath(path)) {
+        logoutForInvalidSession();
+      }
+      return;
+    }
+
+    // Couldn't reach the server to confirm anything (network error, server
+    // down). `navigator.onLine` isn't reliable enough to gate this on, so
+    // fall back to the last known identity whenever one exists rather than
+    // stranding the user on the login screen.
+    const cached = getOfflineIdentity();
+    if (cached) {
+      setOfflineAuth(cached);
     }
   }
 }

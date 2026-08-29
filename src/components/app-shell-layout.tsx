@@ -11,7 +11,9 @@ import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 import { useOfflineExpenseSync } from '@/hooks/useOfflineExpenseSync';
 import { useScrollMinimize } from '@/hooks/useScrollMinimize';
 import { OfflineSyncBanner } from '@/components/offline-sync-banner';
+import { CachedSessionBanner } from '@/components/cached-session-banner';
 import { useBoardsStore } from '@/store/boardsStore';
+import { useAuthStore } from '@/store/authStore';
 import { CreateMovementSheet } from '@/components/create-movement-sheet';
 
 export function AppShellLayout() {
@@ -21,12 +23,14 @@ export function AppShellLayout() {
   const bootstrapStatus = useBoardsStore((state) => state.bootstrapStatus);
   const pendingOfflineCount = useOfflineExpenseSync();
   const navMinimized = useScrollMinimize();
+  const authSource = useAuthStore((state) => state.authSource);
 
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col transition-all duration-200 ease-linear">
         <SiteHeader />
+        {authSource === 'cached' && <CachedSessionBanner />}
         <OfflineSyncBanner pendingCount={pendingOfflineCount} />
         <div className="relative z-0 flex min-h-0 flex-1 flex-col md:pb-4">
           {bootstrapStatus === 'error' ? (

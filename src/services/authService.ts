@@ -1,6 +1,7 @@
 import api from './api';
 import { useAuthStore } from '@/store/authStore';
 import { offlineExpenseQueue } from '@/services/offlineExpenseQueue';
+import { clearOfflineIdentity } from '@/lib/offlineIdentity';
 
 interface LoginCredentials {
   emailOrUsername: string;
@@ -39,13 +40,17 @@ export const authService = {
     try {
       await api.post('/auth/logout');
     } catch (error) {
-      console.error('Error al cerrar sesión:', error);
+      console.error(
+        'Error al cerrar sesión:',
+        error instanceof Error ? error.message : String(error),
+      );
     } finally {
       const userId = useAuthStore.getState().user?.id;
       if (userId) {
         await offlineExpenseQueue.clearForUser(userId);
       }
       useAuthStore.getState().clearAuth();
+      clearOfflineIdentity();
     }
   },
 
@@ -80,6 +85,7 @@ export const authService = {
   async confirmEmailChange(token: string) {
     const response = await api.post('/auth/confirm-email-change', { token });
     useAuthStore.getState().clearAuth();
+    clearOfflineIdentity();
     return response.data as { message: string };
   },
 
