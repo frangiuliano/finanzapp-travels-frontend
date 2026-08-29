@@ -9,6 +9,7 @@ import { MoneyInput } from '@/components/ui/money-input';
 import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { installmentPlansService } from '@/services/installmentPlansService';
 import type { InstallmentPlan } from '@/types/installment-plan';
@@ -46,6 +47,10 @@ export function ManageInstallmentPlansSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InstallmentPlan | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InstallmentPlan | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<FormState>(
     emptyForm(getCurrentYearMonth()),
   );
@@ -155,11 +160,11 @@ export function ManageInstallmentPlansSection({
   };
 
   const handleDelete = async (item: InstallmentPlan) => {
-    if (!confirm(`¿Eliminar el plan "${item.label}"?`)) return;
-
+    setIsDeleting(true);
     try {
       await installmentPlansService.delete(item._id);
       toast.success('Plan de cuotas eliminado');
+      setDeleteTarget(null);
       await fetchItems();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -167,6 +172,8 @@ export function ManageInstallmentPlansSection({
         axiosError.response?.data?.message ||
           'Error al eliminar plan de cuotas',
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -219,7 +226,8 @@ export function ManageInstallmentPlansSection({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void handleDelete(item)}
+                  onClick={() => setDeleteTarget(item)}
+                  aria-label={`Eliminar ${item.label}`}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -325,6 +333,24 @@ export function ManageInstallmentPlansSection({
           </Button>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar plan de cuotas'
+        }
+        description="Las cuotas pendientes dejarán de incluirse en las proyecciones. Los movimientos que ya registraste no se modificarán. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar plan"
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget) return handleDelete(deleteTarget);
+        }}
+      />
     </div>
   );
 }
