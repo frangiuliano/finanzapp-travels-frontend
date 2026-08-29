@@ -14,6 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
+import {
+  getBoardScopedCache,
+  saveBoardScopedCache,
+} from '@/lib/board-scoped-cache';
 import { parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import {
@@ -75,6 +79,9 @@ interface QuickExpenseFormProps {
     startYearMonth: string;
   }) => void;
 }
+
+const PARTICIPANTS_CACHE_NAMESPACE = 'participants';
+const BUDGETS_CACHE_NAMESPACE = 'budgets';
 
 function getParticipantName(participant: Participant): string {
   if (participant.guestName) {
@@ -288,6 +295,16 @@ export function QuickExpenseForm({
     }
 
     if (prefilledParticipants && prefilledBudgets) {
+      saveBoardScopedCache(
+        PARTICIPANTS_CACHE_NAMESPACE,
+        board._id,
+        prefilledParticipants,
+      );
+      saveBoardScopedCache(
+        BUDGETS_CACHE_NAMESPACE,
+        board._id,
+        prefilledBudgets,
+      );
       setParticipants(prefilledParticipants);
       setBudgets(prefilledBudgets);
       const currentUserParticipant = prefilledParticipants.find(
@@ -328,6 +345,16 @@ export function QuickExpenseForm({
         if (stale) return;
 
         const loadedParticipants = participantsResult.participants;
+        saveBoardScopedCache(
+          PARTICIPANTS_CACHE_NAMESPACE,
+          board._id,
+          loadedParticipants,
+        );
+        saveBoardScopedCache(
+          BUDGETS_CACHE_NAMESPACE,
+          board._id,
+          budgetsResult.budgets,
+        );
         setParticipants(loadedParticipants);
         setBudgets(budgetsResult.budgets);
 
@@ -346,6 +373,34 @@ export function QuickExpenseForm({
         }
       } catch (error) {
         if (!stale) {
+          const cachedParticipants = getBoardScopedCache<Participant[]>(
+            PARTICIPANTS_CACHE_NAMESPACE,
+            board._id,
+          );
+          const cachedBudgets = getBoardScopedCache<Budget[]>(
+            BUDGETS_CACHE_NAMESPACE,
+            board._id,
+          );
+
+          if (cachedParticipants !== null && cachedBudgets !== null) {
+            setParticipants(cachedParticipants);
+            setBudgets(cachedBudgets);
+            if (!isEditing) {
+              const currentUserParticipant = cachedParticipants.find(
+                (participant) =>
+                  typeof participant.userId === 'object' &&
+                  participant.userId?._id === user?.id,
+              );
+              setPaidByParticipantId(
+                currentUserParticipant?._id ?? cachedParticipants[0]?._id ?? '',
+              );
+              setSplitParticipantIds(
+                cachedParticipants.map((participant) => participant._id),
+              );
+            }
+            return;
+          }
+
           const axiosError = error as AxiosError<{ message?: string }>;
           toast.error(
             axiosError.response?.data?.message ||
