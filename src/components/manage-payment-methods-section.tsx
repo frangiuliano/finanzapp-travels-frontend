@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { PaymentMethodInstitutionField } from '@/components/payment-method-institution-field';
 import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
 import { cn } from '@/lib/utils';
@@ -153,6 +154,10 @@ export function ManagePaymentMethodsSection({
   );
   const [formData, setFormData] = useState<PaymentMethodFormState>(defaultForm);
   const [showClosingDayWarning, setShowClosingDayWarning] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<PaymentMethod | null>(
+    null,
+  );
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const fetchMethods = useCallback(async () => {
     setIsLoading(true);
@@ -319,18 +324,11 @@ export function ManagePaymentMethodsSection({
     if (method.isDefault) {
       return;
     }
-
-    if (
-      !confirm(
-        `¿Archivar "${method.name}"? No se borran los gastos ya registrados.`,
-      )
-    ) {
-      return;
-    }
-
+    setIsArchiving(true);
     try {
       await paymentMethodsService.archive(method._id);
       toast.success('Medio de pago archivado');
+      setArchiveTarget(null);
       await fetchMethods();
       notifyPaymentMethodsChanged(boardId);
     } catch (error) {
@@ -339,6 +337,8 @@ export function ManagePaymentMethodsSection({
         axiosError.response?.data?.message ||
           'Error al archivar el medio de pago',
       );
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -519,7 +519,7 @@ export function ManagePaymentMethodsSection({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => handleArchive(method)}
+                  onClick={() => setArchiveTarget(method)}
                   aria-label={`Archivar ${method.name}`}
                 >
                   <Archive className="size-4 text-muted-foreground" />
@@ -835,6 +835,26 @@ export function ManagePaymentMethodsSection({
           </div>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null);
+        }}
+        title={
+          archiveTarget
+            ? `Archivar “${archiveTarget.name}”`
+            : 'Archivar medio de pago'
+        }
+        description="El medio dejará de estar disponible para registrar nuevos gastos. Los movimientos existentes conservarán su información y no se borrarán."
+        confirmLabel="Archivar medio"
+        confirmIcon={<Archive className="size-4" aria-hidden />}
+        pendingLabel="Archivando…"
+        isPending={isArchiving}
+        onConfirm={() => {
+          if (archiveTarget) return handleArchive(archiveTarget);
+        }}
+      />
     </div>
   );
 }
