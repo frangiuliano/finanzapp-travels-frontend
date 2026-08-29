@@ -32,7 +32,7 @@ interface ReportsBreakdownChartProps {
 const chartConfig = {
   total: {
     label: 'Total',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
 } satisfies ChartConfig;
 

@@ -33,11 +33,11 @@ const chartConfig = {
   },
   shared: {
     label: 'Compartidos',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   personal: {
     label: 'Personales',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
 } satisfies ChartConfig;
 
