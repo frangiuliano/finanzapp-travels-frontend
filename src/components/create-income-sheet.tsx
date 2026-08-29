@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,15 @@ import {
   type SupportedCurrency,
 } from '@/constants/currencies';
 import { notifyIncomesChanged } from '@/lib/income-events';
+import { cn } from '@/lib/utils';
+
+const INCOME_CONCEPT_PRESETS = [
+  'Sueldo',
+  'Reintegro',
+  'Transferencia',
+  'Freelance',
+  'Otro',
+] as const;
 
 interface CreateIncomeSheetProps {
   open: boolean;
@@ -49,6 +59,7 @@ export function CreateIncomeSheet({
   const [amount, setAmount] = useState('');
   const [incomeDate, setIncomeDate] = useState('');
   const [daysOfMonth, setDaysOfMonth] = useState<number[]>([1]);
+  const [showDetails, setShowDetails] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -74,6 +85,7 @@ export function CreateIncomeSheet({
         setDaysOfMonth([1]);
       }
       setErrors({});
+      setShowDetails(false);
     }
   }, [open, income]);
 
@@ -180,7 +192,7 @@ export function CreateIncomeSheet({
             : `Se proyectará cada mes en los días elegidos.`
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {!isEditing ? (
           <Tabs
             value={mode}
@@ -193,26 +205,10 @@ export function CreateIncomeSheet({
               <TabsTrigger value="recurring">Recurrente</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="one-time" className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="income-date">Fecha</Label>
-                <Input
-                  id="income-date"
-                  type="date"
-                  value={incomeDate}
-                  onChange={(e) => setIncomeDate(e.target.value)}
-                  disabled={isLoading}
-                />
-                {errors.incomeDate && (
-                  <p className="text-sm text-destructive">
-                    {errors.incomeDate}
-                  </p>
-                )}
-              </div>
-            </TabsContent>
-
             <TabsContent value="recurring" className="mt-4 space-y-2">
-              <Label>Días de acreditación</Label>
+              <Label className="text-xs text-muted-foreground">
+                Días de acreditación
+              </Label>
               <DayOfMonthPicker
                 mode="multiple"
                 value={daysOfMonth}
@@ -220,68 +216,140 @@ export function CreateIncomeSheet({
                 disabled={isLoading}
               />
               {errors.daysOfMonth && (
-                <p className="text-sm text-destructive">{errors.daysOfMonth}</p>
+                <p className="text-xs text-destructive">{errors.daysOfMonth}</p>
               )}
             </TabsContent>
           </Tabs>
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="income-date">Fecha</Label>
-            <Input
-              id="income-date"
-              type="date"
-              value={incomeDate}
-              onChange={(e) => setIncomeDate(e.target.value)}
-              disabled={isLoading}
-            />
-            {errors.incomeDate && (
-              <p className="text-sm text-destructive">{errors.incomeDate}</p>
-            )}
-          </div>
-        )}
+        ) : null}
 
         <div className="space-y-2">
-          <Label htmlFor="income-label">Concepto</Label>
+          <Label
+            htmlFor="income-amount"
+            className="text-xs text-muted-foreground"
+          >
+            Monto ({resolvedCurrency})
+          </Label>
+          <MoneyInput
+            id="income-amount"
+            value={amount}
+            onChange={setAmount}
+            disabled={isLoading}
+            className={cn(
+              'h-14 rounded-2xl text-2xl font-semibold',
+              errors.amount && 'border-destructive',
+            )}
+            autoFocus
+          />
+          {errors.amount && (
+            <p className="text-xs text-destructive">{errors.amount}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="income-label"
+            className="text-xs text-muted-foreground"
+          >
+            Concepto
+          </Label>
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Conceptos frecuentes"
+          >
+            {INCOME_CONCEPT_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setLabel(preset)}
+                disabled={isLoading}
+                aria-pressed={label === preset}
+                className="rounded-full border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-foreground/20 aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-foreground disabled:pointer-events-none disabled:opacity-50"
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
           <Input
             id="income-label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Ej: Sueldo, freelance…"
             disabled={isLoading}
-            autoFocus
+            className={cn('rounded-xl', errors.label && 'border-destructive')}
           />
           {errors.label && (
-            <p className="text-sm text-destructive">{errors.label}</p>
+            <p className="text-xs text-destructive">{errors.label}</p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="income-amount">Monto ({resolvedCurrency})</Label>
-          <MoneyInput
-            id="income-amount"
-            value={amount}
-            onChange={setAmount}
-            disabled={isLoading}
-          />
-          {errors.amount && (
-            <p className="text-sm text-destructive">{errors.amount}</p>
-          )}
-        </div>
+        {mode === 'one-time' || isEditing ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowDetails((current) => !current)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              aria-expanded={showDetails}
+              aria-controls="income-more-options"
+            >
+              <ChevronDown
+                className={cn(
+                  'size-4 transition-transform',
+                  showDetails && 'rotate-180',
+                )}
+                aria-hidden
+              />
+              Más opciones
+            </button>
 
-        <div className="flex gap-2 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-          <Button type="submit" className="flex-1" disabled={isLoading}>
-            {isLoading ? 'Guardando…' : 'Guardar'}
-          </Button>
-        </div>
+            {showDetails ? (
+              <div
+                id="income-more-options"
+                className="space-y-2 rounded-2xl border bg-muted/30 p-4"
+              >
+                <Label htmlFor="income-date" className="text-xs">
+                  Fecha
+                </Label>
+                <Input
+                  id="income-date"
+                  type="date"
+                  value={incomeDate}
+                  onChange={(e) => setIncomeDate(e.target.value)}
+                  disabled={isLoading}
+                  className="rounded-xl"
+                />
+                {errors.incomeDate ? (
+                  <p className="text-xs text-destructive">
+                    {errors.incomeDate}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Si no la cambiás, se registra con la fecha de hoy.
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        <Button
+          type="submit"
+          className="h-12 rounded-2xl text-base font-semibold"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" />
+              Guardando…
+            </>
+          ) : isEditing ? (
+            'Actualizar ingreso'
+          ) : mode === 'recurring' ? (
+            'Configurar ingreso recurrente'
+          ) : (
+            'Registrar ingreso'
+          )}
+        </Button>
       </form>
     </ResponsiveFormDialog>
   );
