@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Archive, Pencil, Plus } from 'lucide-react';
+import {
+  Archive,
+  Car,
+  CircleOff,
+  Ellipsis,
+  Gamepad2,
+  Gift,
+  GraduationCap,
+  HeartPulse,
+  Home,
+  PawPrint,
+  Pencil,
+  Plane,
+  Plus,
+  Repeat,
+  Shirt,
+  ShoppingCart,
+  Utensils,
+  type LucideIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +43,28 @@ interface CategoryFormState {
   icon: string;
   color: string;
 }
+
+interface CategoryIconOption {
+  value: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const CATEGORY_ICON_OPTIONS: CategoryIconOption[] = [
+  { value: 'utensils', label: 'Comida', icon: Utensils },
+  { value: 'car', label: 'Transporte', icon: Car },
+  { value: 'home', label: 'Hogar', icon: Home },
+  { value: 'shopping-cart', label: 'Compras', icon: ShoppingCart },
+  { value: 'gamepad-2', label: 'Ocio', icon: Gamepad2 },
+  { value: 'heart-pulse', label: 'Salud', icon: HeartPulse },
+  { value: 'repeat', label: 'Suscripción', icon: Repeat },
+  { value: 'graduation-cap', label: 'Educación', icon: GraduationCap },
+  { value: 'shirt', label: 'Ropa', icon: Shirt },
+  { value: 'plane', label: 'Viaje', icon: Plane },
+  { value: 'gift', label: 'Regalo', icon: Gift },
+  { value: 'paw-print', label: 'Mascotas', icon: PawPrint },
+  { value: 'ellipsis', label: 'Otros', icon: Ellipsis },
+];
 
 const createEmptyForm = (): CategoryFormState => ({
   name: '',
@@ -233,16 +274,53 @@ export function ManageCategoriesSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="category-icon">Icono (opcional)</Label>
-            <Input
-              id="category-icon"
-              value={formData.icon}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, icon: event.target.value }))
-              }
-              placeholder="utensils"
-              disabled={isSaving}
-            />
+            <Label>Icono (opcional)</Label>
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-4"
+              role="group"
+              aria-label="Elegir icono de la categoría"
+            >
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, icon: '' }))}
+                disabled={isSaving}
+                aria-pressed={!formData.icon}
+                className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary disabled:pointer-events-none disabled:opacity-50"
+              >
+                <CircleOff className="size-5" aria-hidden />
+                Sin icono
+              </button>
+              {CATEGORY_ICON_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        icon: option.value,
+                      }))
+                    }
+                    disabled={isSaving}
+                    aria-pressed={formData.icon === option.value}
+                    className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <Icon className="size-5" aria-hidden />
+                    <span className="max-w-full truncate">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {formData.icon &&
+            !CATEGORY_ICON_OPTIONS.some(
+              (option) => option.value === formData.icon,
+            ) ? (
+              <p className="text-xs text-muted-foreground">
+                Esta categoría usa un icono anterior. Se conservará mientras no
+                elijas otro.
+              </p>
+            ) : null}
           </div>
           <CategoryColorPicker
             value={formData.color}
