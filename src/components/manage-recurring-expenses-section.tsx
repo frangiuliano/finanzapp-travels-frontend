@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { recurringExpensesService } from '@/services/recurringExpensesService';
 import type { RecurringExpense } from '@/types/recurring-expense';
@@ -49,6 +50,10 @@ export function ManageRecurringExpensesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RecurringExpense | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RecurringExpense | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<FormState>(emptyForm);
 
   const fetchItems = useCallback(async () => {
@@ -140,17 +145,19 @@ export function ManageRecurringExpensesSection({
   };
 
   const handleDelete = async (item: RecurringExpense) => {
-    if (!confirm(`¿Eliminar el gasto fijo "${item.label}"?`)) return;
-
+    setIsDeleting(true);
     try {
       await recurringExpensesService.delete(item._id);
       toast.success('Gasto fijo eliminado');
+      setDeleteTarget(null);
       await fetchItems();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
         axiosError.response?.data?.message || 'Error al eliminar gasto fijo',
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -203,7 +210,8 @@ export function ManageRecurringExpensesSection({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void handleDelete(item)}
+                  onClick={() => setDeleteTarget(item)}
+                  aria-label={`Eliminar ${item.label}`}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -283,6 +291,24 @@ export function ManageRecurringExpensesSection({
           </Button>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar gasto fijo'
+        }
+        description="Se eliminará la regla recurrente y sus gastos pendientes. Los gastos que ya figuran como pagados se conservarán. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar recurrencia"
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget) return handleDelete(deleteTarget);
+        }}
+      />
     </div>
   );
 }
