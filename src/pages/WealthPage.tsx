@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -533,7 +534,14 @@ export default function WealthPage() {
   };
 
   const deleteTransaction = async (transaction: InvestmentTransaction) => {
-    if (!confirm('¿Eliminar esta operación? La posición será recalculada.'))
+    if (
+      !(await requestConfirmation({
+        title: '¿Eliminar operación?',
+        description:
+          'La operación se eliminará de forma permanente y la posición será recalculada.',
+        confirmLabel: 'Eliminar operación',
+      }))
+    )
       return;
     try {
       await wealthService.deleteTransaction(activeBoard!._id, transaction._id);
@@ -561,7 +569,12 @@ export default function WealthPage() {
 
   const archiveHolding = async (holding: Holding) => {
     if (
-      !confirm(`¿Eliminar "${holding.name}"? El historial quedará preservado.`)
+      !(await requestConfirmation({
+        title: '¿Eliminar tenencia?',
+        description: `“${holding.name}” dejará de aparecer entre tus tenencias activas. Su historial se conservará.`,
+        confirmLabel: 'Eliminar tenencia',
+        action: 'archive',
+      }))
     ) {
       return;
     }
@@ -579,9 +592,12 @@ export default function WealthPage() {
 
   const archiveGoal = async (goal: SavingsGoal) => {
     if (
-      !confirm(
-        `¿Eliminar el objetivo "${goal.name}"? El historial quedará preservado.`,
-      )
+      !(await requestConfirmation({
+        title: '¿Eliminar objetivo?',
+        description: `“${goal.name}” dejará de aparecer entre tus objetivos activos. Su historial se conservará.`,
+        confirmLabel: 'Eliminar objetivo',
+        action: 'archive',
+      }))
     ) {
       return;
     }

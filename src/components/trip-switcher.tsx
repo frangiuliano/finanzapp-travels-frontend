@@ -33,6 +33,7 @@ import {
   tripToBoard,
 } from '@/lib/board-trip-sync';
 import { tripsService } from '@/services/tripsService';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import { toast } from 'sonner';
 
 export function TripSwitcher() {
@@ -57,9 +58,11 @@ export function TripSwitcher() {
     e.stopPropagation();
 
     if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el viaje "${trip.name}"? Esta acción eliminará todos los presupuestos, participantes e invitaciones asociadas y no se puede deshacer.`,
-      )
+      !(await requestConfirmation({
+        title: '¿Eliminar viaje?',
+        description: `Se eliminará “${trip.name}” junto con sus gastos, presupuestos, participantes e invitaciones. Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar viaje',
+      }))
     ) {
       return;
     }

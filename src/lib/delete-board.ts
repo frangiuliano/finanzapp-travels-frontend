@@ -3,6 +3,7 @@ import { removeBoardAndTrip } from '@/lib/board-trip-sync';
 import { boardTypeLabel, type Board } from '@/types/board';
 import { toast } from 'sonner';
 import { useBoardsStore } from '@/store/boardsStore';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 function getDeleteBoardConfirmMessage(board: Board): string {
   const typeLabel = boardTypeLabel(board.type).toLowerCase();
@@ -27,7 +28,16 @@ function getDeleteBoardConfirmMessage(board: Board): string {
 }
 
 export async function deleteBoardWithConfirm(board: Board): Promise<boolean> {
-  if (!confirm(getDeleteBoardConfirmMessage(board))) {
+  if (
+    !(await requestConfirmation({
+      title:
+        board.type === 'travel' ? '¿Eliminar viaje?' : '¿Eliminar tablero?',
+      description: getDeleteBoardConfirmMessage(board),
+      confirmLabel:
+        board.type === 'travel' ? 'Eliminar viaje' : 'Eliminar tablero',
+      confirmationText: board.name,
+    }))
+  ) {
     return false;
   }
 

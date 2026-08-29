@@ -16,6 +16,7 @@ import { useBoardsStore } from '@/store/boardsStore';
 import { useAuthStore } from '@/store/authStore';
 import { CreateMovementSheet } from '@/components/create-movement-sheet';
 import { OfflineExpenseQueueDialog } from '@/components/offline-expense-queue-dialog';
+import { ConfirmationDialogHost } from '@/components/confirmation-dialog-host';
 import { useState } from 'react';
 
 export function AppShellLayout() {
@@ -54,6 +55,7 @@ export function AppShellLayout() {
           onOpenChange={setOfflineQueueOpen}
           onRetryAll={syncNow}
         />
+        <ConfirmationDialogHost />
       </SidebarInset>
     </SidebarProvider>
   );

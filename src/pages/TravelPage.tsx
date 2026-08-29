@@ -32,6 +32,7 @@ import { InviteParticipantDialog } from '@/components/invite-participant-dialog'
 import { AddGuestDialog } from '@/components/add-guest-dialog';
 import { InviteGuestDialog } from '@/components/invite-guest-dialog';
 import { TripExpensesSection } from '@/components/trip-expenses-section';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import { useBoardsStore } from '@/store/boardsStore';
 import {
   boardToTrip,
@@ -230,9 +231,11 @@ export default function TravelPage() {
 
   const handleDeleteBudget = async (budget: Budget) => {
     if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el presupuesto "${budget.name}"?`,
-      )
+      !(await requestConfirmation({
+        title: '¿Eliminar presupuesto?',
+        description: `Se eliminará “${budget.name}”. Los gastos del viaje se conservarán.`,
+        confirmLabel: 'Eliminar presupuesto',
+      }))
     ) {
       return;
     }
@@ -284,9 +287,12 @@ export default function TravelPage() {
     participantId: string,
   ) => {
     if (
-      !confirm(
-        '¿Estás seguro de que deseas eliminar este participante del viaje?',
-      )
+      !(await requestConfirmation({
+        title: '¿Quitar participante?',
+        description:
+          'Esta persona perderá el acceso al viaje. Los gastos y movimientos ya registrados se conservarán.',
+        confirmLabel: 'Quitar participante',
+      }))
     ) {
       return;
     }

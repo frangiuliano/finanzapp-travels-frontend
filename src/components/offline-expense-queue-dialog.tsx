@@ -19,6 +19,7 @@ import {
 } from '@/services/offlineExpenseQueue';
 import { retryOfflineExpense } from '@/services/createExpenseWithOffline';
 import { useAuthStore } from '@/store/authStore';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 interface OfflineExpenseQueueDialogProps {
   open: boolean;
@@ -104,7 +105,12 @@ export function OfflineExpenseQueueDialog({
 
   const discard = async (entry: QueuedExpenseEntry) => {
     if (
-      !confirm(`¿Descartar el gasto pendiente “${entry.payload.description}”?`)
+      !(await requestConfirmation({
+        title: '¿Descartar gasto pendiente?',
+        description: `“${entry.payload.description}” todavía no fue sincronizado y se perderá de forma permanente.`,
+        confirmLabel: 'Descartar gasto',
+        action: 'discard',
+      }))
     ) {
       return;
     }

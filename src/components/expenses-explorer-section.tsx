@@ -17,6 +17,7 @@ import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
 import {
@@ -383,9 +384,13 @@ export function ExpensesExplorerSection({
 
   const handleSkipIncome = async (incomeId: string) => {
     if (
-      !confirm(
-        '¿Omitir solo esta ocurrencia? La recurrencia continuará los demás meses.',
-      )
+      !(await requestConfirmation({
+        title: '¿Omitir este ingreso?',
+        description:
+          'Solo se omitirá esta ocurrencia. La recurrencia continuará normalmente los demás meses.',
+        confirmLabel: 'Omitir ocurrencia',
+        action: 'discard',
+      }))
     ) {
       return;
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { EXPENSES_CHANGED_EVENT } from '@/lib/expense-events';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import {
   Plus,
   Pencil,
@@ -144,9 +145,11 @@ export function TripExpensesSection({
 
   const handleDeleteExpense = async (expense: Expense) => {
     if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el gasto "${expense.description}"?`,
-      )
+      !(await requestConfirmation({
+        title: '¿Eliminar gasto?',
+        description: `Se eliminará “${expense.description}” y se actualizarán los totales del viaje. Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar gasto',
+      }))
     ) {
       return;
     }

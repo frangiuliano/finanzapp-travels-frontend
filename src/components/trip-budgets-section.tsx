@@ -22,6 +22,7 @@ import { Expense } from '@/types/expense';
 import { CreateBudgetDialog } from './create-budget-dialog';
 import { toast } from 'sonner';
 import { budgetsService } from '@/services/budgetsService';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 interface TripBudgetsSectionProps {
   tripId: string;
@@ -60,9 +61,11 @@ export function TripBudgetsSection({
 
   const handleDeleteBudget = async (budget: Budget) => {
     if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el presupuesto "${budget.name}"?`,
-      )
+      !(await requestConfirmation({
+        title: '¿Eliminar presupuesto?',
+        description: `Se eliminará “${budget.name}”. Los gastos del viaje se conservarán.`,
+        confirmLabel: 'Eliminar presupuesto',
+      }))
     ) {
       return;
     }

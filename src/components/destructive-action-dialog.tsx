@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,7 @@ interface DestructiveActionDialogProps {
   confirmIcon?: ReactNode;
   pendingLabel?: string;
   isPending?: boolean;
+  confirmationText?: string;
   onConfirm: () => void | Promise<void>;
 }
 
@@ -31,13 +34,22 @@ export function DestructiveActionDialog({
   confirmIcon,
   pendingLabel = 'Eliminando…',
   isPending = false,
+  confirmationText,
   onConfirm,
 }: DestructiveActionDialogProps) {
+  const [typedConfirmation, setTypedConfirmation] = useState('');
+
+  const confirmationMatches =
+    !confirmationText || typedConfirmation.trim() === confirmationText;
+
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen);
+        if (!isPending) {
+          if (!nextOpen) setTypedConfirmation('');
+          onOpenChange(nextOpen);
+        }
       }}
     >
       <DialogContent className="max-w-md rounded-2xl">
@@ -47,6 +59,20 @@ export function DestructiveActionDialog({
             {description}
           </DialogDescription>
         </DialogHeader>
+        {confirmationText && (
+          <div className="space-y-2">
+            <Label htmlFor="destructive-confirmation">
+              Escribí <strong>{confirmationText}</strong> para confirmar
+            </Label>
+            <Input
+              id="destructive-confirmation"
+              value={typedConfirmation}
+              onChange={(event) => setTypedConfirmation(event.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+        )}
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
             type="button"
@@ -59,8 +85,11 @@ export function DestructiveActionDialog({
           <Button
             type="button"
             variant="destructive"
-            onClick={() => void onConfirm()}
-            disabled={isPending}
+            onClick={() => {
+              setTypedConfirmation('');
+              void onConfirm();
+            }}
+            disabled={isPending || !confirmationMatches}
           >
             {isPending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
