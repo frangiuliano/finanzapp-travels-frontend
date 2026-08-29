@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Pencil,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
@@ -8,7 +15,6 @@ import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { MonthBudgetsProgress } from '@/components/month-budgets-progress';
-import { RecentExpensesTable } from '@/components/recent-expenses-table';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,22 +24,23 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import {
   readHomeMonthView,
   writeHomeMonthView,
+  expenseBelongsToYearMonth,
   type HomeMonthView,
 } from '@/lib/expense-month-attribution';
+import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
 import { incomesService } from '@/services/incomesService';
 import type { Board } from '@/types/board';
 import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
-import type { Expense } from '@/types/expense';
+import { getExpenseCategoryLabel, type Expense } from '@/types/expense';
 import type { MonthlyForecast } from '@/types/forecast';
 import { IncomeStatus, type Income } from '@/types/income';
 import {
@@ -67,6 +74,7 @@ export function EverydayBoardHome({
     BoardMonthBudgetProgress[]
   >([]);
   const [monthIncomes, setMonthIncomes] = useState<Income[]>([]);
+  const [monthExpenses, setMonthExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isIncomeSheetOpen, setIsIncomeSheetOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
@@ -99,7 +107,8 @@ export function EverydayBoardHome({
     const load = async () => {
       setIsLoading(true);
       try {
-        const [forecastResult, progressResult, incomesResult] =
+        const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
+        const [forecastResult, progressResult, incomesResult, expensesResult] =
           await Promise.all([
             forecastService
               .getMonthlyForecast(board._id, yearMonth, monthView)
@@ -112,6 +121,10 @@ export function EverydayBoardHome({
             incomesService
               .getIncomes(board._id)
               .then(({ incomes }) => incomes)
+              .catch(() => []),
+            expensesService
+              .listExpenses(board._id, { from, to })
+              .then(({ expenses }) => expenses)
               .catch(() => []),
           ]);
 
@@ -133,6 +146,22 @@ export function EverydayBoardHome({
                 new Date(a.incomeDate).getTime(),
             ),
         );
+        setMonthExpenses(
+          expensesResult
+            .filter((expense) =>
+              expenseBelongsToYearMonth(
+                expense,
+                yearMonth,
+                monthView,
+                paymentMethodMap,
+              ),
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.expenseDate || b.createdAt).getTime() -
+                new Date(a.expenseDate || a.createdAt).getTime(),
+            ),
+        );
       } finally {
         if (!stale) {
           setIsLoading(false);
@@ -145,7 +174,45 @@ export function EverydayBoardHome({
     return () => {
       stale = true;
     };
-  }, [board._id, yearMonth, monthView, refreshTrigger, incomesChangedRefresh]);
+  }, [
+    board._id,
+    yearMonth,
+    monthView,
+    refreshTrigger,
+    incomesChangedRefresh,
+    paymentMethodMap,
+  ]);
+
+  const recentMovements = useMemo(
+    () =>
+      [
+        ...monthExpenses.map((expense) => ({
+          id: expense._id,
+          type: 'expense' as const,
+          date: expense.expenseDate || expense.createdAt,
+          label: expense.description,
+          meta: getExpenseCategoryLabel(expense.category) || 'Gasto',
+          amount: expense.amount,
+          currency: expense.currency,
+          expense,
+        })),
+        ...monthIncomes.map((income) => ({
+          id: income._id,
+          type: 'income' as const,
+          date: income.incomeDate,
+          label: income.label,
+          meta: income.recurringIncomeId
+            ? 'Ingreso recurrente'
+            : 'Ingreso puntual',
+          amount: income.amount,
+          currency: income.currency,
+          income,
+        })),
+      ]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5),
+    [monthExpenses, monthIncomes],
+  );
 
   const currency = forecast?.currency ?? board.baseCurrency;
 
@@ -256,60 +323,97 @@ export function EverydayBoardHome({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Últimos ingresos</CardTitle>
+          <CardTitle className="text-lg">Últimos movimientos</CardTitle>
           <CardDescription>
-            Puntuales y recurrentes confirmados en {yearMonth}
+            Ingresos y gastos confirmados en {yearMonth}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
             </div>
-          ) : monthIncomes.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              Sin ingresos confirmados este mes. Los pendientes aparecen en
-              compromisos de arriba.
-            </p>
+          ) : recentMovements.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <Wallet className="mb-3 size-9 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Todavía no hay movimientos confirmados este mes.
+              </p>
+            </div>
           ) : (
             <ul className="divide-y">
-              {monthIncomes.map((income) => (
+              {recentMovements.map((movement) => (
                 <li
-                  key={income._id}
-                  className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                  key={`${movement.type}-${movement.id}`}
+                  className="flex min-h-16 items-center gap-3 py-2"
                 >
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{income.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(income.incomeDate)}
-                      {income.recurringIncomeId ? ' · Recurrente' : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
-                      +{formatCurrency(income.amount, income.currency)}
+                  <span
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                      movement.type === 'income'
+                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                        : 'bg-primary/10 text-primary'
+                    }`}
+                  >
+                    {movement.type === 'income' ? (
+                      <ArrowDownLeft className="size-4" aria-hidden />
+                    ) : (
+                      <ArrowUpRight className="size-4" aria-hidden />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate text-sm">
+                      {movement.label}
+                    </strong>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {formatDate(movement.date)} · {movement.meta}
                     </span>
+                  </span>
+                  <span
+                    className={`shrink-0 text-sm font-semibold tabular-nums ${
+                      movement.type === 'income'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-foreground'
+                    }`}
+                  >
+                    {movement.type === 'income' ? '+' : '−'}
+                    {formatCurrency(movement.amount, movement.currency)}
+                  </span>
+                  <div className="flex shrink-0 items-center">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8"
-                      onClick={() => openEditIncome(income)}
-                      aria-label="Editar ingreso"
+                      className="size-10"
+                      onClick={() =>
+                        movement.type === 'income'
+                          ? openEditIncome(movement.income)
+                          : handleEditExpense(movement.expense)
+                      }
+                      aria-label={`Editar ${movement.type === 'income' ? 'ingreso' : 'gasto'}`}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="size-4" />
                     </Button>
-                    {!income.recurringIncomeId ? (
+                    {movement.type === 'expense' ||
+                    !movement.income.recurringIncomeId ? (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8"
+                        className="size-10"
                         onClick={() =>
-                          setDeleteTarget({ type: 'income', income })
+                          movement.type === 'income'
+                            ? setDeleteTarget({
+                                type: 'income',
+                                income: movement.income,
+                              })
+                            : setDeleteTarget({
+                                type: 'expense',
+                                expenseId: movement.id,
+                              })
                         }
-                        aria-label="Eliminar ingreso"
+                        aria-label={`Eliminar ${movement.type === 'income' ? 'ingreso' : 'gasto'}`}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="size-4 text-destructive" />
                       </Button>
                     ) : null}
                   </div>
@@ -317,27 +421,13 @@ export function EverydayBoardHome({
               ))}
             </ul>
           )}
+          <Button asChild variant="link" className="mt-3 h-auto px-0">
+            <Link to={`/expenses?yearMonth=${yearMonth}&view=${monthView}`}>
+              Ver todos los movimientos
+            </Link>
+          </Button>
         </CardContent>
       </Card>
-
-      <Separator />
-
-      <div>
-        <RecentExpensesTable
-          tripId={board._id}
-          boardCurrency={currency}
-          yearMonth={yearMonth}
-          monthView={monthView}
-          paymentMethodMap={paymentMethodMap}
-          viewAllHref={`/expenses?yearMonth=${yearMonth}&view=${monthView}`}
-          onRefresh={onRefresh}
-          refreshTrigger={refreshTrigger}
-          onEdit={handleEditExpense}
-          onDelete={(expenseId) =>
-            setDeleteTarget({ type: 'expense', expenseId })
-          }
-        />
-      </div>
 
       <CreateIncomeSheet
         open={isIncomeSheetOpen}
