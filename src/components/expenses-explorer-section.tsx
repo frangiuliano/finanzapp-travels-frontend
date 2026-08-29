@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
 import {
@@ -141,6 +142,13 @@ export function ExpensesExplorerSection({
     type: 'expense' | 'income';
     id: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'expense' | 'income';
+    id: string;
+    label: string;
+    isRecurringOccurrence?: boolean;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const expensesChangedRefresh = useExpensesChangedRefresh();
   const incomesChangedRefresh = useIncomesChangedRefresh();
 
@@ -342,34 +350,34 @@ export function ExpensesExplorerSection({
   }, [expenses, incomes, board.baseCurrency]);
 
   const handleDelete = async (expenseId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
-      return;
-    }
-
+    setIsDeleting(true);
     try {
       await expensesService.deleteExpense(expenseId);
       toast.success('Gasto eliminado');
       setExpenses((current) =>
         current.filter((item) => item._id !== expenseId),
       );
+      setDetail(null);
+      setDeleteTarget(null);
     } catch {
       toast.error('Error al eliminar el gasto');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleDeleteIncome = async (incomeId: string) => {
-    const income = incomes.find((item) => item._id === incomeId);
-    const message = income?.recurringIncomeId
-      ? '¿Eliminar solo esta ocurrencia? La recurrencia de los demás meses continuará.'
-      : '¿Estás seguro de que deseas eliminar este ingreso?';
-    if (!confirm(message)) return;
+    setIsDeleting(true);
     try {
       await incomesService.deleteIncome(incomeId);
       setIncomes((current) => current.filter((item) => item._id !== incomeId));
       setDetail(null);
+      setDeleteTarget(null);
       toast.success('Ingreso eliminado');
     } catch {
       toast.error('No se pudo eliminar el ingreso');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -953,9 +961,14 @@ export function ExpensesExplorerSection({
                   variant="outline"
                   className="w-full text-destructive sm:w-auto"
                   onClick={() =>
-                    detailMovement.type === 'expense'
-                      ? void handleDelete(detailMovement.id)
-                      : void handleDeleteIncome(detailMovement.id)
+                    setDeleteTarget({
+                      type: detailMovement.type,
+                      id: detailMovement.id,
+                      label: detailMovement.label,
+                      isRecurringOccurrence:
+                        detailMovement.type === 'income' &&
+                        Boolean(detailMovement.income.recurringIncomeId),
+                    })
                   }
                 >
                   <Trash2 className="size-4" />
@@ -971,6 +984,36 @@ export function ExpensesExplorerSection({
           ) : null}
         </DialogContent>
       </Dialog>
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar movimiento'
+        }
+        description={
+          deleteTarget?.isRecurringOccurrence
+            ? 'Se eliminará solamente esta ocurrencia. La recurrencia de los demás meses continuará. Esta acción no se puede deshacer.'
+            : 'Este movimiento se eliminará definitivamente y los totales del mes se recalcularán. Esta acción no se puede deshacer.'
+        }
+        confirmLabel={
+          deleteTarget?.isRecurringOccurrence
+            ? 'Eliminar esta ocurrencia'
+            : 'Eliminar movimiento'
+        }
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget?.type === 'expense') {
+            return handleDelete(deleteTarget.id);
+          }
+          if (deleteTarget?.type === 'income') {
+            return handleDeleteIncome(deleteTarget.id);
+          }
+        }}
+      />
       <CreateIncomeSheet
         open={Boolean(selectedIncome)}
         onOpenChange={(open) => {

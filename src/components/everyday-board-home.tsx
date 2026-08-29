@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
@@ -71,6 +72,12 @@ export function EverydayBoardHome({
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { type: 'income'; income: Income }
+    | { type: 'expense'; expenseId: string }
+    | null
+  >(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const incomesChangedRefresh = useIncomesChangedRefresh();
 
   const paymentMethodMap = useMemo(
@@ -152,20 +159,16 @@ export function EverydayBoardHome({
   };
 
   const handleDeleteIncome = async (income: Income) => {
-    if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el ingreso "${income.label}"?`,
-      )
-    ) {
-      return;
-    }
-
+    setIsDeleting(true);
     try {
       await incomesService.deleteIncome(income._id);
       toast.success('Ingreso eliminado');
+      setDeleteTarget(null);
       onRefresh();
     } catch {
       toast.error('Error al eliminar el ingreso');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -175,16 +178,16 @@ export function EverydayBoardHome({
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
-      return;
-    }
-
+    setIsDeleting(true);
     try {
       await expensesService.deleteExpense(expenseId);
       toast.success('Gasto eliminado');
+      setDeleteTarget(null);
       onRefresh();
     } catch {
       toast.error('Error al eliminar el gasto');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -301,7 +304,9 @@ export function EverydayBoardHome({
                         variant="ghost"
                         size="icon"
                         className="size-8"
-                        onClick={() => void handleDeleteIncome(income)}
+                        onClick={() =>
+                          setDeleteTarget({ type: 'income', income })
+                        }
                         aria-label="Eliminar ingreso"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -328,7 +333,9 @@ export function EverydayBoardHome({
           onRefresh={onRefresh}
           refreshTrigger={refreshTrigger}
           onEdit={handleEditExpense}
-          onDelete={(expenseId) => void handleDeleteExpense(expenseId)}
+          onDelete={(expenseId) =>
+            setDeleteTarget({ type: 'expense', expenseId })
+          }
         />
       </div>
 
@@ -352,6 +359,29 @@ export function EverydayBoardHome({
         board={board}
         expense={selectedExpense}
         onSuccess={handleExpenseSuccess}
+      />
+
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget?.type === 'income'
+            ? `Eliminar “${deleteTarget.income.label}”`
+            : 'Eliminar gasto'
+        }
+        description="Este movimiento se eliminará definitivamente y los totales del mes se recalcularán. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar movimiento"
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget?.type === 'income') {
+            return handleDeleteIncome(deleteTarget.income);
+          }
+          if (deleteTarget?.type === 'expense') {
+            return handleDeleteExpense(deleteTarget.expenseId);
+          }
+        }}
       />
     </div>
   );

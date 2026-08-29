@@ -75,6 +75,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -157,6 +158,7 @@
   --accent: color-mix(in oklab, #d97706 18%, #eaf1f0);
   --accent-foreground: #0e2a2a;
   --destructive: #c2410c;
+  --destructive-foreground: #ffffff;
   --border: color-mix(in oklab, #0e2a2a 12%, transparent);
   --input: color-mix(in oklab, #0e2a2a 14%, transparent);
   --ring: #1f7a6c;
@@ -210,7 +212,8 @@ html[data-nav-minimized='true'] {
   --muted-foreground: #9bb0ac;
   --accent: #16302e;
   --accent-foreground: #eaf1f0;
-  --destructive: #f07167;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
   --border: color-mix(in oklab, #eaf1f0 12%, transparent);
   --input: color-mix(in oklab, #eaf1f0 16%, transparent);
   --ring: #3d9b8a;
