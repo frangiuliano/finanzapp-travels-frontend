@@ -159,8 +159,8 @@ export function ManageCategoriesSection({
         <p className="text-sm text-muted-foreground">Cargando categorías…</p>
       ) : categories.length === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          No hay categorías activas. Creá la primera o revisá que el tablero
-          tenga el seed del backend.
+          Todavía no hay categorías. Creá la primera para empezar a clasificar
+          tus gastos.
         </p>
       ) : (
         <ul className="space-y-2">
