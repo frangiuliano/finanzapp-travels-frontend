@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +16,8 @@ interface DestructiveActionDialogProps {
   title: string;
   description: string;
   confirmLabel?: string;
+  confirmIcon?: ReactNode;
+  pendingLabel?: string;
   isPending?: boolean;
   onConfirm: () => void | Promise<void>;
 }
@@ -25,6 +28,8 @@ export function DestructiveActionDialog({
   title,
   description,
   confirmLabel = 'Eliminar',
+  confirmIcon,
+  pendingLabel = 'Eliminando…',
   isPending = false,
   onConfirm,
 }: DestructiveActionDialogProps) {
@@ -60,9 +65,9 @@ export function DestructiveActionDialog({
             {isPending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             ) : (
-              <Trash2 className="size-4" aria-hidden />
+              (confirmIcon ?? <Trash2 className="size-4" aria-hidden />)
             )}
-            {isPending ? 'Eliminando…' : confirmLabel}
+            {isPending ? pendingLabel : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

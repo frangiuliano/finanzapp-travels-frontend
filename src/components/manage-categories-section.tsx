@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategoryColorPicker } from '@/components/category-color-picker';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import {
   DEFAULT_CATEGORY_COLOR,
@@ -80,6 +81,8 @@ export function ManageCategoriesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Category | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [formData, setFormData] = useState<CategoryFormState>(createEmptyForm);
 
   const fetchCategories = useCallback(async () => {
@@ -161,23 +164,19 @@ export function ManageCategoriesSection({
   };
 
   const handleArchive = async (category: Category) => {
-    if (
-      !confirm(
-        `¿Archivar la categoría "${category.name}"? Los gastos existentes no se borran.`,
-      )
-    ) {
-      return;
-    }
-
+    setIsArchiving(true);
     try {
       await categoriesService.archive(category._id);
       toast.success('Categoría archivada');
+      setArchiveTarget(null);
       await fetchCategories();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
         axiosError.response?.data?.message || 'Error al archivar la categoría',
       );
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -243,7 +242,7 @@ export function ManageCategoriesSection({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => handleArchive(category)}
+                  onClick={() => setArchiveTarget(category)}
                   aria-label={`Archivar ${category.name}`}
                 >
                   <Archive className="size-4 text-muted-foreground" />
@@ -351,6 +350,26 @@ export function ManageCategoriesSection({
           </div>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null);
+        }}
+        title={
+          archiveTarget
+            ? `Archivar “${archiveTarget.name}”`
+            : 'Archivar categoría'
+        }
+        description="La categoría dejará de aparecer al registrar nuevos gastos. Los movimientos existentes conservarán su categoría y no se borrarán."
+        confirmLabel="Archivar categoría"
+        confirmIcon={<Archive className="size-4" aria-hidden />}
+        pendingLabel="Archivando…"
+        isPending={isArchiving}
+        onConfirm={() => {
+          if (archiveTarget) return handleArchive(archiveTarget);
+        }}
+      />
     </div>
   );
 }
