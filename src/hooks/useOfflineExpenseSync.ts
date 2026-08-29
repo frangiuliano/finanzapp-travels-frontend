@@ -7,7 +7,12 @@ import {
 } from '@/services/offlineExpenseQueue';
 import { useAuthStore } from '@/store/authStore';
 
-export function useOfflineExpenseSync(): number {
+export interface OfflineExpenseSyncState {
+  pendingCount: number;
+  syncNow: () => Promise<void>;
+}
+
+export function useOfflineExpenseSync(): OfflineExpenseSyncState {
   const userId = useAuthStore((state) => state.user?.id);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -19,14 +24,7 @@ export function useOfflineExpenseSync(): number {
     const unsubscribe = subscribeOfflineQueue(userId, setPendingCount);
 
     const sync = async () => {
-      const { synced, purged } = await processOfflineExpenseQueue();
-      if (purged > 0) {
-        toast.error(
-          purged === 1
-            ? 'Se descartó 1 gasto pendiente por pasar demasiado tiempo sin sincronizar'
-            : `Se descartaron ${purged} gastos pendientes por pasar demasiado tiempo sin sincronizar`,
-        );
-      }
+      const { synced } = await processOfflineExpenseQueue();
       if (synced > 0) {
         toast.success(
           synced === 1
@@ -46,5 +44,16 @@ export function useOfflineExpenseSync(): number {
     };
   }, [userId]);
 
-  return userId ? pendingCount : 0;
+  const syncNow = async () => {
+    const { synced } = await processOfflineExpenseQueue();
+    if (synced > 0) {
+      toast.success(
+        synced === 1
+          ? '1 gasto sincronizado'
+          : `${synced} gastos sincronizados`,
+      );
+    }
+  };
+
+  return { pendingCount: userId ? pendingCount : 0, syncNow };
 }

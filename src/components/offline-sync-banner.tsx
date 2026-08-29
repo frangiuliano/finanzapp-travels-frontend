@@ -1,11 +1,16 @@
 import { CloudOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface OfflineSyncBannerProps {
   pendingCount: number;
+  onReview: () => void;
 }
 
-export function OfflineSyncBanner({ pendingCount }: OfflineSyncBannerProps) {
+export function OfflineSyncBanner({
+  pendingCount,
+  onReview,
+}: OfflineSyncBannerProps) {
   if (pendingCount === 0) {
     return null;
   }
@@ -20,12 +25,15 @@ export function OfflineSyncBanner({ pendingCount }: OfflineSyncBannerProps) {
       )}
     >
       <CloudOff className="size-4 shrink-0" aria-hidden />
-      <span>
+      <span className="min-w-0 flex-1">
         {pendingCount === 1
           ? '1 gasto pendiente de sincronizar'
           : `${pendingCount} gastos pendientes de sincronizar`}
-        . Se enviarán al volver la conexión.
+        . Se conservarán hasta sincronizarlos o descartarlos.
       </span>
+      <Button type="button" variant="outline" size="sm" onClick={onReview}>
+        Revisar
+      </Button>
     </div>
   );
 }

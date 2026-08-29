@@ -15,13 +15,17 @@ import { CachedSessionBanner } from '@/components/cached-session-banner';
 import { useBoardsStore } from '@/store/boardsStore';
 import { useAuthStore } from '@/store/authStore';
 import { CreateMovementSheet } from '@/components/create-movement-sheet';
+import { OfflineExpenseQueueDialog } from '@/components/offline-expense-queue-dialog';
+import { useState } from 'react';
 
 export function AppShellLayout() {
   useBoardsBootstrap();
   useOnboardingRedirect();
   useClearStuckOverlayLocks();
   const bootstrapStatus = useBoardsStore((state) => state.bootstrapStatus);
-  const pendingOfflineCount = useOfflineExpenseSync();
+  const { pendingCount: pendingOfflineCount, syncNow } =
+    useOfflineExpenseSync();
+  const [offlineQueueOpen, setOfflineQueueOpen] = useState(false);
   const navMinimized = useScrollMinimize();
   const authSource = useAuthStore((state) => state.authSource);
 
@@ -31,7 +35,10 @@ export function AppShellLayout() {
       <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col transition-all duration-200 ease-linear">
         <SiteHeader />
         {authSource === 'cached' && <CachedSessionBanner />}
-        <OfflineSyncBanner pendingCount={pendingOfflineCount} />
+        <OfflineSyncBanner
+          pendingCount={pendingOfflineCount}
+          onReview={() => setOfflineQueueOpen(true)}
+        />
         <div className="relative z-0 flex min-h-0 flex-1 flex-col md:pb-4">
           {bootstrapStatus === 'error' ? (
             <BoardsBootstrapError />
@@ -42,6 +49,11 @@ export function AppShellLayout() {
         <PWAInstallPrompt />
         <BottomNav minimized={navMinimized} />
         <CreateMovementSheet />
+        <OfflineExpenseQueueDialog
+          open={offlineQueueOpen}
+          onOpenChange={setOfflineQueueOpen}
+          onRetryAll={syncNow}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

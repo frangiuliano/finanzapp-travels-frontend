@@ -4,13 +4,6 @@ const DB_NAME = 'finanzapp-offline';
 const STORE_NAME = 'expense-queue';
 const DB_VERSION = 1;
 
-/**
- * Entries older than this are discarded on read instead of kept indefinitely
- * on disk — they hold unsynced expense data (amounts, descriptions) and the
- * user may never explicitly log out to trigger the existing logout cleanup.
- */
-export const STALE_ENTRY_TTL_MS = 72 * 60 * 60 * 1000;
-
 export interface QueuedExpenseEntry {
   clientRequestId: string;
   userId: string;
@@ -89,6 +82,12 @@ export const offlineExpenseQueue = {
     return entries.length;
   },
 
+  async get(clientRequestId: string): Promise<QueuedExpenseEntry | undefined> {
+    return runTransaction<QueuedExpenseEntry | undefined>('readonly', (store) =>
+      store.get(clientRequestId),
+    );
+  },
+
   async remove(clientRequestId: string): Promise<void> {
     await runTransaction('readwrite', (store) => store.delete(clientRequestId));
     notifyQueueListeners();
@@ -101,21 +100,18 @@ export const offlineExpenseQueue = {
     );
   },
 
-  /**
-   * Discards entries older than STALE_ENTRY_TTL_MS. Independent of logout,
-   * since a shared/lost device may never trigger that cleanup.
-   */
-  async purgeStaleEntries(
-    userId: string,
-    now: number = Date.now(),
-  ): Promise<QueuedExpenseEntry[]> {
-    const entries = await this.getAllForUser(userId);
-    const stale = entries.filter(
-      (entry) =>
-        now - new Date(entry.enqueuedAt).getTime() > STALE_ENTRY_TTL_MS,
-    );
-    await Promise.all(stale.map((entry) => this.remove(entry.clientRequestId)));
-    return stale;
+  async updatePayload(
+    clientRequestId: string,
+    payload: CreateExpenseDto,
+  ): Promise<void> {
+    const entry = await this.get(clientRequestId);
+    if (!entry) return;
+
+    await this.enqueue({
+      ...entry,
+      payload: { ...payload, clientRequestId },
+      lastError: undefined,
+    });
   },
 
   async markFailed(
