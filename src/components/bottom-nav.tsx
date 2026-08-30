@@ -259,7 +259,7 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
         </ul>
       </div>
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-3xl px-4 pb-8">
+        <SheetContent side="bottom" className="rounded-t-3xl px-4">
           <SheetHeader>
             <SheetTitle>Más</SheetTitle>
             <SheetDescription>
