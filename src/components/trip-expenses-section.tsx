@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { EXPENSES_CHANGED_EVENT } from '@/lib/expense-events';
 import { requestConfirmation } from '@/lib/confirmation-events';
 import {
-  Plus,
   Pencil,
   Trash2,
   ChevronLeftIcon,
@@ -131,11 +130,6 @@ export function TripExpensesSection({
       return `${participant.userId.firstName} ${participant.userId.lastName}`;
     }
     return 'Usuario';
-  };
-
-  const handleCreateExpense = () => {
-    setSelectedExpense(null);
-    setIsExpenseDialogOpen(true);
   };
 
   const handleEditExpense = (expense: Expense) => {
@@ -338,25 +332,13 @@ export function TripExpensesSection({
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Gastos del viaje</CardTitle>
-              <CardDescription>
-                {expenses.length > 0
-                  ? `${expenses.length} gasto${expenses.length !== 1 ? 's' : ''} • Total: ${formatCurrency(totalExpenses, DEFAULT_CURRENCY)}`
-                  : `Gastos registrados para ${board.name}`}
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCreateExpense}
-              className="w-full sm:w-auto"
-              disabled={participants.length === 0}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Registrar Gasto
-            </Button>
+          <div>
+            <CardTitle>Gastos del viaje</CardTitle>
+            <CardDescription>
+              {expenses.length > 0
+                ? `${expenses.length} gasto${expenses.length !== 1 ? 's' : ''} • Total: ${formatCurrency(totalExpenses, DEFAULT_CURRENCY)}`
+                : `Gastos registrados para ${board.name}`}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -376,17 +358,9 @@ export function TripExpensesSection({
           ) : expenses.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
-                No hay gastos registrados para este viaje
+                No hay gastos registrados. Usá el botón + para crear el primer
+                movimiento del viaje.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCreateExpense}
-                className="mt-4"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Registrar tu primer gasto
-              </Button>
             </div>
           ) : (
             <>

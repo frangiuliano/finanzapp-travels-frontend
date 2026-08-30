@@ -56,7 +56,6 @@ import {
   Plane,
 } from 'lucide-react';
 import { ManageCardsDialog } from '@/components/manage-cards-dialog';
-import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 
 function getParticipantDisplay(participant: Participant) {
   const isGuest = !participant.userId && Boolean(participant.guestName);
@@ -126,7 +125,6 @@ export default function TravelPage() {
     useState<Participant | null>(null);
   const [isInviteGuestDialogOpen, setIsInviteGuestDialogOpen] = useState(false);
   const [isCardsDialogOpen, setIsCardsDialogOpen] = useState(false);
-  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
 
   const mocksEnabled = isBoardMocksEnabled();
 
@@ -404,15 +402,6 @@ export default function TravelPage() {
             >
               <CreditCard className="mr-2 h-4 w-4" />
               Gestionar tarjetas
-            </Button>
-            <Button
-              onClick={() => setIsExpenseDialogOpen(true)}
-              className="w-full md:w-auto"
-              disabled={mocksEnabled || !activeTravelBoard}
-              variant={mocksEnabled ? 'outline' : 'default'}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo gasto
             </Button>
           </div>
         </div>
@@ -1084,19 +1073,6 @@ export default function TravelPage() {
         onOpenChange={setIsCardsDialogOpen}
         onSuccess={() => {}}
       />
-
-      {activeTravelBoard && (
-        <ExpenseFormDialog
-          open={isExpenseDialogOpen}
-          onOpenChange={setIsExpenseDialogOpen}
-          board={activeTravelBoard}
-          budgets={budgetsByBoard[activeTravelBoard._id] || []}
-          participants={participantsByBoard[activeTravelBoard._id] || []}
-          onSuccess={() => {
-            void fetchBoardData(activeTravelBoard._id);
-          }}
-        />
-      )}
     </Fragment>
   );
 }
