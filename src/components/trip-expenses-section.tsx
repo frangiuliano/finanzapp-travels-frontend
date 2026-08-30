@@ -390,7 +390,90 @@ export function TripExpensesSection({
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="space-y-3 md:hidden">
+                {expenses.map((expense) => {
+                  const paymentLabel =
+                    expense.paymentMethod === PaymentMethod.CASH
+                      ? 'Efectivo'
+                      : expense.card?.name || 'Tarjeta';
+
+                  return (
+                    <article
+                      key={expense._id}
+                      className="rounded-xl border bg-card p-4 shadow-xs"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-medium">
+                            {expense.description}
+                          </h3>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatDate(
+                              expense.expenseDate || expense.createdAt,
+                            )}{' '}
+                            · {expense.budget?.name || 'Sin presupuesto'}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <strong className="block tabular-nums">
+                            {formatCurrency(
+                              expense.amount,
+                              expense.currency || DEFAULT_CURRENCY,
+                            )}
+                          </strong>
+                          <Badge
+                            variant={
+                              expense.status === ExpenseStatus.PAID
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className="mt-1"
+                          >
+                            {expense.status === ExpenseStatus.PAID
+                              ? 'Pagado'
+                              : 'Pendiente'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs">
+                        <div>
+                          <dt className="text-muted-foreground">Pagado por</dt>
+                          <dd className="mt-0.5 truncate font-medium">
+                            {getParticipantName(expense.paidByParticipant)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">Medio</dt>
+                          <dd className="mt-0.5 truncate font-medium">
+                            {paymentLabel}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="mt-2 flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-11"
+                          onClick={() => handleEditExpense(expense)}
+                          aria-label={`Editar ${expense.description}`}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-11"
+                          onClick={() => void handleDeleteExpense(expense)}
+                          aria-label={`Eliminar ${expense.description}`}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -435,7 +518,7 @@ export function TripExpensesSection({
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between px-4 pt-4">
+              <div className="hidden items-center justify-between px-4 pt-4 md:flex">
                 <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
                   {table.getFilteredRowModel().rows.length} gasto(s) en total
                 </div>

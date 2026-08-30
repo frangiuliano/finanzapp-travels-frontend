@@ -58,6 +58,29 @@ import {
 import { ManageCardsDialog } from '@/components/manage-cards-dialog';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 
+function getParticipantDisplay(participant: Participant) {
+  const isGuest = !participant.userId && Boolean(participant.guestName);
+  const name = isGuest
+    ? participant.guestName!
+    : typeof participant.userId === 'string'
+      ? 'Usuario'
+      : `${participant.userId?.firstName ?? ''} ${participant.userId?.lastName ?? ''}`.trim() ||
+        'Usuario';
+  const email = isGuest
+    ? participant.guestEmail || 'Sin email'
+    : typeof participant.userId === 'string'
+      ? ''
+      : (participant.userId?.email ?? '');
+  const hasPendingInvitation = Boolean(
+    participant.invitationId &&
+    (typeof participant.invitationId === 'object'
+      ? participant.invitationId.status === 'pending'
+      : true),
+  );
+
+  return { isGuest, name, email, hasPendingInvitation };
+}
+
 export default function TravelPage() {
   const boards = useBoardsStore((state) => state.boards);
   const currentBoard = useBoardsStore((state) => state.currentBoard);
@@ -622,7 +645,52 @@ export default function TravelPage() {
                           </p>
                         ) : (
                           <>
-                            <Table>
+                            <div className="space-y-3 md:hidden">
+                              {budgets.map((budget) => (
+                                <article
+                                  key={budget._id}
+                                  className="rounded-xl border bg-card p-4 shadow-xs"
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <h3 className="truncate font-medium">
+                                        {budget.name}
+                                      </h3>
+                                      <p className="mt-1 text-sm text-muted-foreground">
+                                        {budget.currency}
+                                      </p>
+                                    </div>
+                                    <strong className="shrink-0 tabular-nums">
+                                      {formatCurrency(
+                                        budget.amount,
+                                        budget.currency,
+                                      )}
+                                    </strong>
+                                  </div>
+                                  <div className="mt-3 flex justify-end gap-1 border-t pt-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-11"
+                                      onClick={() => handleEditBudget(budget)}
+                                      aria-label={`Editar ${budget.name}`}
+                                    >
+                                      <Pencil className="size-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-11"
+                                      onClick={() => handleDeleteBudget(budget)}
+                                      aria-label={`Eliminar ${budget.name}`}
+                                    >
+                                      <Trash2 className="size-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                            <Table className="hidden md:table">
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>Nombre</TableHead>
@@ -725,73 +793,44 @@ export default function TravelPage() {
                             No hay participantes en este viaje
                           </p>
                         ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Nombre</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Rol</TableHead>
-                                {trip.userRole === ParticipantRole.OWNER && (
-                                  <TableHead className="text-right">
-                                    Acciones
-                                  </TableHead>
-                                )}
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                          <>
+                            <div className="space-y-3 md:hidden">
                               {participants.map((participant) => {
-                                const isGuest =
-                                  !participant.userId && participant.guestName;
-
-                                const displayName = isGuest
-                                  ? participant.guestName!
-                                  : typeof participant.userId === 'string'
-                                    ? 'Usuario'
-                                    : `${participant.userId?.firstName ?? ''} ${participant.userId?.lastName ?? ''}`.trim() ||
-                                      'Usuario';
-
-                                const displayEmail = isGuest
-                                  ? participant.guestEmail || 'Sin email'
-                                  : typeof participant.userId === 'string'
-                                    ? ''
-                                    : (participant.userId?.email ?? '');
-
-                                const hasPendingInvitation =
-                                  participant.invitationId &&
-                                  (typeof participant.invitationId === 'object'
-                                    ? participant.invitationId.status ===
-                                      'pending'
-                                    : true);
-
-                                const participantId = participant._id;
+                                const details =
+                                  getParticipantDisplay(participant);
+                                const canManage =
+                                  trip.userRole === ParticipantRole.OWNER &&
+                                  participant.role !== ParticipantRole.OWNER;
 
                                 return (
-                                  <TableRow key={participant._id}>
-                                    <TableCell className="font-medium">
-                                      <div className="flex items-center gap-2">
-                                        {displayName}
-                                        {isGuest && (
+                                  <article
+                                    key={participant._id}
+                                    className="rounded-xl border bg-card p-4 shadow-xs"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <h3 className="font-medium">
+                                            {details.name}
+                                          </h3>
+                                          {details.isGuest && (
+                                            <Badge variant="outline">
+                                              Sin cuenta
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                                          {details.email || 'Sin email'}
+                                        </p>
+                                        {details.hasPendingInvitation && (
                                           <Badge
-                                            variant="outline"
-                                            className="text-xs"
+                                            variant="secondary"
+                                            className="mt-2"
                                           >
-                                            Sin cuenta
+                                            Invitación pendiente
                                           </Badge>
                                         )}
                                       </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground">
-                                      {displayEmail}
-                                      {hasPendingInvitation && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="ml-2 text-xs"
-                                        >
-                                          Invitación pendiente
-                                        </Badge>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
                                       <Badge
                                         variant={
                                           participant.role ===
@@ -805,48 +844,151 @@ export default function TravelPage() {
                                           ? 'Propietario'
                                           : 'Miembro'}
                                       </Badge>
-                                    </TableCell>
-                                    {trip.userRole === ParticipantRole.OWNER &&
-                                      participant.role !==
-                                        ParticipantRole.OWNER && (
-                                        <TableCell className="text-right">
-                                          <div className="flex items-center justify-end gap-2">
-                                            {isGuest &&
-                                              !hasPendingInvitation && (
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() =>
-                                                    handleInviteGuest(
-                                                      participant,
-                                                    )
-                                                  }
-                                                  title="Enviar invitación por email"
-                                                >
-                                                  <Mail className="h-4 w-4" />
-                                                </Button>
-                                              )}
+                                    </div>
+                                    {canManage && (
+                                      <div className="mt-3 flex justify-end gap-1 border-t pt-2">
+                                        {details.isGuest &&
+                                          !details.hasPendingInvitation && (
                                             <Button
                                               variant="ghost"
-                                              size="sm"
+                                              size="icon"
+                                              className="size-11"
                                               onClick={() =>
-                                                handleRemoveParticipant(
-                                                  trip._id,
-                                                  participantId,
-                                                )
+                                                handleInviteGuest(participant)
                                               }
-                                              title="Eliminar participante"
+                                              aria-label={`Invitar a ${details.name}`}
                                             >
-                                              <Trash2 className="h-4 w-4 text-destructive" />
+                                              <Mail className="size-4" />
                                             </Button>
-                                          </div>
-                                        </TableCell>
-                                      )}
-                                  </TableRow>
+                                          )}
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="size-11"
+                                          onClick={() =>
+                                            handleRemoveParticipant(
+                                              trip._id,
+                                              participant._id,
+                                            )
+                                          }
+                                          aria-label={`Eliminar a ${details.name}`}
+                                        >
+                                          <Trash2 className="size-4 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </article>
                                 );
                               })}
-                            </TableBody>
-                          </Table>
+                            </div>
+                            <Table className="hidden md:table">
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nombre</TableHead>
+                                  <TableHead>Email</TableHead>
+                                  <TableHead>Rol</TableHead>
+                                  {trip.userRole === ParticipantRole.OWNER && (
+                                    <TableHead className="text-right">
+                                      Acciones
+                                    </TableHead>
+                                  )}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {participants.map((participant) => {
+                                  const {
+                                    isGuest,
+                                    name: displayName,
+                                    email: displayEmail,
+                                    hasPendingInvitation,
+                                  } = getParticipantDisplay(participant);
+
+                                  const participantId = participant._id;
+
+                                  return (
+                                    <TableRow key={participant._id}>
+                                      <TableCell className="font-medium">
+                                        <div className="flex items-center gap-2">
+                                          {displayName}
+                                          {isGuest && (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              Sin cuenta
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-muted-foreground">
+                                        {displayEmail}
+                                        {hasPendingInvitation && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="ml-2 text-xs"
+                                          >
+                                            Invitación pendiente
+                                          </Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge
+                                          variant={
+                                            participant.role ===
+                                            ParticipantRole.OWNER
+                                              ? 'default'
+                                              : 'secondary'
+                                          }
+                                        >
+                                          {participant.role ===
+                                          ParticipantRole.OWNER
+                                            ? 'Propietario'
+                                            : 'Miembro'}
+                                        </Badge>
+                                      </TableCell>
+                                      {trip.userRole ===
+                                        ParticipantRole.OWNER &&
+                                        participant.role !==
+                                          ParticipantRole.OWNER && (
+                                          <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                              {isGuest &&
+                                                !hasPendingInvitation && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                      handleInviteGuest(
+                                                        participant,
+                                                      )
+                                                    }
+                                                    title="Enviar invitación por email"
+                                                  >
+                                                    <Mail className="h-4 w-4" />
+                                                  </Button>
+                                                )}
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                  handleRemoveParticipant(
+                                                    trip._id,
+                                                    participantId,
+                                                  )
+                                                }
+                                                title="Eliminar participante"
+                                              >
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                              </Button>
+                                            </div>
+                                          </TableCell>
+                                        )}
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </>
                         )}
                       </CardContent>
                     </Card>
