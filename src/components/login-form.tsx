@@ -33,7 +33,7 @@ export function LoginForm({
     const email = emailOrUsername.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       setError(
-        'Ingresa el email de la cuenta, en lugar del nombre de usuario, para reenviar la verificación.',
+        'Ingresá el email de la cuenta, en lugar del nombre de usuario, para reenviar la verificación.',
       );
       return;
     }

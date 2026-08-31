@@ -31,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 const items = [
-  { to: '/home', label: 'Home', icon: Home },
+  { to: '/home', label: 'Inicio', icon: Home },
   { to: '/expenses', label: 'Movimientos', icon: Receipt },
   { to: '#create', label: 'Registrar', icon: Plus, action: true },
   { to: '/reports', label: 'Reportes', icon: BarChart3 },

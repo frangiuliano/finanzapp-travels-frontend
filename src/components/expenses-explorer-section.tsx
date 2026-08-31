@@ -676,10 +676,10 @@ export function ExpensesExplorerSection({
                         )}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <strong className="block truncate text-sm">
+                        <strong className="block break-words text-sm">
                           {movement.label}
                         </strong>
-                        <span className="block truncate text-xs text-muted-foreground">
+                        <span className="block break-words text-xs text-muted-foreground">
                           {formatDate(movement.date)} · {movement.meta}
                         </span>
                       </span>

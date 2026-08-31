@@ -192,6 +192,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div>
             <RecentExpensesTable
+              isShared={activeBoard.isShared}
               tripId={activeBoard._id}
               boardCurrency={activeBoard.baseCurrency}
               refreshTrigger={refreshTrigger}

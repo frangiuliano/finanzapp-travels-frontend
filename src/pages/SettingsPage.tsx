@@ -213,7 +213,7 @@ export default function SettingsPage() {
           Cuenta
         </h1>
         <p className="text-muted-foreground">
-          Gestiona tu información personal, datos de cuenta e integraciones.
+          Gestioná tu información personal, datos de cuenta e integraciones.
         </p>
       </div>
 
@@ -228,7 +228,7 @@ export default function SettingsPage() {
             <CardTitle>Información Personal</CardTitle>
           </div>
           <CardDescription>
-            Actualiza tu información personal. Puedes modificar tu nombre,
+            Actualizá tu información personal. Podés modificar tu nombre,
             apellido, email y nombre de usuario.
           </CardDescription>
         </CardHeader>
@@ -240,7 +240,7 @@ export default function SettingsPage() {
                 id="firstName"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Ingresa tu nombre"
+                placeholder="Ingresá tu nombre"
                 required
                 disabled={isSaving}
               />
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                 id="lastName"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                placeholder="Ingresa tu apellido"
+                placeholder="Ingresá tu apellido"
                 required
                 disabled={isSaving}
               />

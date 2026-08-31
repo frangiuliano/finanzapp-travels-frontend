@@ -299,6 +299,7 @@ const createColumns = (
 };
 
 interface RecentExpensesTableProps {
+  isShared?: boolean;
   tripId: string;
   boardCurrency?: string;
   showBoardCurrency?: boolean;
@@ -313,6 +314,7 @@ interface RecentExpensesTableProps {
 }
 
 export function RecentExpensesTable({
+  isShared = true,
   tripId,
   boardCurrency = DEFAULT_CURRENCY,
   showBoardCurrency = true,
@@ -423,7 +425,10 @@ export function RecentExpensesTable({
     columns,
     state: {
       sorting,
-      columnVisibility,
+      columnVisibility: {
+        ...columnVisibility,
+        ...(!isShared ? { paidBy: false } : {}),
+      },
       rowSelection,
       columnFilters,
       pagination,
@@ -494,6 +499,7 @@ export function RecentExpensesTable({
                   .filter(
                     (column) =>
                       typeof column.accessorFn !== 'undefined' &&
+                      (isShared || column.id !== 'paidBy') &&
                       column.getCanHide(),
                   )
                   .map((column) => {

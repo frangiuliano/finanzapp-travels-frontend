@@ -274,8 +274,8 @@ export function EverydayBoardHome({
   if (board._id.startsWith('mock-')) {
     return (
       <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-6 text-sm text-muted-foreground">
-        Estás viendo mocks locales. Cambiá el tablero activo desde el selector
-        para validar el home mensual.
+        Este tablero de ejemplo no tiene un resumen mensual. Elegí otro tablero
+        desde el selector para ver tus movimientos.
       </div>
     );
   }

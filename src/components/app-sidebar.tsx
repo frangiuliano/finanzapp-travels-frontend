@@ -40,7 +40,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navMain = [
     {
-      title: 'Home',
+      title: 'Inicio',
       url: '/home',
       icon: Home,
     },

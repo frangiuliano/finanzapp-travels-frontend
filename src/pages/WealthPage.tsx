@@ -685,7 +685,7 @@ export default function WealthPage() {
             </dl>
             <p className="border-t pt-3 text-muted-foreground">
               Patrimonio muestra tus ahorros e inversiones. Estos saldos no se
-              suman al “Restante proyectado” de Home, que se calcula con los
+              suman al “Restante proyectado” de Inicio, que se calcula con los
               ingresos y gastos del mes.
             </p>
           </div>

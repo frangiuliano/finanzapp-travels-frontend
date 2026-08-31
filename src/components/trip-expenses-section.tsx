@@ -319,6 +319,7 @@ export function TripExpensesSection({
     state: {
       sorting,
       pagination,
+      columnVisibility: { paidBy: board.isShared },
     },
     getRowId: (row) => row._id,
     onSortingChange: setSorting,
@@ -410,12 +411,16 @@ export function TripExpensesSection({
                         </div>
                       </div>
                       <dl className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs">
-                        <div>
-                          <dt className="text-muted-foreground">Pagado por</dt>
-                          <dd className="mt-0.5 truncate font-medium">
-                            {getParticipantName(expense.paidByParticipant)}
-                          </dd>
-                        </div>
+                        {board.isShared && (
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Pagado por
+                            </dt>
+                            <dd className="mt-0.5 truncate font-medium">
+                              {getParticipantName(expense.paidByParticipant)}
+                            </dd>
+                          </div>
+                        )}
                         <div>
                           <dt className="text-muted-foreground">Medio</dt>
                           <dd className="mt-0.5 truncate font-medium">
