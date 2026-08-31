@@ -57,6 +57,7 @@ import {
   splitInstallmentAmounts,
 } from '@/lib/installments';
 import { formatCurrency } from '@/lib/utils';
+import { triggerSuccessHaptic } from '@/lib/haptics';
 import {
   CURRENCY_OPTIONS,
   DEFAULT_CURRENCY,
@@ -672,6 +673,7 @@ export function QuickExpenseForm({
         toast.success('Gasto recurrente configurado');
         resetForm();
         notifyExpensesChanged();
+        triggerSuccessHaptic();
         onSuccess?.();
         return;
       }
@@ -701,6 +703,7 @@ export function QuickExpenseForm({
         toast.success(`Compra en ${parsedInstallments} cuotas configurada`);
         resetForm();
         notifyExpensesChanged();
+        triggerSuccessHaptic();
         onSuccess?.();
         return;
       }
@@ -748,6 +751,7 @@ export function QuickExpenseForm({
       if (!isEditing) {
         resetForm();
       }
+      triggerSuccessHaptic();
       onSuccess?.();
     } catch (error) {
       const axiosError = error as AxiosError<{

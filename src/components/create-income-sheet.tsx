@@ -19,6 +19,7 @@ import {
   type SupportedCurrency,
 } from '@/constants/currencies';
 import { notifyIncomesChanged } from '@/lib/income-events';
+import { triggerSuccessHaptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
 const INCOME_CONCEPT_PRESETS = [
@@ -165,6 +166,7 @@ export function CreateIncomeSheet({
       }
 
       notifyIncomesChanged();
+      triggerSuccessHaptic();
       onSuccess?.();
       onOpenChange(false);
     } catch (error) {

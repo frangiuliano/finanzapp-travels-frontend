@@ -49,6 +49,7 @@ import {
   getCurrentYearMonth,
   isDateInYearMonth,
 } from '@/lib/utils';
+import { triggerDestructiveHaptic } from '@/lib/haptics';
 import { useIncomesChangedRefresh } from '@/hooks/useIncomesChangedRefresh';
 
 interface EverydayBoardHomeProps {
@@ -230,6 +231,7 @@ export function EverydayBoardHome({
     try {
       await incomesService.deleteIncome(income._id);
       toast.success('Ingreso eliminado');
+      triggerDestructiveHaptic();
       setDeleteTarget(null);
       onRefresh();
     } catch {
@@ -249,6 +251,7 @@ export function EverydayBoardHome({
     try {
       await expensesService.deleteExpense(expenseId);
       toast.success('Gasto eliminado');
+      triggerDestructiveHaptic();
       setDeleteTarget(null);
       onRefresh();
     } catch {

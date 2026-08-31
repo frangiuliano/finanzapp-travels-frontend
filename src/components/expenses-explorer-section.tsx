@@ -82,6 +82,7 @@ import {
   formatDate,
   getCurrentYearMonth,
 } from '@/lib/utils';
+import { triggerDestructiveHaptic } from '@/lib/haptics';
 
 const ALL_FILTER = 'all';
 
@@ -356,6 +357,7 @@ export function ExpensesExplorerSection({
     try {
       await expensesService.deleteExpense(expenseId);
       toast.success('Gasto eliminado');
+      triggerDestructiveHaptic();
       setExpenses((current) =>
         current.filter((item) => item._id !== expenseId),
       );
@@ -376,6 +378,7 @@ export function ExpensesExplorerSection({
       setDetail(null);
       setDeleteTarget(null);
       toast.success('Ingreso eliminado');
+      triggerDestructiveHaptic();
     } catch {
       toast.error('No se pudo eliminar el ingreso');
     } finally {

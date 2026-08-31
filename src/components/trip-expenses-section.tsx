@@ -53,6 +53,7 @@ import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import { formatDate } from '@/lib/utils';
+import { triggerDestructiveHaptic } from '@/lib/haptics';
 
 interface TripExpensesSectionProps {
   board: Board;
@@ -151,6 +152,7 @@ export function TripExpensesSection({
     try {
       await expensesService.deleteExpense(expense._id);
       toast.success('Gasto eliminado exitosamente');
+      triggerDestructiveHaptic();
       setRefreshTrigger((prev) => prev + 1);
       onExpensesChange?.();
     } catch (error) {

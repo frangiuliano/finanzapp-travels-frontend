@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { glassTabBar } from '@/lib/glass';
 import { cn } from '@/lib/utils';
+import { triggerSelectionHaptic } from '@/lib/haptics';
 import { openMovementCreator } from '@/lib/movement-events';
 import {
   Sheet,
@@ -43,10 +44,6 @@ const INDICATOR_TRANSITION =
 
 interface BottomNavProps {
   minimized?: boolean;
-}
-
-function triggerTabHaptic() {
-  navigator.vibrate?.(8);
 }
 
 export function BottomNav({ minimized = false }: BottomNavProps) {
@@ -215,7 +212,7 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
                 ) : (
                   <NavLink
                     to={item.to}
-                    onClick={triggerTabHaptic}
+                    onClick={triggerSelectionHaptic}
                     className={({ isActive }) =>
                       cn(
                         'relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[11px] font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
