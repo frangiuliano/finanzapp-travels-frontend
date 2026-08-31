@@ -36,6 +36,8 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+const MIN_SEGMENTS_FOR_CHART = 4;
+
 export function ReportsBreakdownChart({
   title,
   description,
@@ -68,48 +70,53 @@ export function ReportsBreakdownChart({
           </p>
         ) : (
           <div className="space-y-4">
-            <ChartContainer
-              config={chartConfig}
-              className="aspect-auto h-[min(280px,50vh)] w-full"
-            >
-              <BarChart
-                data={chartData}
-                layout="vertical"
-                margin={{ left: 4, right: 12, top: 4, bottom: 4 }}
+            {chartData.length >= MIN_SEGMENTS_FOR_CHART && (
+              <ChartContainer
+                config={chartConfig}
+                className="aspect-auto h-[min(280px,50vh)] w-full"
               >
-                <XAxis type="number" hide />
-                <YAxis
-                  type="category"
-                  dataKey="label"
-                  width={88}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fontSize: 11 }}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value, _name, item) => (
-                        <div className="flex w-full items-center justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            {(item.payload as { fullLabel: string }).fullLabel}
-                          </span>
-                          <span className="font-mono font-medium tabular-nums">
-                            {formatCurrency(Number(value), currency)}
-                          </span>
-                        </div>
-                      )}
-                    />
-                  }
-                />
-                <Bar
-                  dataKey="total"
-                  fill="var(--color-total)"
-                  radius={[0, 4, 4, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
+                <BarChart
+                  data={chartData}
+                  layout="vertical"
+                  margin={{ left: 4, right: 12, top: 4, bottom: 4 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={88}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value, _name, item) => (
+                          <div className="flex w-full items-center justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              {
+                                (item.payload as { fullLabel: string })
+                                  .fullLabel
+                              }
+                            </span>
+                            <span className="font-mono font-medium tabular-nums">
+                              {formatCurrency(Number(value), currency)}
+                            </span>
+                          </div>
+                        )}
+                      />
+                    }
+                  />
+                  <Bar
+                    dataKey="total"
+                    fill="var(--color-total)"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
 
             <ul className="divide-y text-sm">
               {chartData.map((item) => (
