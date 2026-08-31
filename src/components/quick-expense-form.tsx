@@ -879,6 +879,8 @@ export function QuickExpenseForm({
         </div>
         <MoneyInput
           id="quick-amount"
+          aria-invalid={Boolean(errors.amount)}
+          aria-describedby={errors.amount ? 'quick-amount-error' : undefined}
           placeholder="0,00"
           value={amount}
           onChange={setAmount}
@@ -889,7 +891,13 @@ export function QuickExpenseForm({
           autoFocus
         />
         {errors.amount ? (
-          <p className="text-destructive text-xs">{errors.amount}</p>
+          <p
+            id="quick-amount-error"
+            role="alert"
+            className="text-destructive text-xs"
+          >
+            {errors.amount}
+          </p>
         ) : null}
         {needsFx && !isEditing ? (
           <div className="space-y-2 rounded-xl border bg-muted/20 p-3">
@@ -928,6 +936,8 @@ export function QuickExpenseForm({
               </Label>
               <Input
                 id="fx-rate"
+                aria-invalid={Boolean(errors.fxRate)}
+                aria-describedby={errors.fxRate ? 'fx-rate-error' : undefined}
                 inputMode="decimal"
                 placeholder={
                   isCreditReferentialFx
@@ -944,7 +954,13 @@ export function QuickExpenseForm({
                 )}
               />
               {errors.fxRate ? (
-                <p className="text-destructive text-xs">{errors.fxRate}</p>
+                <p
+                  id="fx-rate-error"
+                  role="alert"
+                  className="text-destructive text-xs"
+                >
+                  {errors.fxRate}
+                </p>
               ) : null}
             </div>
           </div>
@@ -957,6 +973,8 @@ export function QuickExpenseForm({
         </Label>
         <Input
           id="quick-note"
+          aria-invalid={Boolean(errors.note)}
+          aria-describedby={errors.note ? 'quick-note-error' : undefined}
           placeholder="Ej. supermercado, almuerzo…"
           value={note}
           onChange={(event) => setNote(event.target.value)}
@@ -964,7 +982,13 @@ export function QuickExpenseForm({
           maxLength={500}
         />
         {errors.note ? (
-          <p className="text-destructive text-xs">{errors.note}</p>
+          <p
+            id="quick-note-error"
+            role="alert"
+            className="text-destructive text-xs"
+          >
+            {errors.note}
+          </p>
         ) : null}
       </div>
 
@@ -978,8 +1002,12 @@ export function QuickExpenseForm({
                 key={category._id}
                 type="button"
                 onClick={() => setCategoryId(category._id)}
+                aria-pressed={isSelected}
+                aria-describedby={
+                  errors.categoryId ? 'quick-category-error' : undefined
+                }
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                  'min-h-11 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                   isSelected
                     ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_14%,transparent)] text-foreground'
                     : 'border-border bg-background text-muted-foreground hover:border-foreground/20',
@@ -999,7 +1027,13 @@ export function QuickExpenseForm({
           })}
         </div>
         {errors.categoryId ? (
-          <p className="text-destructive text-xs">{errors.categoryId}</p>
+          <p
+            id="quick-category-error"
+            role="alert"
+            className="text-destructive text-xs"
+          >
+            {errors.categoryId}
+          </p>
         ) : null}
       </div>
 
@@ -1027,9 +1061,13 @@ export function QuickExpenseForm({
                 key={method._id}
                 type="button"
                 onClick={() => setPaymentMethodId(method._id)}
+                aria-pressed={isSelected}
+                aria-describedby={
+                  errors.paymentMethodId ? 'quick-payment-error' : undefined
+                }
                 disabled={isHistoricalUnavailable && !isSelected}
                 className={cn(
-                  'rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                  'min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                   isSelected
                     ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_12%,transparent)]'
                     : 'border-border hover:border-foreground/20',
@@ -1052,7 +1090,13 @@ export function QuickExpenseForm({
           })}
         </div>
         {errors.paymentMethodId ? (
-          <p className="text-destructive text-xs">{errors.paymentMethodId}</p>
+          <p
+            id="quick-payment-error"
+            role="alert"
+            className="text-destructive text-xs"
+          >
+            {errors.paymentMethodId}
+          </p>
         ) : null}
       </div>
 
@@ -1070,8 +1114,9 @@ export function QuickExpenseForm({
                 key={value}
                 type="button"
                 onClick={() => setInstallments(String(value))}
+                aria-pressed={parsedInstallments === value}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                  'min-h-11 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                   parsedInstallments === value
                     ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_14%,transparent)]'
                     : 'border-border text-muted-foreground hover:border-foreground/20',
@@ -1083,6 +1128,10 @@ export function QuickExpenseForm({
           </div>
           <Input
             id="installments"
+            aria-invalid={Boolean(errors.installments)}
+            aria-describedby={
+              errors.installments ? 'installments-error' : undefined
+            }
             type="number"
             min={1}
             max={120}
@@ -1094,7 +1143,13 @@ export function QuickExpenseForm({
             )}
           />
           {errors.installments ? (
-            <p className="text-destructive text-xs">{errors.installments}</p>
+            <p
+              id="installments-error"
+              role="alert"
+              className="text-destructive text-xs"
+            >
+              {errors.installments}
+            </p>
           ) : parsedInstallments > 1 && parseMoneyInput(amount) != null ? (
             <p className="text-muted-foreground text-[11px]">
               {parsedInstallments} cuotas de{' '}
@@ -1391,10 +1446,6 @@ export function QuickExpenseForm({
             </div>
           ) : null}
         </div>
-      ) : null}
-
-      {errors.note && !showDetails ? (
-        <p className="text-destructive text-xs">{errors.note}</p>
       ) : null}
 
       {isTravel && errors.paidBy && !showTravelOptions ? (

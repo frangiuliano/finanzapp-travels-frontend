@@ -650,46 +650,48 @@ export function ExpensesExplorerSection({
             <>
               <ul className="divide-y sm:hidden">
                 {pageMovements.map((movement) => (
-                  <li
-                    key={`${movement.type}-${movement.id}`}
-                    className="flex min-h-16 cursor-pointer items-center gap-3 rounded-xl py-3 focus-within:ring-2 focus-within:ring-ring"
-                    onClick={() =>
-                      setDetail({ type: movement.type, id: movement.id })
-                    }
-                  >
-                    <span
-                      className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-full',
-                        movement.type === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-primary/10 text-primary',
-                      )}
+                  <li key={`${movement.type}-${movement.id}`}>
+                    <button
+                      type="button"
+                      className="flex min-h-16 w-full items-center gap-3 rounded-xl py-3 text-left focus-visible:outline-2 focus-visible:outline-ring"
+                      onClick={() =>
+                        setDetail({ type: movement.type, id: movement.id })
+                      }
                     >
-                      {movement.type === 'income' ? (
-                        <ArrowDownLeft
-                          className="size-4"
-                          aria-label="Ingreso"
-                        />
-                      ) : (
-                        <ArrowUpRight className="size-4" aria-label="Gasto" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <strong className="block truncate text-sm">
-                        {movement.label}
-                      </strong>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {formatDate(movement.date)} · {movement.meta}
+                      <span
+                        className={cn(
+                          'flex size-9 shrink-0 items-center justify-center rounded-full',
+                          movement.type === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-primary/10 text-primary',
+                        )}
+                      >
+                        {movement.type === 'income' ? (
+                          <ArrowDownLeft
+                            className="size-4"
+                            aria-label="Ingreso"
+                          />
+                        ) : (
+                          <ArrowUpRight className="size-4" aria-label="Gasto" />
+                        )}
                       </span>
-                    </span>
-                    <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                      <span className="sr-only">
-                        {movement.type === 'income' ? 'Entrada' : 'Salida'}
-                        :{' '}
+                      <span className="min-w-0 flex-1">
+                        <strong className="block truncate text-sm">
+                          {movement.label}
+                        </strong>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {formatDate(movement.date)} · {movement.meta}
+                        </span>
                       </span>
-                      {movement.type === 'income' ? '+' : '−'}
-                      {formatCurrency(movement.amount, movement.currency)}
-                    </span>
+                      <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                        <span className="sr-only">
+                          {movement.type === 'income' ? 'Entrada' : 'Salida'}
+                          :{' '}
+                        </span>
+                        {movement.type === 'income' ? '+' : '−'}
+                        {formatCurrency(movement.amount, movement.currency)}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>

@@ -180,7 +180,7 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
                         : 'Abrir menú Más'
                     }
                     className={cn(
-                      'relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-medium',
+                      'relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                       item.to === '#create'
                         ? 'text-primary'
                         : 'text-muted-foreground',
@@ -218,7 +218,7 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
                     onClick={triggerTabHaptic}
                     className={({ isActive }) =>
                       cn(
-                        'relative z-10 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[10px] font-medium transition-colors duration-200',
+                        'relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1 text-[11px] font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                         isActive
                           ? 'text-primary'
                           : 'text-muted-foreground hover:text-foreground',
