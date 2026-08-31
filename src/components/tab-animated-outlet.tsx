@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useOutlet } from 'react-router-dom';
+import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import { PullToRefreshIndicator } from '@/components/pull-to-refresh-indicator';
 import {
   PULL_REFRESH_THRESHOLD,
@@ -46,6 +47,7 @@ export function TabAnimatedOutlet() {
           isDragging={isDragging}
         />
       </div>
+      <PWAInstallPrompt />
       {outlet}
     </div>
   );

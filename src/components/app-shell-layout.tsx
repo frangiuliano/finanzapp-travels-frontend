@@ -2,7 +2,6 @@ import { TabAnimatedOutlet } from '@/components/tab-animated-outlet';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { BottomNav } from '@/components/bottom-nav';
-import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import { BoardsBootstrapError } from '@/components/boards-bootstrap-error';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useClearStuckOverlayLocks } from '@/hooks/useClearStuckOverlayLocks';
@@ -47,7 +46,6 @@ export function AppShellLayout() {
             <TabAnimatedOutlet />
           )}
         </div>
-        <PWAInstallPrompt />
         <BottomNav minimized={navMinimized} />
         <CreateMovementSheet />
         <OfflineExpenseQueueDialog
