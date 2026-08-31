@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { authService } from '@/services/authService';
 import axios from 'axios';
@@ -85,18 +86,22 @@ export function LoginForm({
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
+        <CardHeader className="p-4 sm:p-5">
+          <CardTitle>
+            <h1 className="text-2xl">Iniciar sesión</h1>
+          </CardTitle>
           <CardDescription>
-            Ingresa tu email o nombre de usuario para iniciar sesión en tu
-            cuenta
+            Ingresá a tu cuenta para seguir con tus planes.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
           <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               {error && !emailNotVerified && (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                <div
+                  role="alert"
+                  className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+                >
                   {error}
                 </div>
               )}
@@ -139,10 +144,15 @@ export function LoginForm({
 
               <div className="grid gap-2">
                 <Label htmlFor="emailOrUsername">
-                  Email o Nombre de Usuario
+                  Email o nombre de usuario
                 </Label>
                 <Input
                   id="emailOrUsername"
+                  name="username"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className="h-11"
                   type="text"
                   placeholder="email@example.com o nombre_usuario"
                   value={emailOrUsername}
@@ -152,7 +162,7 @@ export function LoginForm({
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <Label htmlFor="password">Contraseña</Label>
                   <Link
                     to="/forgot-password"
@@ -161,9 +171,10 @@ export function LoginForm({
                     ¿Olvidaste tu contraseña?
                   </Link>
                 </div>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
+                  name="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -172,19 +183,19 @@ export function LoginForm({
               </div>
               <Button
                 type="submit"
-                className="w-full"
+                className="h-11 w-full"
                 disabled={isLoading || emailNotVerified}
               >
-                {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              ¿No tienes una cuenta?{' '}
+              ¿No tenés una cuenta?{' '}
               <Link
                 to="/signup"
                 className="underline underline-offset-4 hover:text-primary"
               >
-                Regístrate
+                Creá tu cuenta
               </Link>
             </div>
           </form>
