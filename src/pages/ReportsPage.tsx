@@ -172,8 +172,9 @@ export default function ReportsPage() {
         <TabsContent value="calendar" className="mt-6 space-y-6">
           {isLoading ? (
             <div className="space-y-4">
-              <Skeleton className="h-24 rounded-xl" />
               <Skeleton className="h-64 rounded-xl" />
+              <Skeleton className="h-64 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
             </div>
           ) : loadError ? (
             <Card>
@@ -183,11 +184,6 @@ export default function ReportsPage() {
             </Card>
           ) : calendarReport ? (
             <>
-              <BoardMonthSummaryCards
-                summary={calendarReport}
-                yearMonth={yearMonth}
-              />
-
               {calendarReport.totalIncomes === 0 &&
                 calendarReport.totalExpenses === 0 && (
                   <Card className="border-dashed">
@@ -216,6 +212,11 @@ export default function ReportsPage() {
                 items={paymentMethodItems}
                 currency={calendarReport.currency}
                 emptyMessage="Sin gastos con medio de pago este mes."
+              />
+
+              <BoardMonthSummaryCards
+                summary={calendarReport}
+                yearMonth={yearMonth}
               />
 
               <CreditCycleReportSection boardId={activeBoard._id} />
