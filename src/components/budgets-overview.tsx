@@ -44,7 +44,7 @@ export function BudgetsOverview({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const formatCurrency = (amount: number, budgetCurrency: string) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: budgetCurrency,
     }).format(amount);

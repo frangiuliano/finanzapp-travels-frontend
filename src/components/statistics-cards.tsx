@@ -142,7 +142,7 @@ export function StatisticsCards() {
   }, [allExpenses, selectedDebt]);
 
   const formatCurrency = (amount: number, currency?: string) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: currency || DEFAULT_CURRENCY,
     }).format(amount);
@@ -213,7 +213,7 @@ export function StatisticsCards() {
                     <div className="text-right shrink-0">
                       <p className="text-base sm:text-lg font-semibold">
                         $
-                        {card.total.toLocaleString('es-ES', {
+                        {card.total.toLocaleString('es-AR', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
@@ -251,7 +251,7 @@ export function StatisticsCards() {
                   </div>
                   <div className="text-base sm:text-lg font-semibold shrink-0">
                     $
-                    {totalDebts.toLocaleString('es-ES', {
+                    {totalDebts.toLocaleString('es-AR', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -280,7 +280,7 @@ export function StatisticsCards() {
                       <div className="text-right ml-2 shrink-0">
                         <p className="text-xs sm:text-sm font-semibold">
                           $
-                          {debt.amount.toLocaleString('es-ES', {
+                          {debt.amount.toLocaleString('es-AR', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}

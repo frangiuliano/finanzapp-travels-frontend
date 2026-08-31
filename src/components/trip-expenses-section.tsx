@@ -114,7 +114,7 @@ export function TripExpensesSection({
   }, []);
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: currency,
     }).format(amount);

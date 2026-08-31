@@ -94,7 +94,7 @@ export function TripDashboardCards({
   }, [budgets, totalExpenses, totalBudgetedExpenses, totalUnbudgetedExpenses]);
 
   const formatCurrency = (amount: number, expenseCurrency?: string) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: expenseCurrency || currency,
     }).format(amount);

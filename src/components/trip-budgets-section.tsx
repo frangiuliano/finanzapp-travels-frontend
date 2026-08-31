@@ -43,7 +43,7 @@ export function TripBudgetsSection({
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
 
   const formatCurrency = (amount: number, budgetCurrency: string) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: budgetCurrency,
     }).format(amount);

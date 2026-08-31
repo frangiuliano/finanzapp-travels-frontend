@@ -57,7 +57,7 @@ export function StatStrip({
             {loading
               ? '—'
               : item.currency && typeof item.value === 'number'
-                ? `${item.sign ?? ''}${new Intl.NumberFormat('es-ES', {
+                ? `${item.sign ?? ''}${new Intl.NumberFormat('es-AR', {
                     style: 'currency',
                     currency: item.currency,
                   })
