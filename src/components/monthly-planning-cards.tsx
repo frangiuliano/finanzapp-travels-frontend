@@ -1,8 +1,4 @@
-import {
-  ArrowDownCircleIcon,
-  ArrowUpCircleIcon,
-  WalletIcon,
-} from 'lucide-react';
+import { WalletIcon } from 'lucide-react';
 import {
   Card,
   CardDescription,
@@ -10,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { StatStrip } from '@/components/stat-strip';
 import type { MonthlyForecast } from '@/types/forecast';
 import type { HomeMonthView } from '@/lib/expense-month-attribution';
 import { formatCurrency, formatYearMonth } from '@/lib/utils';
@@ -48,60 +45,43 @@ export function MonthlyPlanningCards({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 *:data-[slot=card]:shadow-xs *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card">
-        <Card className="@container/card">
-          <CardHeader className="relative">
-            <CardDescription>
-              {isFutureMonth ? 'Ingresos planificados' : 'Ingresos'}
-            </CardDescription>
-            <CardTitle className="@[200px]/card:text-3xl text-2xl font-semibold tabular-nums">
-              {formatCurrency(incomeTotal, currency)}
-            </CardTitle>
-            <div className="absolute right-4 top-4">
-              <ArrowUpCircleIcon className="size-6 text-emerald-600 dark:text-emerald-400" />
-            </div>
-          </CardHeader>
-          <CardFooter className="text-sm text-muted-foreground">
-            {isFutureMonth
+      <StatStrip
+        centered
+        items={[
+          {
+            label: isFutureMonth ? 'Ingresos planificados' : 'Ingresos',
+            value: incomeTotal,
+            currency,
+            description: isFutureMonth
               ? 'Recurrentes del mes'
-              : `Real: ${formatCurrency(actual.totalIncomes, currency)} · Plan: ${formatCurrency(planned.totalIncomes, currency)}`}
-          </CardFooter>
-        </Card>
-
+              : `Plan: ${formatCurrency(planned.totalIncomes, currency)}`,
+          },
+          {
+            label: isFutureMonth ? 'Compromisos' : 'Gastos',
+            value: expenseTotal,
+            currency,
+            description: isFutureMonth
+              ? 'Fijos + cuotas'
+              : `Fijos/cuotas: ${formatCurrency(planned.totalOutflows, currency)}`,
+          },
+        ]}
+      />
+      <div>
         <Card className="@container/card">
-          <CardHeader className="relative">
-            <CardDescription>
-              {isFutureMonth ? 'Compromisos' : 'Gastos'}
+          <CardHeader className="text-center">
+            <CardDescription className="flex items-center justify-center gap-2">
+              <WalletIcon className="size-4 shrink-0" aria-hidden />
+              Restante proyectado
             </CardDescription>
-            <CardTitle className="@[200px]/card:text-3xl text-2xl font-semibold tabular-nums">
-              {formatCurrency(expenseTotal, currency)}
-            </CardTitle>
-            <div className="absolute right-4 top-4">
-              <ArrowDownCircleIcon className="size-6 text-rose-600 dark:text-rose-400" />
-            </div>
-          </CardHeader>
-          <CardFooter className="text-sm text-muted-foreground">
-            {isFutureMonth
-              ? 'Fijos + cuotas del mes'
-              : `${expenseHint} · Fijos/cuotas: ${formatCurrency(planned.totalOutflows, currency)}`}
-          </CardFooter>
-        </Card>
-
-        <Card className="@container/card">
-          <CardHeader className="relative">
-            <CardDescription>Restante proyectado</CardDescription>
             <CardTitle
-              className={`@[200px]/card:text-3xl text-2xl font-semibold tabular-nums ${
+              className={`@[200px]/card:text-3xl text-2xl font-semibold tabular-nums [overflow-wrap:anywhere] ${
                 remaining < 0 ? 'text-destructive' : ''
               }`}
             >
               {formatCurrency(remaining, currency)}
             </CardTitle>
-            <div className="absolute right-4 top-4">
-              <WalletIcon className="size-6 text-muted-foreground" />
-            </div>
           </CardHeader>
-          <CardFooter className="text-sm text-muted-foreground">
+          <CardFooter className="justify-center text-center text-sm text-muted-foreground">
             Ingresos − {expenseHint.toLowerCase()}
           </CardFooter>
         </Card>

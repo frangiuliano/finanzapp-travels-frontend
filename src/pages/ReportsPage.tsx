@@ -172,11 +172,7 @@ export default function ReportsPage() {
         <TabsContent value="calendar" className="mt-6 space-y-6">
           {isLoading ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Skeleton className="h-32 rounded-xl" />
-                <Skeleton className="h-32 rounded-xl" />
-                <Skeleton className="h-32 rounded-xl" />
-              </div>
+              <Skeleton className="h-24 rounded-xl" />
               <Skeleton className="h-64 rounded-xl" />
             </div>
           ) : loadError ? (

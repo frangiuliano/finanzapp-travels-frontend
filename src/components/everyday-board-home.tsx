@@ -287,9 +287,8 @@ export function EverydayBoardHome({
       <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
+        <div className="space-y-3">
+          <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-32 rounded-xl" />
         </div>
       ) : forecast ? (

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
+import { StatStrip } from '@/components/stat-strip';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
@@ -569,83 +570,51 @@ export function ExpensesExplorerSection({
         </Card>
       ) : null}
 
-      <div
-        className={cn(
-          'grid grid-cols-1 gap-4',
-          movementType === 'all' ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
-        )}
-      >
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>
-              {movementType === 'expense'
+      <StatStrip
+        centered
+        loading={isMovementLoading}
+        items={[
+          {
+            label:
+              movementType === 'expense'
                 ? 'Gastos encontrados'
                 : movementType === 'income'
                   ? 'Ingresos encontrados'
-                  : 'Movimientos encontrados'}
-            </CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {isMovementLoading ? '—' : movements.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>
-              {movementType === 'income' ? 'Entradas' : 'Salidas'} en{' '}
-              {board.baseCurrency}
-            </CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {isMovementLoading
-                ? '—'
-                : `${movementType === 'income' ? '+' : '−'}${formatCurrency(
-                    movementType === 'income'
-                      ? totals.incomeTotal
-                      : totals.expenseTotal,
-                    board.baseCurrency,
-                  )}`}
-            </CardTitle>
-          </CardHeader>
-          {!isMovementLoading &&
-          (movementType === 'income'
-            ? totals.excludedIncomes > 0
-            : totals.excludedExpenses > 0) ? (
-            <CardContent className="pt-0 text-xs text-muted-foreground">
-              {movementType === 'income'
+                  : 'Movimientos',
+            value: movements.length,
+          },
+          {
+            label: movementType === 'income' ? 'Entradas' : 'Salidas',
+            value:
+              movementType === 'income'
+                ? totals.incomeTotal
+                : totals.expenseTotal,
+            currency: board.baseCurrency,
+            sign: movementType === 'income' ? '+' : '−',
+            description:
+              !isMovementLoading &&
+              (movementType === 'income'
                 ? totals.excludedIncomes
-                : totals.excludedExpenses}{' '}
-              {movementType === 'income' ? 'ingreso' : 'gasto'}
-              {(movementType === 'income'
-                ? totals.excludedIncomes
-                : totals.excludedExpenses) === 1
-                ? ''
-                : 's'}{' '}
-              en otra moneda no incluidos.
-            </CardContent>
-          ) : null}
-        </Card>
-        {movementType === 'all' ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Entradas en {board.baseCurrency}
-              </CardDescription>
-              <CardTitle className="text-2xl tabular-nums">
-                {isMovementLoading
-                  ? '—'
-                  : `+${formatCurrency(totals.incomeTotal, board.baseCurrency)}`}
-              </CardTitle>
-            </CardHeader>
-            {!isMovementLoading && totals.excludedIncomes > 0 ? (
-              <CardContent className="pt-0 text-xs text-muted-foreground">
-                {totals.excludedIncomes} ingreso
-                {totals.excludedIncomes === 1 ? '' : 's'} en otra moneda no
-                incluido{totals.excludedIncomes === 1 ? '' : 's'}.
-              </CardContent>
-            ) : null}
-          </Card>
-        ) : null}
-      </div>
+                : totals.excludedExpenses) > 0
+                ? `${movementType === 'income' ? totals.excludedIncomes : totals.excludedExpenses} en otra moneda no incluidos.`
+                : undefined,
+          },
+          ...(movementType === 'all'
+            ? [
+                {
+                  label: 'Entradas',
+                  value: totals.incomeTotal,
+                  currency: board.baseCurrency,
+                  sign: '+' as const,
+                  description:
+                    !isMovementLoading && totals.excludedIncomes > 0
+                      ? `${totals.excludedIncomes} ingresos en otra moneda no incluidos.`
+                      : undefined,
+                },
+              ]
+            : []),
+        ]}
+      />
 
       <Card>
         <CardHeader>
