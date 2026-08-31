@@ -96,23 +96,10 @@ export default function BoardSettingsPage() {
               Ingresos y compromisos recurrentes
             </CardTitle>
             <CardDescription>
-              Ingresos recurrentes, gastos fijos y cuotas. Se materializan como
-              movimientos programados hasta 12 meses adelante.
+              Ingresos recurrentes, gastos fijos y cuotas de los próximos meses.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl"
-              disabled={isExtendingHorizon}
-              onClick={() => void handleExtendHorizon()}
-            >
-              <CalendarPlus className="mr-2 h-4 w-4" />
-              {isExtendingHorizon
-                ? 'Extendiendo…'
-                : 'Extender planificación 12 meses'}
-            </Button>
             <Tabs defaultValue="recurring-incomes" className="w-full">
               <TabsList className="mb-6 grid w-full grid-cols-3">
                 <TabsTrigger value="recurring-incomes">Ingresos</TabsTrigger>
@@ -180,6 +167,34 @@ export default function BoardSettingsPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {activeBoard.type === 'everyday' ? (
+        <Card className="rounded-2xl border-border/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg">
+              Planificación futura
+            </CardTitle>
+            <CardDescription>
+              Generá los movimientos programados que falten desde este mes hasta
+              completar los próximos 12 meses. Los que ya existen no se
+              duplican.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              className="min-h-11 rounded-xl"
+              disabled={isExtendingHorizon}
+              onClick={() => void handleExtendHorizon()}
+            >
+              <CalendarPlus className="mr-2 h-4 w-4" />
+              {isExtendingHorizon
+                ? 'Preparando…'
+                : 'Preparar los próximos 12 meses'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {activeBoard.userRole === ParticipantRole.MEMBER ? (
         <Card className="rounded-2xl border-border/80 shadow-sm">
