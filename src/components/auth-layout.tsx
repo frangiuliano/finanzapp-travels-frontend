@@ -9,7 +9,7 @@ import {
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-svh flex-col bg-background lg:grid lg:grid-cols-2">
-      <aside className="hidden flex-col justify-center bg-ink px-12 py-8 text-white lg:flex xl:px-20">
+      <aside className="hidden flex-col justify-center bg-ink px-12 py-8 text-white dark:bg-card lg:flex xl:px-20">
         <div className="mx-auto w-full max-w-md">
           <p className="mb-6 text-sm font-medium text-white/75">
             TU DÍA A DÍA, MÁS CLARO

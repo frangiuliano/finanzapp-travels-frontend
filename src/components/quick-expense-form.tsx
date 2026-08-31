@@ -1473,7 +1473,7 @@ export function QuickExpenseForm({
       <Button
         type="submit"
         disabled={isSubmitting || (isTravel && travelDataLoading)}
-        className="h-12 rounded-2xl bg-[var(--signal)] text-base font-semibold text-white hover:bg-[color-mix(in_oklab,var(--signal)_88%,black)]"
+        className="h-12 rounded-2xl bg-[var(--signal)] text-base font-semibold text-white dark:text-background hover:bg-[color-mix(in_oklab,var(--signal)_88%,black)]"
       >
         {isSubmitting ? (
           <>

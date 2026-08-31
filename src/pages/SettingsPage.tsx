@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ThemeSettings } from '@/components/theme-settings';
 import {
   Card,
   CardContent,
@@ -217,6 +218,8 @@ export default function SettingsPage() {
       </div>
 
       <Separator />
+
+      <ThemeSettings />
 
       <Card>
         <CardHeader>
