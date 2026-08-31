@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AxiosError } from 'axios';
 import {
   ArrowDownToLine,
+  ChevronDown,
   Landmark,
   Pause,
   Pencil,
@@ -639,21 +640,56 @@ export default function WealthPage() {
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Object.entries(overview?.totalsByCurrency ?? {}).map(
-          ([totalCurrency, total]) => (
-            <Card key={totalCurrency}>
-              <CardHeader className="pb-2">
-                <CardDescription>Total en {totalCurrency}</CardDescription>
-                <CardTitle>{money(total.balance, totalCurrency)}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                {money(total.allocated, totalCurrency)} asignado ·{' '}
-                {money(total.available, totalCurrency)} libre
-              </CardContent>
-            </Card>
-          ),
-        )}
+      <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Object.entries(overview?.totalsByCurrency ?? {}).map(
+            ([totalCurrency, total]) => (
+              <Card key={totalCurrency}>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total en {totalCurrency}</CardDescription>
+                  <CardTitle>{money(total.balance, totalCurrency)}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground">
+                  {money(total.allocated, totalCurrency)} asignado ·{' '}
+                  {money(total.available, totalCurrency)} libre
+                </CardContent>
+              </Card>
+            ),
+          )}
+        </div>
+
+        <details className="group w-fit max-w-full rounded-lg border border-primary/20 bg-primary/5 text-sm open:w-full sm:max-w-2xl">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 font-medium text-foreground hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+            <span>¿Cómo leer estos números?</span>
+            <ChevronDown
+              aria-hidden="true"
+              className="size-4 shrink-0 text-primary group-open:rotate-180"
+            />
+          </summary>
+          <div className="space-y-3 border-t border-primary/15 px-4 py-4">
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="font-medium">Asignado</dt>
+                <dd className="text-muted-foreground">
+                  Dinero reservado para tus objetivos de ahorro. Sigue siendo
+                  parte de tu saldo, no es un gasto.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium">Libre</dt>
+                <dd className="text-muted-foreground">
+                  La parte de tu saldo que todavía no reservaste para un
+                  objetivo.
+                </dd>
+              </div>
+            </dl>
+            <p className="border-t pt-3 text-muted-foreground">
+              Patrimonio muestra tus ahorros e inversiones. Estos saldos no se
+              suman al “Restante proyectado” de Home, que se calcula con los
+              ingresos y gastos del mes.
+            </p>
+          </div>
+        </details>
       </div>
 
       <Tabs defaultValue="holdings">
