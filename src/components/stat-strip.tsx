@@ -15,10 +15,12 @@ export function StatStrip({
   items,
   loading = false,
   centered = false,
+  wrapOnMobile = false,
 }: {
   items: StatStripItem[];
   loading?: boolean;
   centered?: boolean;
+  wrapOnMobile?: boolean;
 }) {
   return (
     <dl
@@ -26,15 +28,22 @@ export function StatStrip({
       aria-busy={loading}
       className={cn(
         'grid overflow-hidden rounded-2xl border bg-card py-4 shadow-xs',
+        wrapOnMobile && 'grid-cols-2 sm:grid-cols-5',
         centered && 'grid-rows-[auto_auto_auto_auto] gap-y-1',
       )}
-      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      style={
+        wrapOnMobile
+          ? undefined
+          : { gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }
+      }
     >
       {items.map((item) => (
         <div
           key={item.label}
           className={cn(
             'min-w-0 border-l px-2 first:border-l-0 sm:px-5',
+            wrapOnMobile &&
+              'border-b py-3 odd:border-l-0 last:col-span-2 last:border-b-0 sm:border-b-0 sm:py-0 sm:odd:border-l sm:last:col-span-1',
             centered && 'row-span-4 grid grid-rows-subgrid text-center',
           )}
         >

@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatStrip } from '@/components/stat-strip';
 import { CURRENCY_OPTIONS } from '@/constants/currencies';
 import { parseMoneyInput } from '@/lib/money';
 import { wealthService } from '@/services/wealthService';
@@ -73,6 +74,22 @@ const HOLDING_LABELS: Record<HoldingType, string> = {
   cash: 'Efectivo',
   investment: 'Inversión',
   other: 'Otro',
+};
+
+const HOLDING_TYPE_ORDER: HoldingType[] = [
+  'bank_account',
+  'virtual_wallet',
+  'cash',
+  'investment',
+  'other',
+];
+
+const HOLDING_GROUP_LABELS: Record<HoldingType, string> = {
+  bank_account: 'Cuentas bancarias',
+  virtual_wallet: 'Billeteras virtuales',
+  cash: 'Efectivo',
+  investment: 'Cuentas de inversión',
+  other: 'Otros',
 };
 
 const PACE_LABELS = {
@@ -225,6 +242,24 @@ export default function WealthPage() {
             )),
       ),
     [contributionKind, overview?.holdings, selectedGoal],
+  );
+
+  const holdingsByCurrencyAndType = useMemo(
+    () =>
+      Array.from(
+        (overview?.holdings ?? []).reduce((currencies, holding) => {
+          const byType =
+            currencies.get(holding.currency) ??
+            new Map<HoldingType, Holding[]>();
+          byType.set(holding.type, [
+            ...(byType.get(holding.type) ?? []),
+            holding,
+          ]);
+          currencies.set(holding.currency, byType);
+          return currencies;
+        }, new Map<string, Map<HoldingType, Holding[]>>()),
+      ).map(([currency, byType]) => ({ currency, byType })),
+    [overview?.holdings],
   );
 
   useEffect(() => {
@@ -732,74 +767,124 @@ export default function WealthPage() {
             </Button>
           </div>
           {overview?.holdings.length ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {overview.holdings.map((holding) => (
-                <Card key={holding._id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <CardTitle className="text-base">
-                          {holding.name}
-                        </CardTitle>
-                        <CardDescription>
-                          {holding.institution || HOLDING_LABELS[holding.type]}
-                        </CardDescription>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {holding.type === 'bank_account' ? (
-                          <Landmark className="size-5 text-primary" />
-                        ) : (
-                          <WalletCards className="size-5 text-primary" />
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => openEditHolding(holding)}
-                          aria-label={`Editar ${holding.name}`}
-                        >
-                          <Pencil className="size-4 text-muted-foreground" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => void archiveHolding(holding)}
-                          aria-label={`Eliminar ${holding.name}`}
-                        >
-                          <Trash2 className="size-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="text-xl font-semibold tabular-nums">
-                      {money(holding.currentBalance, holding.currency)}
+            <div className="space-y-8">
+              {holdingsByCurrencyAndType.map(({ currency, byType }) => (
+                <section key={currency} className="space-y-5">
+                  <div>
+                    <h3 className="font-display text-base font-semibold">
+                      Saldos en {currency}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Distribución por tipo de cuenta
                     </p>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>
-                        Asignado{' '}
-                        {money(holding.allocatedBalance, holding.currency)}
-                      </span>
-                      <span>
-                        Libre{' '}
-                        {money(holding.availableBalance, holding.currency)}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => openBalance(holding)}
-                    >
-                      {holding.type === 'investment'
-                        ? 'Actualizar efectivo'
-                        : 'Actualizar saldo'}
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <StatStrip
+                    centered
+                    wrapOnMobile
+                    items={HOLDING_TYPE_ORDER.map((type) => ({
+                      label: HOLDING_GROUP_LABELS[type],
+                      value: (byType.get(type) ?? []).reduce(
+                        (total, holding) => total + holding.currentBalance,
+                        0,
+                      ),
+                      currency,
+                    }))}
+                  />
+                  {HOLDING_TYPE_ORDER.map((type) => {
+                    const holdings = byType.get(type) ?? [];
+                    if (!holdings.length) return null;
+
+                    return (
+                      <div key={type} className="space-y-3">
+                        <h4 className="text-sm font-medium text-muted-foreground">
+                          {HOLDING_GROUP_LABELS[type]}
+                        </h4>
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          {holdings.map((holding) => (
+                            <Card key={holding._id}>
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <CardTitle className="text-base">
+                                      {holding.name}
+                                    </CardTitle>
+                                    <CardDescription>
+                                      {holding.institution ||
+                                        HOLDING_LABELS[holding.type]}
+                                    </CardDescription>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {holding.type === 'bank_account' ? (
+                                      <Landmark className="size-5 text-primary" />
+                                    ) : (
+                                      <WalletCards className="size-5 text-primary" />
+                                    )}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-8"
+                                      onClick={() => openEditHolding(holding)}
+                                      aria-label={`Editar ${holding.name}`}
+                                    >
+                                      <Pencil className="size-4 text-muted-foreground" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="size-8"
+                                      onClick={() =>
+                                        void archiveHolding(holding)
+                                      }
+                                      aria-label={`Eliminar ${holding.name}`}
+                                    >
+                                      <Trash2 className="size-4 text-muted-foreground" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <p className="text-xl font-semibold tabular-nums">
+                                  {money(
+                                    holding.currentBalance,
+                                    holding.currency,
+                                  )}
+                                </p>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>
+                                    Asignado{' '}
+                                    {money(
+                                      holding.allocatedBalance,
+                                      holding.currency,
+                                    )}
+                                  </span>
+                                  <span>
+                                    Libre{' '}
+                                    {money(
+                                      holding.availableBalance,
+                                      holding.currency,
+                                    )}
+                                  </span>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                  onClick={() => openBalance(holding)}
+                                >
+                                  {holding.type === 'investment'
+                                    ? 'Actualizar efectivo'
+                                    : 'Actualizar saldo'}
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
               ))}
             </div>
           ) : (
