@@ -137,7 +137,7 @@ export default function DashboardPage() {
     <div className="w-full flex-1 space-y-4 px-4 py-6 lg:px-6">
       <div>
         <div className="mb-4 sm:mb-6">
-          <h2 className="font-display text-xl sm:text-2xl font-bold">
+          <h2 className="font-display text-2xl font-bold">
             {activeBoard.name}
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground">
