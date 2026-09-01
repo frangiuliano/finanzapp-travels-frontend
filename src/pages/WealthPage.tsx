@@ -123,8 +123,7 @@ function monthLabel(value: string) {
 
 export default function WealthPage() {
   const boards = useBoardsStore((state) => state.boards);
-  const currentBoard = useBoardsStore((state) => state.currentBoard);
-  const activeBoard = currentBoard ?? boards[0] ?? null;
+  const wealthBoard = boards.find((board) => board.type === 'everyday') ?? null;
   const [overview, setOverview] = useState<WealthOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -166,14 +165,14 @@ export default function WealthPage() {
 
   const load = useCallback(async () => {
     try {
-      if (!activeBoard) return;
-      setOverview(await wealthService.getOverview(activeBoard._id));
+      if (!wealthBoard) return;
+      setOverview(await wealthService.getOverview(wealthBoard._id));
     } catch {
       toast.error('No se pudo cargar tu patrimonio');
     } finally {
       setIsLoading(false);
     }
-  }, [activeBoard]);
+  }, [wealthBoard]);
 
   useEffect(() => void load(), [load]);
 
@@ -334,7 +333,7 @@ export default function WealthPage() {
     setIsSaving(true);
     try {
       const result = await wealthService.refreshPositionPrice(
-        activeBoard!._id,
+        wealthBoard!._id,
         selectedPosition._id,
       );
       setUnitPrice(String(result.currentPrice).replace('.', ','));
@@ -380,7 +379,7 @@ export default function WealthPage() {
         if (!name.trim() || parsedAmount === null) {
           throw new Error('Completá el nombre y el saldo');
         }
-        await wealthService.createHolding(activeBoard!._id, {
+        await wealthService.createHolding(wealthBoard!._id, {
           name: name.trim(),
           institution: institution.trim() || undefined,
           type: holdingType,
@@ -391,7 +390,7 @@ export default function WealthPage() {
       } else if (dialogMode === 'edit_holding' && selectedHolding) {
         if (!name.trim()) throw new Error('Ingresá un nombre');
         await wealthService.updateHolding(
-          activeBoard!._id,
+          wealthBoard!._id,
           selectedHolding._id,
           {
             name: name.trim(),
@@ -402,7 +401,7 @@ export default function WealthPage() {
       } else if (dialogMode === 'balance' && selectedHolding) {
         if (parsedAmount === null) throw new Error('Ingresá el saldo actual');
         await wealthService.adjustBalance(
-          activeBoard!._id,
+          wealthBoard!._id,
           selectedHolding._id,
           {
             balance: parsedAmount,
@@ -414,7 +413,7 @@ export default function WealthPage() {
         if (!name.trim() || parsedAmount === null || parsedAmount <= 0) {
           throw new Error('Completá el nombre y el monto objetivo');
         }
-        await wealthService.createGoal(activeBoard!._id, {
+        await wealthService.createGoal(wealthBoard!._id, {
           name: name.trim(),
           targetAmount: parsedAmount,
           currency,
@@ -429,7 +428,7 @@ export default function WealthPage() {
         if (!holdingId || parsedAmount === null || parsedAmount <= 0) {
           throw new Error('Elegí una tenencia e ingresá un importe');
         }
-        await wealthService.contribute(activeBoard!._id, selectedGoal._id, {
+        await wealthService.contribute(wealthBoard!._id, selectedGoal._id, {
           holdingId,
           kind: contributionKind,
           amount: parsedAmount,
@@ -465,7 +464,7 @@ export default function WealthPage() {
           throw new Error('Completá instrumento, cantidad y precio de compra');
         }
         await wealthService.createPosition(
-          activeBoard!._id,
+          wealthBoard!._id,
           selectedHolding._id,
           {
             instrumentId: resolvedInstrumentId,
@@ -484,7 +483,7 @@ export default function WealthPage() {
         if (parsedQuantity <= 0 || parsedPrice === null) {
           throw new Error('Completá nominales y precio');
         }
-        await wealthService.trade(activeBoard!._id, selectedHolding._id, {
+        await wealthService.trade(wealthBoard!._id, selectedHolding._id, {
           instrumentId: selectedPosition.instrumentId._id,
           type: tradeType,
           quantity: parsedQuantity,
@@ -497,7 +496,7 @@ export default function WealthPage() {
         const parsedPrice = parseMoneyInput(unitPrice);
         if (parsedPrice === null) throw new Error('Ingresá el precio actual');
         await wealthService.updatePositionPrice(
-          activeBoard!._id,
+          wealthBoard!._id,
           selectedPosition._id,
           parsedPrice,
         );
@@ -509,7 +508,7 @@ export default function WealthPage() {
           throw new Error('Completá instrumento, cantidad y precio');
         }
         await wealthService.updateTransaction(
-          activeBoard!._id,
+          wealthBoard!._id,
           selectedTransaction._id,
           {
             instrumentId,
@@ -545,7 +544,7 @@ export default function WealthPage() {
     )
       return;
     try {
-      await wealthService.deleteTransaction(activeBoard!._id, transaction._id);
+      await wealthService.deleteTransaction(wealthBoard!._id, transaction._id);
       toast.success('Operación eliminada');
       await load();
     } catch (error) {
@@ -559,7 +558,7 @@ export default function WealthPage() {
 
   const toggleGoal = async (goal: SavingsGoal) => {
     try {
-      await wealthService.updateGoal(activeBoard!._id, goal._id, {
+      await wealthService.updateGoal(wealthBoard!._id, goal._id, {
         status: goal.status === 'paused' ? 'active' : 'paused',
       });
       await load();
@@ -580,7 +579,7 @@ export default function WealthPage() {
       return;
     }
     try {
-      await wealthService.archiveHolding(activeBoard!._id, holding._id);
+      await wealthService.archiveHolding(wealthBoard!._id, holding._id);
       toast.success('Tenencia eliminada');
       await load();
     } catch (error) {
@@ -603,7 +602,7 @@ export default function WealthPage() {
       return;
     }
     try {
-      await wealthService.archiveGoal(activeBoard!._id, goal._id);
+      await wealthService.archiveGoal(wealthBoard!._id, goal._id);
       toast.success('Objetivo eliminado');
       await load();
     } catch (error) {
@@ -624,6 +623,19 @@ export default function WealthPage() {
     );
   }
 
+  if (!wealthBoard) {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+        <PiggyBank className="size-10 text-muted-foreground" />
+        <h1 className="font-display text-2xl font-bold">Patrimonio</h1>
+        <p className="text-sm text-muted-foreground">
+          Necesitás un tablero cotidiano para organizar el patrimonio de tu
+          hogar.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex-1 space-y-6 px-4 py-6 pb-28 lg:px-6 md:pb-6">
       <div className="flex items-start justify-between gap-3">
@@ -632,10 +644,15 @@ export default function WealthPage() {
             Patrimonio
           </h1>
           <p className="text-sm text-muted-foreground">
-            Tu dinero, tus objetivos y el avance real de cada ahorro.
+            Patrimonio del hogar · {wealthBoard.name}
           </p>
         </div>
-        <Button variant="outline" size="icon" onClick={() => void load()}>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Actualizar patrimonio"
+          onClick={() => void load()}
+        >
           <RefreshCw className="size-4" />
         </Button>
       </div>
