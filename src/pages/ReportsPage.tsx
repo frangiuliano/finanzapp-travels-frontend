@@ -152,8 +152,7 @@ export default function ReportsPage() {
           Reportes
         </h1>
         <p className="text-sm text-muted-foreground">
-          Tablero activo:{' '}
-          <span className="font-medium">{activeBoard.name}</span>
+          Viendo: <span className="font-medium">{activeBoard.name}</span>
         </p>
       </div>
 

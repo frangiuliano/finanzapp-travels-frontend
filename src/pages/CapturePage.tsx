@@ -57,18 +57,17 @@ export default function CapturePage() {
         <h2 className="font-display text-xl font-bold sm:text-2xl">
           Nuevo gasto
         </h2>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Tablero activo:{' '}
+        <p className="text-sm text-muted-foreground">
+          Viendo:{' '}
           <span className="text-foreground font-medium">
             {activeBoard.name}
           </span>
-          {activeBoard.type === 'everyday' ? (
-            <>
-              {' '}
-              · Gasto puntual, recurrente o en cuotas con tarjeta de crédito.
-            </>
-          ) : null}
         </p>
+        {activeBoard.type === 'everyday' ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Gasto puntual, recurrente o en cuotas con tarjeta de crédito.
+          </p>
+        ) : null}
       </div>
 
       <QuickExpenseForm

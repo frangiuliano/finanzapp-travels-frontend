@@ -553,7 +553,7 @@ export function ManagePaymentMethodsSection({
 
       <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm">
         <p className="text-muted-foreground">
-          Tablero activo:{' '}
+          Viendo:{' '}
           <span className="font-medium text-foreground">{boardName}</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">

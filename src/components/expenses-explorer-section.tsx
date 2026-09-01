@@ -459,7 +459,7 @@ export function ExpensesExplorerSection({
           Movimientos
         </h1>
         <p className="text-sm text-muted-foreground">
-          Contexto:{' '}
+          Viendo:{' '}
           <span className="font-medium text-foreground">{board.name}</span>
         </p>
       </div>

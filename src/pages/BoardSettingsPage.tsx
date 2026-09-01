@@ -81,11 +81,10 @@ export default function BoardSettingsPage() {
           Configuración del tablero
         </h1>
         <p className="text-sm text-muted-foreground">
-          Organización y planificación para{' '}
+          Viendo:{' '}
           <span className="font-medium text-foreground">
             {activeBoard.name}
           </span>
-          .
         </p>
       </div>
 
