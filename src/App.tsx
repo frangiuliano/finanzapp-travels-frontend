@@ -22,6 +22,7 @@ import ExpensesPage from '@/pages/ExpensesPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import BoardSettingsPage from '@/pages/BoardSettingsPage';
 import BillingPeriodConfirmPage from '@/pages/BillingPeriodConfirmPage';
+import StatementImportPage from '@/pages/StatementImportPage';
 import SimulateExpensePage from '@/pages/SimulateExpensePage';
 import WealthPage from '@/pages/WealthPage';
 import ConfirmEmailChangePage from '@/pages/ConfirmEmailChangePage';
@@ -164,6 +165,7 @@ function AppRoutes() {
           path="/billing-periods/confirm"
           element={<BillingPeriodConfirmPage />}
         />
+        <Route path="/statement-imports" element={<StatementImportPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/account" element={<SettingsPage />} />
       </Route>

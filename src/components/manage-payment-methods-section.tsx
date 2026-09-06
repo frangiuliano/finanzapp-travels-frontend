@@ -6,6 +6,7 @@ import {
   CalendarRange,
   Pencil,
   Plus,
+  Upload,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -481,6 +482,20 @@ export function ManagePaymentMethodsSection({
                     )}
                   />
                 </button>
+              ) : null}
+              {options.editable && method.kind === 'credit' ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() =>
+                    navigate(`/statement-imports?paymentMethodId=${method._id}`)
+                  }
+                  aria-label={`Importar resumen de ${method.name}`}
+                >
+                  <Upload className="size-4" />
+                </Button>
               ) : null}
               {options.editable &&
               method.kind === 'credit' &&
