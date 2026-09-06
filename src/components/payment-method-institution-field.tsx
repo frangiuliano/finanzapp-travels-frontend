@@ -165,6 +165,7 @@ export function PaymentMethodInstitutionField({
                 role="option"
                 aria-selected={selected}
                 onMouseEnter={() => setActiveIndex(index)}
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() => selectInstitution(institution)}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm outline-none hover:bg-accent focus:bg-accent',
@@ -188,6 +189,7 @@ export function PaymentMethodInstitutionField({
               type="button"
               role="option"
               aria-selected={false}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={chooseCustomInstitution}
               className="w-full rounded-sm border-t px-2 py-2 text-left text-sm text-muted-foreground outline-none hover:bg-accent focus:bg-accent"
             >
