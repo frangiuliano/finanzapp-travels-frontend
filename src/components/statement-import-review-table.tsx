@@ -1,3 +1,4 @@
+import { Tag } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import type { Category } from '@/types/category';
 import type {
   StatementImportLine,
@@ -29,6 +30,12 @@ export interface StatementImportRowState {
   include: boolean;
   overrides: StatementImportLineOverride;
 }
+
+// Ghost styling: fields read as plain text until the user actually wants
+// to edit one — a review list of a dozen-plus rows gets noisy fast if
+// every cell looks like a form control all the time.
+const GHOST_FIELD_CLASS =
+  'border-transparent bg-transparent px-1.5 shadow-none hover:border-border/60 focus-visible:border-input focus-visible:bg-background focus-visible:ring-0';
 
 interface StatementImportReviewTableProps {
   lines: StatementImportLine[];
@@ -54,179 +61,148 @@ function resolvedValue<K extends keyof StatementImportLine>(
     : line[key];
 }
 
-function LineGroup({
-  title,
-  description,
-  lines,
-  rowState,
+function StatementImportLineRow({
+  line,
+  state,
   categories,
   onToggle,
-  onToggleAll,
   onOverrideChange,
 }: {
-  title: string;
-  description: string;
-  lines: StatementImportLine[];
-  rowState: Record<string, StatementImportRowState>;
+  line: StatementImportLine;
+  state: StatementImportRowState;
   categories: Category[];
   onToggle: (tempId: string) => void;
-  onToggleAll: (tempIds: string[], include: boolean) => void;
   onOverrideChange: (
     tempId: string,
     patch: Partial<StatementImportLineOverride>,
   ) => void;
 }) {
-  if (lines.length === 0) return null;
-
-  const tempIds = lines.map((line) => line.tempId);
-  const allChecked = tempIds.every((id) => rowState[id]?.include);
-  const someChecked = tempIds.some((id) => rowState[id]?.include);
+  const date = resolvedValue(line, state.overrides, 'date');
+  const description = resolvedValue(line, state.overrides, 'description');
+  const amount = resolvedValue(line, state.overrides, 'amount');
+  const selectedCategory = categories.find(
+    (category) => category._id === state.overrides.categoryId,
+  );
+  const hasBadges =
+    (line.cuotaActual && line.cuotaTotal) || line.parsedVia === 'llm';
 
   return (
-    <div className="space-y-2">
-      <div>
-        <h4 className="text-sm font-semibold">{title}</h4>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <div className="overflow-x-auto rounded-xl border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">
-                <Checkbox
-                  checked={
-                    allChecked ? true : someChecked ? 'indeterminate' : false
-                  }
-                  onCheckedChange={(checked) =>
-                    onToggleAll(tempIds, checked === true)
-                  }
-                  aria-label={`Seleccionar todo: ${title}`}
-                />
-              </TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Descripción</TableHead>
-              <TableHead>Monto</TableHead>
-              <TableHead>Categoría</TableHead>
-              <TableHead>Origen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lines.map((line) => {
-              const state = rowState[line.tempId] ?? {
-                include: false,
-                overrides: {},
-              };
-              const date = resolvedValue(line, state.overrides, 'date');
-              const description = resolvedValue(
-                line,
-                state.overrides,
-                'description',
-              );
-              const amount = resolvedValue(line, state.overrides, 'amount');
-
-              return (
-                <TableRow key={line.tempId}>
-                  <TableCell>
-                    <Checkbox
-                      checked={state.include}
-                      onCheckedChange={() => onToggle(line.tempId)}
-                      aria-label={`Incluir ${description}`}
-                    />
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <Input
-                      type="date"
-                      className="h-8 w-36"
-                      value={date}
-                      onChange={(event) =>
-                        onOverrideChange(line.tempId, {
-                          expenseDate: event.target.value,
-                        })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell className="min-w-48">
-                    <Input
-                      className="h-8"
-                      value={description}
-                      onChange={(event) =>
-                        onOverrideChange(line.tempId, {
-                          description: event.target.value,
-                        })
-                      }
-                    />
-                    {line.cuotaActual && line.cuotaTotal ? (
-                      <Badge variant="outline" className="mt-1 text-[10px]">
-                        Cuota {line.cuotaActual}/{line.cuotaTotal}
-                      </Badge>
-                    ) : null}
-                    {line.isPossibleDuplicate && line.duplicateOfDescription ? (
-                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Coincide con: {line.duplicateOfDescription}
-                        {line.duplicateOfAmount != null
-                          ? ` · ${formatMoneyInputFromNumber(line.duplicateOfAmount)}`
-                          : ''}
-                        {line.duplicateOfDate
-                          ? ` · ${formatDate(line.duplicateOfDate)}`
-                          : ''}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      <MoneyInput
-                        className="h-8 w-28"
-                        value={formatMoneyInputFromNumber(amount)}
-                        onChange={(value) => {
-                          const parsed = parseMoneyInput(value);
-                          if (parsed !== null) {
-                            onOverrideChange(line.tempId, { amount: parsed });
-                          }
-                        }}
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        {line.currency}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="min-w-40">
-                    <Select
-                      value={state.overrides.categoryId ?? '__none__'}
-                      onValueChange={(value) =>
-                        onOverrideChange(line.tempId, {
-                          categoryId: value === '__none__' ? undefined : value,
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Sin categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Sin categoría</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category._id} value={category._id}>
-                            {category.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    {line.parsedVia === 'llm' ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Asistido por IA
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <TableRow>
+      <TableCell className="py-3 align-top">
+        <Checkbox
+          checked={state.include}
+          onCheckedChange={() => onToggle(line.tempId)}
+          aria-label={`Incluir ${description}`}
+        />
+      </TableCell>
+      <TableCell className="whitespace-nowrap py-3 align-top">
+        <Input
+          type="date"
+          className={cn('h-8 w-full', GHOST_FIELD_CLASS)}
+          value={date}
+          onChange={(event) =>
+            onOverrideChange(line.tempId, {
+              expenseDate: event.target.value,
+            })
+          }
+        />
+      </TableCell>
+      <TableCell className="min-w-56 py-3 align-top">
+        <Input
+          className={cn('h-8 w-full truncate font-medium', GHOST_FIELD_CLASS)}
+          title={description}
+          value={description}
+          onChange={(event) =>
+            onOverrideChange(line.tempId, {
+              description: event.target.value,
+            })
+          }
+        />
+        {hasBadges ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1 px-1.5">
+            {line.cuotaActual && line.cuotaTotal ? (
+              <Badge variant="outline" className="text-[10px] font-normal">
+                Cuota {line.cuotaActual}/{line.cuotaTotal}
+              </Badge>
+            ) : null}
+            {line.parsedVia === 'llm' ? (
+              <Badge variant="secondary" className="text-[10px] font-normal">
+                Asistido por IA
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
+        {line.isPossibleDuplicate && line.duplicateOfDescription ? (
+          <p className="mt-1.5 px-1.5 text-xs text-amber-700 dark:text-amber-300">
+            Coincide con: {line.duplicateOfDescription}
+            {line.duplicateOfAmount != null
+              ? ` · ${formatMoneyInputFromNumber(line.duplicateOfAmount)}`
+              : ''}
+            {line.duplicateOfDate
+              ? ` · ${formatDate(line.duplicateOfDate)}`
+              : ''}
+          </p>
+        ) : null}
+      </TableCell>
+      <TableCell className="py-3 align-top">
+        <div className="flex items-baseline justify-end gap-1">
+          <MoneyInput
+            className={cn(
+              'h-8 w-full text-right font-medium tabular-nums',
+              GHOST_FIELD_CLASS,
+            )}
+            value={formatMoneyInputFromNumber(amount)}
+            onChange={(value) => {
+              const parsed = parseMoneyInput(value);
+              if (parsed !== null) {
+                onOverrideChange(line.tempId, { amount: parsed });
+              }
+            }}
+          />
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {line.currency}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell className="w-10 py-3 text-center align-top">
+        <Select
+          value={state.overrides.categoryId ?? '__none__'}
+          onValueChange={(value) =>
+            onOverrideChange(line.tempId, {
+              categoryId: value === '__none__' ? undefined : value,
+            })
+          }
+        >
+          <SelectTrigger
+            className={cn(
+              '[&>svg]:hidden h-8 w-8 justify-center gap-0 p-0',
+              GHOST_FIELD_CLASS,
+            )}
+            aria-label={
+              selectedCategory
+                ? `Categoría: ${selectedCategory.name}`
+                : 'Elegir categoría'
+            }
+          >
+            <SelectValue>
+              {selectedCategory ? (
+                <span className="text-xs">{selectedCategory.name}</span>
+              ) : (
+                <Tag className="size-3.5 text-muted-foreground" />
+              )}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Sin categoría</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category._id} value={category._id}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -240,29 +216,84 @@ export function StatementImportReviewTable({
 }: StatementImportReviewTableProps) {
   const newLines = lines.filter((line) => !line.isPossibleDuplicate);
   const duplicateLines = lines.filter((line) => line.isPossibleDuplicate);
+  const tempIds = lines.map((line) => line.tempId);
+  const allChecked = tempIds.every((id) => rowState[id]?.include);
+  const someChecked = tempIds.some((id) => rowState[id]?.include);
+
+  if (lines.length === 0) return null;
 
   return (
-    <div className="space-y-6">
-      <LineGroup
-        title={`Consumos detectados (${newLines.length})`}
-        description="Revisá y editá lo que haga falta antes de cargar."
-        lines={newLines}
-        rowState={rowState}
-        categories={categories}
-        onToggle={onToggle}
-        onToggleAll={onToggleAll}
-        onOverrideChange={onOverrideChange}
-      />
-      <LineGroup
-        title={`Posibles duplicados (${duplicateLines.length})`}
-        description="Ya hay un gasto cargado parecido en este período. Quedan destildados, pero podés tildarlos si en realidad son distintos."
-        lines={duplicateLines}
-        rowState={rowState}
-        categories={categories}
-        onToggle={onToggle}
-        onToggleAll={onToggleAll}
-        onOverrideChange={onOverrideChange}
-      />
+    <div className="space-y-1">
+      <div>
+        <h4 className="text-sm font-semibold">
+          Consumos detectados ({lines.length})
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Revisá y editá lo que haga falta antes de cargar.
+        </p>
+      </div>
+      <div className="overflow-x-auto rounded-xl border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={
+                    allChecked ? true : someChecked ? 'indeterminate' : false
+                  }
+                  onCheckedChange={(checked) =>
+                    onToggleAll(tempIds, checked === true)
+                  }
+                  aria-label="Seleccionar todo"
+                />
+              </TableHead>
+              <TableHead className="w-32">Fecha</TableHead>
+              <TableHead>Descripción</TableHead>
+              <TableHead className="w-32 text-right">Monto</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {newLines.map((line) => (
+              <StatementImportLineRow
+                key={line.tempId}
+                line={line}
+                state={
+                  rowState[line.tempId] ?? { include: false, overrides: {} }
+                }
+                categories={categories}
+                onToggle={onToggle}
+                onOverrideChange={onOverrideChange}
+              />
+            ))}
+            {duplicateLines.length > 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="bg-muted/40 py-2">
+                  <p className="text-xs font-medium">
+                    Posibles duplicados ({duplicateLines.length})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Ya hay un gasto parecido cargado en este período — quedan
+                    destildados, tildalos si en realidad son distintos.
+                  </p>
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {duplicateLines.map((line) => (
+              <StatementImportLineRow
+                key={line.tempId}
+                line={line}
+                state={
+                  rowState[line.tempId] ?? { include: false, overrides: {} }
+                }
+                categories={categories}
+                onToggle={onToggle}
+                onOverrideChange={onOverrideChange}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }

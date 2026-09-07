@@ -45,33 +45,32 @@ export function StatementImportLoadedExpensesPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Fecha</TableHead>
+                <TableHead className="w-24">Fecha</TableHead>
                 <TableHead>Descripción</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead />
+                <TableHead className="w-28 text-right">Monto</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {expenses.map((expense) => (
                 <TableRow key={expense._id}>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="whitespace-nowrap py-3 align-top">
                     {formatDate(expense.expenseDate)}
                   </TableCell>
-                  <TableCell className="min-w-40">
-                    {expense.description}
+                  <TableCell className="py-3 align-top">
+                    <p className="truncate" title={expense.description}>
+                      {expense.description}
+                    </p>
+                    {matchedExpenseIds.has(expense._id) ? (
+                      <Badge variant="secondary" className="mt-1.5 text-[10px]">
+                        Coincide con el resumen
+                      </Badge>
+                    ) : null}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="whitespace-nowrap py-3 text-right align-top">
                     {formatMoneyInputFromNumber(expense.amount)}{' '}
                     <span className="text-xs text-muted-foreground">
                       {expense.currency}
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    {matchedExpenseIds.has(expense._id) ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Coincide con el resumen
-                      </Badge>
-                    ) : null}
                   </TableCell>
                 </TableRow>
               ))}
