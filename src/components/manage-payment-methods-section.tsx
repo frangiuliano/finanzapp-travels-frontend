@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import {
   AlertTriangle,
   Archive,
+  CalendarClock,
   CalendarRange,
   Pencil,
   Plus,
@@ -26,6 +27,7 @@ import { DestructiveActionDialog } from '@/components/destructive-action-dialog'
 import { PaymentMethodInstitutionField } from '@/components/payment-method-institution-field';
 import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
 import { cn } from '@/lib/utils';
+import { billingPeriodsService } from '@/services/billingPeriodsService';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -159,6 +161,36 @@ export function ManagePaymentMethodsSection({
     null,
   );
   const [isArchiving, setIsArchiving] = useState(false);
+  const [unconfirmedCycleIds, setUnconfirmedCycleIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const refreshUnconfirmedCycles = useCallback(
+    async (methods: PaymentMethod[]) => {
+      const candidates = methods.filter(
+        (method) => method.kind === 'credit' && method.closingDay,
+      );
+      if (candidates.length === 0) {
+        setUnconfirmedCycleIds(new Set());
+        return;
+      }
+      const results = await Promise.all(
+        candidates.map(async (method) => {
+          try {
+            const { pendingConfirmation } =
+              await billingPeriodsService.getStatus(method._id);
+            return pendingConfirmation ? method._id : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      setUnconfirmedCycleIds(
+        new Set(results.filter((id): id is string => Boolean(id))),
+      );
+    },
+    [],
+  );
 
   const fetchMethods = useCallback(async () => {
     setIsLoading(true);
@@ -176,15 +208,20 @@ export function ManagePaymentMethodsSection({
         return ownerId === userId;
       };
 
-      setUserMethods(activeParticipantMethods.filter(belongsToCurrentUser));
+      const nextUserMethods =
+        activeParticipantMethods.filter(belongsToCurrentUser);
+      const nextBoardMethods = boardResult.paymentMethods.filter(
+        (method) => method.isActive,
+      );
+
+      setUserMethods(nextUserMethods);
       setParticipantMethods(
         activeParticipantMethods.filter(
           (method) => !belongsToCurrentUser(method),
         ),
       );
-      setBoardMethods(
-        boardResult.paymentMethods.filter((method) => method.isActive),
-      );
+      setBoardMethods(nextBoardMethods);
+      void refreshUnconfirmedCycles([...nextUserMethods, ...nextBoardMethods]);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -196,7 +233,7 @@ export function ManagePaymentMethodsSection({
     } finally {
       setIsLoading(false);
     }
-  }, [boardId, userId]);
+  }, [boardId, userId, refreshUnconfirmedCycles]);
 
   useEffect(() => {
     void fetchMethods();
@@ -424,6 +461,17 @@ export function ManagePaymentMethodsSection({
                   >
                     <AlertTriangle className="size-3" />
                     Sin cierre
+                  </Badge>
+                ) : null}
+                {method.kind === 'credit' &&
+                method.closingDay &&
+                unconfirmedCycleIds.has(method._id) ? (
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 text-[10px] text-sky-700 dark:text-sky-300"
+                  >
+                    <CalendarClock className="size-3" />
+                    Cierre sin confirmar
                   </Badge>
                 ) : null}
               </div>

@@ -40,4 +40,13 @@ export const billingPeriodsService = {
     const response = await api.post('/billing-periods/confirm', data);
     return response.data;
   },
+
+  async getStatus(
+    paymentMethodId: string,
+  ): Promise<{ pendingConfirmation: boolean }> {
+    const response = await api.get('/billing-periods/status', {
+      params: { paymentMethodId },
+    });
+    return response.data;
+  },
 };
