@@ -28,6 +28,8 @@ export interface StatementImportUploadResult {
   importId: string;
   lines: StatementImportLine[];
   stats: StatementImportStats;
+  periodFrom: string;
+  periodTo: string;
 }
 
 export interface StatementImportLineOverride {

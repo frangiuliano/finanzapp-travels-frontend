@@ -15,11 +15,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatementImportReviewTable } from '@/components/statement-import-review-table';
 import type { StatementImportRowState } from '@/components/statement-import-review-table';
+import { StatementImportLoadedExpensesPanel } from '@/components/statement-import-loaded-expenses-panel';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useBoardsStore } from '@/store/boardsStore';
 import { formatPaymentMethodLabel } from '@/lib/format-payment-method-label';
 import { statementImportService } from '@/services/statementImportService';
+import { expensesService } from '@/services/expensesService';
+import type { Expense } from '@/types/expense';
 import type {
   StatementImportLine,
   StatementImportLineOverride,
@@ -46,6 +49,20 @@ export default function StatementImportPage() {
   const [rowState, setRowState] = useState<
     Record<string, StatementImportRowState>
   >({});
+  const [loadedExpenses, setLoadedExpenses] = useState<Expense[]>([]);
+  const [isLoadingLoadedExpenses, setIsLoadingLoadedExpenses] = useState(false);
+
+  const matchedExpenseIds = useMemo(
+    () =>
+      new Set(
+        lines
+          .filter(
+            (line) => line.isPossibleDuplicate && line.duplicateOfExpenseId,
+          )
+          .map((line) => line.duplicateOfExpenseId!),
+      ),
+    [lines],
+  );
 
   const initializeRowState = useCallback(
     (importedLines: StatementImportLine[]) => {
@@ -78,6 +95,25 @@ export default function StatementImportPage() {
       setLines(result.lines);
       setLowConfidenceDocument(result.stats.lowConfidenceDocument);
       initializeRowState(result.lines);
+
+      setIsLoadingLoadedExpenses(true);
+      try {
+        const { expenses } = await expensesService.listExpenses(
+          currentBoard._id,
+          {
+            paymentMethodId: method._id,
+            from: result.periodFrom,
+            to: result.periodTo,
+          },
+        );
+        setLoadedExpenses(expenses);
+      } catch {
+        // El panel de reconciliación es informativo, no bloquea la carga
+        // si falla — el usuario igual puede revisar y confirmar.
+        setLoadedExpenses([]);
+      } finally {
+        setIsLoadingLoadedExpenses(false);
+      }
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -172,7 +208,7 @@ export default function StatementImportPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 md:px-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:px-6">
       <Button
         type="button"
         variant="ghost"
@@ -227,53 +263,63 @@ export default function StatementImportPage() {
               </Button>
             </form>
           ) : (
-            <div className="space-y-4">
-              {lowConfidenceDocument ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                  No reconocimos bien el formato de este resumen. Revisá con
-                  cuidado los montos y descripciones antes de cargar.
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <div className="space-y-4">
+                {lowConfidenceDocument ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                    No reconocimos bien el formato de este resumen. Revisá con
+                    cuidado los montos y descripciones antes de cargar.
+                  </div>
+                ) : null}
+                {lines.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No se detectaron consumos en el PDF.
+                  </p>
+                ) : (
+                  <StatementImportReviewTable
+                    lines={lines}
+                    rowState={rowState}
+                    categories={categories}
+                    onToggle={handleToggle}
+                    onToggleAll={handleToggleAll}
+                    onOverrideChange={handleOverrideChange}
+                  />
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    className="flex-1 rounded-xl"
+                    disabled={selectedCount === 0 || isConfirming}
+                    onClick={handleConfirm}
+                  >
+                    {isConfirming
+                      ? 'Cargando…'
+                      : `Cargar seleccionados (${selectedCount})`}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    disabled={isConfirming}
+                    onClick={async () => {
+                      await statementImportService.cancel(importId);
+                      setImportId(null);
+                      setLines([]);
+                      setRowState({});
+                      setLoadedExpenses([]);
+                      setFile(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
                 </div>
-              ) : null}
-              {lines.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No se detectaron consumos en el PDF.
-                </p>
-              ) : (
-                <StatementImportReviewTable
-                  lines={lines}
-                  rowState={rowState}
-                  categories={categories}
-                  onToggle={handleToggle}
-                  onToggleAll={handleToggleAll}
-                  onOverrideChange={handleOverrideChange}
+              </div>
+              <div className="lg:sticky lg:top-4">
+                <StatementImportLoadedExpensesPanel
+                  expenses={loadedExpenses}
+                  matchedExpenseIds={matchedExpenseIds}
+                  isLoading={isLoadingLoadedExpenses}
                 />
-              )}
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  className="flex-1 rounded-xl"
-                  disabled={selectedCount === 0 || isConfirming}
-                  onClick={handleConfirm}
-                >
-                  {isConfirming
-                    ? 'Cargando…'
-                    : `Cargar seleccionados (${selectedCount})`}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  disabled={isConfirming}
-                  onClick={async () => {
-                    await statementImportService.cancel(importId);
-                    setImportId(null);
-                    setLines([]);
-                    setRowState({});
-                    setFile(null);
-                  }}
-                >
-                  Cancelar
-                </Button>
               </div>
             </div>
           )}
