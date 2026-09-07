@@ -1,25 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import {
-  Archive,
-  Car,
-  CircleOff,
-  Ellipsis,
-  Gamepad2,
-  Gift,
-  GraduationCap,
-  HeartPulse,
-  Home,
-  PawPrint,
-  Pencil,
-  Plane,
-  Plus,
-  Repeat,
-  Shirt,
-  ShoppingCart,
-  Utensils,
-  type LucideIcon,
-} from 'lucide-react';
+import { Archive, CircleOff, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { CategoryColorPicker } from '@/components/category-color-picker';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { CATEGORY_ICON_OPTIONS } from '@/constants/category-icons';
 import {
   DEFAULT_CATEGORY_COLOR,
   isValidCategoryColor,
@@ -44,28 +26,6 @@ interface CategoryFormState {
   icon: string;
   color: string;
 }
-
-interface CategoryIconOption {
-  value: string;
-  label: string;
-  icon: LucideIcon;
-}
-
-const CATEGORY_ICON_OPTIONS: CategoryIconOption[] = [
-  { value: 'utensils', label: 'Comida', icon: Utensils },
-  { value: 'car', label: 'Transporte', icon: Car },
-  { value: 'home', label: 'Hogar', icon: Home },
-  { value: 'shopping-cart', label: 'Compras', icon: ShoppingCart },
-  { value: 'gamepad-2', label: 'Ocio', icon: Gamepad2 },
-  { value: 'heart-pulse', label: 'Salud', icon: HeartPulse },
-  { value: 'repeat', label: 'Suscripción', icon: Repeat },
-  { value: 'graduation-cap', label: 'Educación', icon: GraduationCap },
-  { value: 'shirt', label: 'Ropa', icon: Shirt },
-  { value: 'plane', label: 'Viaje', icon: Plane },
-  { value: 'gift', label: 'Regalo', icon: Gift },
-  { value: 'paw-print', label: 'Mascotas', icon: PawPrint },
-  { value: 'ellipsis', label: 'Otros', icon: Ellipsis },
-];
 
 const createEmptyForm = (): CategoryFormState => ({
   name: '',
