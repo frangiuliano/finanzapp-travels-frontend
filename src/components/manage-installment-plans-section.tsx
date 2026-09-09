@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,12 +77,6 @@ export function ManageInstallmentPlansSection({
     void fetchItems();
   }, [fetchItems]);
 
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormData(emptyForm(getCurrentYearMonth()));
-    setSheetOpen(true);
-  };
-
   const openEdit = (item: InstallmentPlan) => {
     setEditingItem(item);
     setFormData({
@@ -97,6 +91,7 @@ export function ManageInstallmentPlansSection({
   };
 
   const handleSubmit = async () => {
+    if (!editingItem) return;
     if (!formData.label.trim()) {
       toast.error('El concepto es obligatorio');
       return;
@@ -139,13 +134,8 @@ export function ManageInstallmentPlansSection({
         currency,
       };
 
-      if (editingItem) {
-        await installmentPlansService.update(editingItem._id, payload);
-        toast.success('Plan de cuotas actualizado');
-      } else {
-        await installmentPlansService.create({ boardId, ...payload });
-        toast.success('Plan de cuotas creado');
-      }
+      await installmentPlansService.update(editingItem._id, payload);
+      toast.success('Plan de cuotas actualizado');
 
       setSheetOpen(false);
       await fetchItems();
@@ -179,21 +169,18 @@ export function ManageInstallmentPlansSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Compras en cuotas con tarjeta para proyectar vencimientos futuros.
-        </p>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Compras en cuotas con tarjeta para proyectar vencimientos futuros. Se
+        cargan desde el modal de gasto, eligiendo una tarjeta de crédito; acá
+        podés editarlas o eliminarlas.
+      </p>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No hay planes de cuotas configurados.
+          Todavía no cargaste compras en cuotas. Cargalas desde el botón + →
+          Gasto, eligiendo tu tarjeta de crédito.
         </p>
       ) : (
         <ul className="divide-y rounded-xl border">
@@ -240,7 +227,7 @@ export function ManageInstallmentPlansSection({
       <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={editingItem ? 'Editar plan de cuotas' : 'Nuevo plan de cuotas'}
+        title="Editar plan de cuotas"
         description="Las cuotas pendientes se proyectan mes a mes."
       >
         <div className="space-y-4">

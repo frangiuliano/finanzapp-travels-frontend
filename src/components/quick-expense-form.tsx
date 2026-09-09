@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { YearMonthSelector } from '@/components/year-month-selector';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { budgetsService } from '@/services/budgetsService';
@@ -56,7 +57,7 @@ import {
   getYearMonthFromIsoDate,
   splitInstallmentAmounts,
 } from '@/lib/installments';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatYearMonth, shiftYearMonth } from '@/lib/utils';
 import { triggerSuccessHaptic } from '@/lib/haptics';
 import {
   CURRENCY_OPTIONS,
@@ -155,6 +156,12 @@ export function QuickExpenseForm({
   const [expenseCurrency, setExpenseCurrency] =
     useState<SupportedCurrency>(boardCurrency);
   const [installments, setInstallments] = useState('1');
+  const [installmentOrigin, setInstallmentOrigin] = useState<'new' | 'ongoing'>(
+    'new',
+  );
+  const [currentInstallmentNumber, setCurrentInstallmentNumber] = useState('1');
+  const [currentInstallmentYearMonth, setCurrentInstallmentYearMonth] =
+    useState(getYearMonthFromIsoDate(todayIsoDate()));
   const [fxRate, setFxRate] = useState<number | null>(null);
   const [fxRateInput, setFxRateInput] = useState('');
   const [isFxLoading, setIsFxLoading] = useState(false);
@@ -219,6 +226,23 @@ export function QuickExpenseForm({
     !isEditing &&
     mode === 'one-time' &&
     selectedPaymentMethod?.kind === 'credit';
+  const isOngoingInstallmentPlan =
+    showInstallments &&
+    parsedInstallments > 1 &&
+    installmentOrigin === 'ongoing';
+  const parsedCurrentInstallmentNumber = Math.min(
+    parsedInstallments,
+    Math.max(1, parseInt(currentInstallmentNumber, 10) || 1),
+  );
+  const paidInstallments = isOngoingInstallmentPlan
+    ? parsedCurrentInstallmentNumber - 1
+    : 0;
+  const installmentStartYearMonth = isOngoingInstallmentPlan
+    ? shiftYearMonth(
+        currentInstallmentYearMonth,
+        -(parsedCurrentInstallmentNumber - 1),
+      )
+    : getYearMonthFromIsoDate(expenseDate);
   const needsFx = expenseCurrency !== boardCurrency;
   const isCreditReferentialFx =
     needsFx &&
@@ -492,6 +516,9 @@ export function QuickExpenseForm({
     setDaysOfMonth([1]);
     setExpenseCurrency(boardCurrency);
     setInstallments('1');
+    setInstallmentOrigin('new');
+    setCurrentInstallmentNumber('1');
+    setCurrentInstallmentYearMonth(getYearMonthFromIsoDate(todayIsoDate()));
     setFxRate(null);
     setFxRateInput('');
     if (categories.length > 0) {
@@ -576,6 +603,10 @@ export function QuickExpenseForm({
     if (showInstallments) {
       if (parsedInstallments < 1 || parsedInstallments > 120) {
         nextErrors.installments = 'Cantidad de cuotas inválida (1-120)';
+      }
+      if (isOngoingInstallmentPlan && !currentInstallmentYearMonth) {
+        nextErrors.currentInstallmentYearMonth =
+          'Seleccioná el mes de esa cuota';
       }
     }
 
@@ -694,7 +725,8 @@ export function QuickExpenseForm({
           label: description,
           installmentAmount: installmentAmounts[0],
           totalInstallments: parsedInstallments,
-          startYearMonth: getYearMonthFromIsoDate(expenseDate),
+          paidInstallments,
+          startYearMonth: installmentStartYearMonth,
           dayOfMonth: resolveInstallmentDay(selectedPaymentMethod),
           paymentMethodId,
           currency: expenseCurrency,
@@ -1182,43 +1214,125 @@ export function QuickExpenseForm({
               Con tarjeta de crédito podés financiar la compra en cuotas.
             </p>
           )}
-        </div>
-      ) : null}
 
-      <button
-        type="button"
-        onClick={() => setShowDetails((open) => !open)}
-        className="flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
-      >
-        <ChevronDown
-          className={cn(
-            'size-4 transition-transform',
-            showDetails && 'rotate-180',
-          )}
-        />
-        Más opciones
-      </button>
+          {parsedInstallments > 1 ? (
+            <div className="space-y-3 pt-1">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInstallmentOrigin('new')}
+                  aria-pressed={installmentOrigin === 'new'}
+                  className={cn(
+                    'min-h-11 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                    installmentOrigin === 'new'
+                      ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_14%,transparent)]'
+                      : 'border-border text-muted-foreground hover:border-foreground/20',
+                  )}
+                >
+                  Compra nueva
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInstallmentOrigin('ongoing')}
+                  aria-pressed={installmentOrigin === 'ongoing'}
+                  className={cn(
+                    'min-h-11 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                    installmentOrigin === 'ongoing'
+                      ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_14%,transparent)]'
+                      : 'border-border text-muted-foreground hover:border-foreground/20',
+                  )}
+                >
+                  Ya la vengo pagando
+                </button>
+              </div>
 
-      {showDetails ? (
-        <div className="space-y-3 rounded-2xl border bg-muted/30 p-4">
-          {mode === 'one-time' || isTravel || isEditing ? (
-            <div className="space-y-2">
-              <Label htmlFor="quick-date" className="text-xs">
-                Fecha
-              </Label>
-              <Input
-                id="quick-date"
-                type="date"
-                value={expenseDate}
-                onChange={(event) => setExpenseDate(event.target.value)}
-                className="rounded-xl"
-              />
-              <p className="text-muted-foreground text-[11px]">
-                Si no la cambiás, se registra con la fecha de hoy.
-              </p>
+              {installmentOrigin === 'ongoing' ? (
+                <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+                  <div className="space-y-1">
+                    <Label
+                      htmlFor="current-installment-number"
+                      className="text-muted-foreground text-xs"
+                    >
+                      ¿Qué cuota pagás?
+                    </Label>
+                    <Input
+                      id="current-installment-number"
+                      type="number"
+                      min={1}
+                      max={parsedInstallments}
+                      value={currentInstallmentNumber}
+                      onChange={(event) =>
+                        setCurrentInstallmentNumber(event.target.value)
+                      }
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">
+                      ¿En qué mes es esa cuota?
+                    </Label>
+                    <YearMonthSelector
+                      yearMonth={currentInstallmentYearMonth}
+                      onChange={setCurrentInstallmentYearMonth}
+                    />
+                  </div>
+                  {errors.currentInstallmentYearMonth ? (
+                    <p role="alert" className="text-destructive text-xs">
+                      {errors.currentInstallmentYearMonth}
+                    </p>
+                  ) : currentInstallmentYearMonth ? (
+                    <p className="text-muted-foreground text-[11px]">
+                      Esto quiere decir que pagarás la cuota{' '}
+                      {parsedCurrentInstallmentNumber}/{parsedInstallments} en{' '}
+                      {formatYearMonth(currentInstallmentYearMonth)}
+                      {paidInstallments > 0
+                        ? ` (las cuotas 1 a ${paidInstallments} ya estarían pagas).`
+                        : '.'}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {mode === 'one-time' || isTravel || isEditing ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowDetails((open) => !open)}
+            className="flex items-center gap-2 text-muted-foreground text-sm hover:text-foreground"
+          >
+            <ChevronDown
+              className={cn(
+                'size-4 transition-transform',
+                showDetails && 'rotate-180',
+              )}
+            />
+            Más opciones
+          </button>
+
+          {showDetails ? (
+            <div className="space-y-3 rounded-2xl border bg-muted/30 p-4">
+              <div className="space-y-2">
+                <Label htmlFor="quick-date" className="text-xs">
+                  Fecha
+                </Label>
+                <Input
+                  id="quick-date"
+                  type="date"
+                  value={expenseDate}
+                  onChange={(event) => setExpenseDate(event.target.value)}
+                  className="rounded-xl"
+                />
+                <p className="text-muted-foreground text-[11px]">
+                  Si no la cambiás, se registra con la fecha de hoy.
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {isTravel ? (

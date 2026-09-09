@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,12 +81,6 @@ export function ManageRecurringIncomesSection({
     void fetchItems();
   }, [fetchItems]);
 
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormData(emptyForm);
-    setSheetOpen(true);
-  };
-
   const openEdit = (item: RecurringIncome) => {
     setEditingItem(item);
     setFormData({
@@ -100,6 +94,7 @@ export function ManageRecurringIncomesSection({
   };
 
   const handleSubmit = async () => {
+    if (!editingItem) return;
     if (!formData.label.trim()) {
       toast.error('El concepto es obligatorio');
       return;
@@ -113,7 +108,7 @@ export function ManageRecurringIncomesSection({
       toast.error('Seleccioná al menos un día del mes');
       return;
     }
-    if (editingItem && !formData.amountChangeYearMonth) {
+    if (!formData.amountChangeYearMonth) {
       toast.error('Seleccioná el mes en que comienza el cambio');
       return;
     }
@@ -125,21 +120,12 @@ export function ManageRecurringIncomesSection({
         amount,
         currency,
         daysOfMonth: formData.daysOfMonth,
-        ...(editingItem
-          ? {
-              amountChangeScope: formData.amountChangeScope,
-              amountChangeYearMonth: formData.amountChangeYearMonth,
-            }
-          : {}),
+        amountChangeScope: formData.amountChangeScope,
+        amountChangeYearMonth: formData.amountChangeYearMonth,
       };
 
-      if (editingItem) {
-        await recurringIncomesService.update(editingItem._id, payload);
-        toast.success('Ingreso recurrente actualizado');
-      } else {
-        await recurringIncomesService.create({ boardId, ...payload });
-        toast.success('Ingreso recurrente creado');
-      }
+      await recurringIncomesService.update(editingItem._id, payload);
+      toast.success('Ingreso recurrente actualizado');
 
       setSheetOpen(false);
       await fetchItems();
@@ -174,21 +160,18 @@ export function ManageRecurringIncomesSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Sueldo y otros ingresos que se repiten cada mes en días fijos.
-        </p>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Sueldo y otros ingresos que se repiten cada mes en días fijos. Se cargan
+        desde el modal de ingreso, en la pestaña "Recurrente"; acá podés
+        editarlos o eliminarlos.
+      </p>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No hay ingresos recurrentes configurados.
+          Todavía no cargaste ingresos recurrentes. Cargalos desde el botón + →
+          Ingreso → Recurrente.
         </p>
       ) : (
         <ul className="divide-y rounded-xl border">
@@ -234,9 +217,7 @@ export function ManageRecurringIncomesSection({
       <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={
-          editingItem ? 'Editar ingreso recurrente' : 'Nuevo ingreso recurrente'
-        }
+        title="Editar ingreso recurrente"
         description="Se generan movimientos programados para los próximos 12 meses."
       >
         <div className="space-y-4">
@@ -271,54 +252,52 @@ export function ManageRecurringIncomesSection({
               disabled={isSaving}
             />
           </div>
-          {editingItem ? (
-            <div className="space-y-4 rounded-xl border p-3">
-              <div className="space-y-2">
-                <Label htmlFor="income-change-month">Aplicar en</Label>
-                <Input
-                  id="income-change-month"
-                  type="month"
-                  min={getCurrentYearMonth()}
-                  value={formData.amountChangeYearMonth}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      amountChangeYearMonth: event.target.value,
-                    }))
-                  }
-                  disabled={isSaving}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Podés programar hoy un cambio de sueldo para un mes futuro.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Alcance del cambio</Label>
-                <Select
-                  value={formData.amountChangeScope}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      amountChangeScope: value as 'this_month' | 'from_month',
-                    }))
-                  }
-                  disabled={isSaving}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="from_month">
-                      Desde el mes elegido
-                    </SelectItem>
-                    <SelectItem value="this_month">
-                      Solo el mes elegido
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-4 rounded-xl border p-3">
+            <div className="space-y-2">
+              <Label htmlFor="income-change-month">Aplicar en</Label>
+              <Input
+                id="income-change-month"
+                type="month"
+                min={getCurrentYearMonth()}
+                value={formData.amountChangeYearMonth}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    amountChangeYearMonth: event.target.value,
+                  }))
+                }
+                disabled={isSaving}
+              />
+              <p className="text-xs text-muted-foreground">
+                Podés programar hoy un cambio de sueldo para un mes futuro.
+              </p>
             </div>
-          ) : null}
+            <div className="space-y-2">
+              <Label>Alcance del cambio</Label>
+              <Select
+                value={formData.amountChangeScope}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    amountChangeScope: value as 'this_month' | 'from_month',
+                  }))
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="from_month">
+                    Desde el mes elegido
+                  </SelectItem>
+                  <SelectItem value="this_month">
+                    Solo el mes elegido
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <Button
             className="w-full"
             onClick={() => void handleSubmit()}
