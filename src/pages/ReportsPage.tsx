@@ -3,8 +3,11 @@ import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
 import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
+import { BoardForecastSection } from '@/components/board-forecast-section';
 import { ConsolidatedReportSection } from '@/components/consolidated-report-section';
 import { CreditCycleReportSection } from '@/components/credit-cycle-report-section';
+import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
+import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { ReportsBreakdownChart } from '@/components/reports-breakdown-chart';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
@@ -18,10 +21,17 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { reportsService } from '@/services/reportsService';
+import { forecastService } from '@/services/forecastService';
 import { useBoardsStore } from '@/store/boardsStore';
 import type { BoardCalendarReport } from '@/types/report';
+import type { MonthlyForecast } from '@/types/forecast';
 import { PAYMENT_METHOD_KIND_LABELS } from '@/types/payment-method';
 import { getCurrentYearMonth } from '@/lib/utils';
+import {
+  readHomeMonthView,
+  writeHomeMonthView,
+  type HomeMonthView,
+} from '@/lib/expense-month-attribution';
 
 type ReportsView = 'calendar' | 'consolidated';
 
@@ -34,12 +44,20 @@ export default function ReportsPage() {
   const activeView: ReportsView =
     searchParams.get('view') === 'consolidated' ? 'consolidated' : 'calendar';
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
+  const [monthView, setMonthView] = useState<HomeMonthView>(() =>
+    readHomeMonthView(),
+  );
 
   const [calendarReport, setCalendarReport] =
     useState<BoardCalendarReport | null>(null);
+  const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const expensesChangedRefresh = useExpensesChangedRefresh();
+
+  useEffect(() => {
+    writeHomeMonthView(monthView);
+  }, [monthView]);
 
   const handleViewChange = (value: string) => {
     const view = value as ReportsView;
@@ -53,6 +71,7 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!activeBoard || activeBoard._id.startsWith('mock-')) {
       setCalendarReport(null);
+      setForecast(null);
       return;
     }
 
@@ -66,17 +85,31 @@ export default function ReportsPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const { report } = await reportsService.getBoardCalendarReport(
-          activeBoard._id,
-          yearMonth,
-        );
+        const result =
+          monthView === 'calendar'
+            ? await reportsService.getBoardCalendarReport(
+                activeBoard._id,
+                yearMonth,
+              )
+            : await forecastService.getMonthlyForecast(
+                activeBoard._id,
+                yearMonth,
+                'cash_impact',
+              );
         if (!stale) {
-          setCalendarReport(report);
+          if ('report' in result) {
+            setCalendarReport(result.report);
+            setForecast(null);
+          } else {
+            setForecast(result.forecast);
+            setCalendarReport(null);
+          }
         }
       } catch {
         if (!stale) {
           setLoadError('No se pudo cargar el reporte del mes.');
           setCalendarReport(null);
+          setForecast(null);
         }
       } finally {
         if (!stale) {
@@ -90,7 +123,7 @@ export default function ReportsPage() {
     return () => {
       stale = true;
     };
-  }, [activeBoard, yearMonth, activeView, expensesChangedRefresh]);
+  }, [activeBoard, yearMonth, monthView, activeView, expensesChangedRefresh]);
 
   const categoryItems = useMemo(
     () =>
@@ -169,6 +202,8 @@ export default function ReportsPage() {
         </TabsList>
 
         <TabsContent value="calendar" className="mt-6 space-y-6">
+          <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
+
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-64 rounded-xl" />
@@ -181,6 +216,38 @@ export default function ReportsPage() {
                 {loadError}
               </CardContent>
             </Card>
+          ) : monthView === 'cash_impact' && forecast ? (
+            <>
+              {forecast.actual.totalIncomes === 0 &&
+                forecast.actual.totalExpenses === 0 &&
+                forecast.planned.totalIncomes === 0 &&
+                forecast.planned.totalOutflows === 0 && (
+                  <Card className="border-dashed">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        Sin movimientos ni compromisos
+                      </CardTitle>
+                      <CardDescription>
+                        No hay movimientos confirmados ni gastos proyectados
+                        para este mes de pago.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
+
+              <MonthlyPlanningCards
+                forecast={forecast}
+                monthView="cash_impact"
+              />
+
+              <BoardForecastSection
+                incomes={forecast.planned.incomes}
+                fixedExpenses={forecast.planned.fixedExpenses}
+                installments={forecast.planned.installments}
+                currency={forecast.currency}
+                isFutureMonth={forecast.isFutureMonth}
+              />
+            </>
           ) : calendarReport ? (
             <>
               {calendarReport.totalIncomes === 0 &&

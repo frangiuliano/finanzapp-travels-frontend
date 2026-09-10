@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
+  Eye,
   Pencil,
   Trash2,
   WalletIcon,
@@ -60,7 +61,9 @@ import {
 import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import { expensesService } from '@/services/expensesService';
 import { incomesService } from '@/services/incomesService';
+import { forecastService } from '@/services/forecastService';
 import type { Income } from '@/types/income';
+import type { ForecastLineItem } from '@/types/forecast';
 import { isDateInYearMonth } from '@/lib/utils';
 import { openMovementCreator } from '@/lib/movement-events';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -132,19 +135,23 @@ export function ExpensesExplorerSection({
   const [categoryId, setCategoryId] = useState(ALL_FILTER);
   const [status, setStatus] = useState(ALL_FILTER);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [projectedInstallments, setProjectedInstallments] = useState<
+    ForecastLineItem[]
+  >([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [movementType, setMovementType] = useState<
     'all' | 'expense' | 'income'
   >('all');
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInstallmentsLoading, setIsInstallmentsLoading] = useState(false);
   const [isIncomeLoading, setIsIncomeLoading] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const [detail, setDetail] = useState<{
-    type: 'expense' | 'income';
+    type: 'expense' | 'income' | 'installment';
     id: string;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -175,6 +182,12 @@ export function ExpensesExplorerSection({
   }, [monthView]);
 
   useEffect(() => {
+    if (monthView === 'calendar' && status === 'projected') {
+      setStatus(ALL_FILTER);
+    }
+  }, [monthView, status]);
+
+  useEffect(() => {
     setPageIndex(0);
   }, [yearMonth, monthView, paymentMethodId, categoryId, status, movementType]);
 
@@ -200,13 +213,15 @@ export function ExpensesExplorerSection({
               paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
             categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
             status:
-              status === ALL_FILTER ? undefined : (status as ExpenseStatus),
+              status === ALL_FILTER || status === 'projected'
+                ? undefined
+                : (status as ExpenseStatus),
           },
         );
 
         if (stale) return;
 
-        const filtered = items
+        const filtered = (status === 'projected' ? [] : items)
           .filter((expense) =>
             expenseBelongsToYearMonth(
               expense,
@@ -251,6 +266,35 @@ export function ExpensesExplorerSection({
   ]);
 
   useEffect(() => {
+    if (board._id.startsWith('mock-') || monthView !== 'cash_impact') {
+      setProjectedInstallments([]);
+      setIsInstallmentsLoading(false);
+      return;
+    }
+
+    let stale = false;
+    setIsInstallmentsLoading(true);
+    void forecastService
+      .getMonthlyForecast(board._id, yearMonth, 'cash_impact')
+      .then(({ forecast }) => {
+        if (!stale) setProjectedInstallments(forecast.planned.installments);
+      })
+      .catch(() => {
+        if (!stale) {
+          setProjectedInstallments([]);
+          toast.error('No se pudieron cargar las cuotas proyectadas');
+        }
+      })
+      .finally(() => {
+        if (!stale) setIsInstallmentsLoading(false);
+      });
+
+    return () => {
+      stale = true;
+    };
+  }, [board._id, yearMonth, monthView, expensesChangedRefresh]);
+
+  useEffect(() => {
     let stale = false;
     setIsIncomeLoading(true);
     void incomesService
@@ -276,10 +320,26 @@ export function ExpensesExplorerSection({
 
   const isMovementLoading =
     movementType === 'expense'
-      ? isLoading
+      ? isLoading || isInstallmentsLoading
       : movementType === 'income'
         ? isIncomeLoading
-        : isLoading || isIncomeLoading;
+        : isLoading || isIncomeLoading || isInstallmentsLoading;
+
+  const visibleProjectedInstallments = useMemo(() => {
+    if (
+      monthView !== 'cash_impact' ||
+      categoryId !== ALL_FILTER ||
+      (status !== ALL_FILTER && status !== 'projected')
+    ) {
+      return [];
+    }
+
+    return projectedInstallments.filter(
+      (item) =>
+        paymentMethodId === ALL_FILTER ||
+        item.meta?.paymentMethodId === paymentMethodId,
+    );
+  }, [projectedInstallments, monthView, categoryId, status, paymentMethodId]);
 
   const movements = useMemo(
     () =>
@@ -296,6 +356,18 @@ export function ExpensesExplorerSection({
               expense,
             }))
           : []),
+        ...(movementType !== 'income'
+          ? visibleProjectedInstallments.map((installment) => ({
+              id: installment.id,
+              type: 'installment' as const,
+              date: `${yearMonth}-${String(installment.dayOfMonth).padStart(2, '0')}T12:00:00.000Z`,
+              label: installment.label,
+              meta: `Cuota ${installment.meta?.installmentNumber}/${installment.meta?.totalInstallments} · ${installment.meta?.paymentMethodId ? (paymentMethodNameById.get(installment.meta.paymentMethodId) ?? 'Sin medio') : 'Sin medio'} · Proyectado`,
+              amount: installment.amount,
+              currency: installment.currency,
+              installment,
+            }))
+          : []),
         ...(movementType !== 'expense'
           ? incomes.map((income) => ({
               id: income._id,
@@ -309,7 +381,14 @@ export function ExpensesExplorerSection({
             }))
           : []),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [expenses, incomes, movementType, paymentMethodNameById],
+    [
+      expenses,
+      visibleProjectedInstallments,
+      incomes,
+      movementType,
+      paymentMethodNameById,
+      yearMonth,
+    ],
   );
 
   const pageSize = 15;
@@ -338,6 +417,10 @@ export function ExpensesExplorerSection({
       expenseTotal += amount;
     }
 
+    for (const installment of visibleProjectedInstallments) {
+      expenseTotal += installment.amount;
+    }
+
     for (const income of incomes) {
       if (income.currency !== board.baseCurrency) {
         excludedIncomes += 1;
@@ -352,7 +435,7 @@ export function ExpensesExplorerSection({
       excludedExpenses,
       excludedIncomes,
     };
-  }, [expenses, incomes, board.baseCurrency]);
+  }, [expenses, visibleProjectedInstallments, incomes, board.baseCurrency]);
 
   const handleDelete = async (expenseId: string) => {
     setIsDeleting(true);
@@ -446,11 +529,14 @@ export function ExpensesExplorerSection({
         paymentMethodId:
           paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
         categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
-        status: status === ALL_FILTER ? undefined : (status as ExpenseStatus),
+        status:
+          status === ALL_FILTER || status === 'projected'
+            ? undefined
+            : (status as ExpenseStatus),
       })
       .then(({ expenses: items }) => {
         setExpenses(
-          items
+          (status === 'projected' ? [] : items)
             .filter((expense) =>
               expenseBelongsToYearMonth(
                 expense,
@@ -585,6 +671,9 @@ export function ExpensesExplorerSection({
                   <SelectItem value={ExpenseStatus.PENDING}>
                     Pendiente
                   </SelectItem>
+                  {monthView === 'cash_impact' ? (
+                    <SelectItem value="projected">Proyectado</SelectItem>
+                  ) : null}
                 </SelectContent>
               </Select>
             </div>
@@ -700,6 +789,11 @@ export function ExpensesExplorerSection({
                       <span className="min-w-0 flex-1">
                         <strong className="flex flex-wrap items-center gap-1 break-words text-sm">
                           {movement.label}
+                          {movement.type === 'installment' ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Proyectado
+                            </Badge>
+                          ) : null}
                           {movement.type === 'expense' &&
                           movement.expense.needsClosingDayReview ? (
                             <Badge
@@ -762,7 +856,11 @@ export function ExpensesExplorerSection({
                             {movement.label}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {movement.type === 'income' ? 'Ingreso' : 'Gasto'}
+                            {movement.type === 'income'
+                              ? 'Ingreso'
+                              : movement.type === 'installment'
+                                ? 'Cuota proyectada'
+                                : 'Gasto'}
                           </span>
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
@@ -770,7 +868,9 @@ export function ExpensesExplorerSection({
                             ? getExpenseCategoryLabel(
                                 movement.expense.category,
                               ) || '—'
-                            : 'Ingreso'}
+                            : movement.type === 'income'
+                              ? 'Ingreso'
+                              : '—'}
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground md:table-cell">
                           {movement.type === 'expense'
@@ -778,7 +878,12 @@ export function ExpensesExplorerSection({
                                 movement.expense,
                                 paymentMethodNameById,
                               )
-                            : '—'}
+                            : movement.type === 'installment' &&
+                                movement.installment.meta?.paymentMethodId
+                              ? (paymentMethodNameById.get(
+                                  movement.installment.meta.paymentMethodId,
+                                ) ?? 'Sin medio')
+                              : '—'}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex flex-wrap items-center gap-1">
@@ -786,7 +891,9 @@ export function ExpensesExplorerSection({
                               ? movement.expense.status === ExpenseStatus.PAID
                                 ? 'Pagado'
                                 : 'Pendiente'
-                              : 'Ingreso'}
+                              : movement.type === 'installment'
+                                ? 'Proyectado'
+                                : 'Ingreso'}
                             {movement.type === 'expense' &&
                             movement.expense.needsClosingDayReview ? (
                               <Badge
@@ -818,9 +925,13 @@ export function ExpensesExplorerSection({
                                 id: movement.id,
                               });
                             }}
-                            aria-label={`Ver detalle de ${movement.type === 'income' ? 'ingreso' : 'gasto'}`}
+                            aria-label={`Ver detalle de ${movement.type === 'income' ? 'ingreso' : movement.type === 'installment' ? 'cuota proyectada' : 'gasto'}`}
                           >
-                            <Pencil className="size-4" />
+                            {movement.type === 'installment' ? (
+                              <Eye className="size-4" />
+                            ) : (
+                              <Pencil className="size-4" />
+                            )}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -907,8 +1018,12 @@ export function ExpensesExplorerSection({
               <DialogHeader>
                 <DialogTitle>{detailMovement.label}</DialogTitle>
                 <DialogDescription>
-                  {detailMovement.type === 'income' ? 'Ingreso' : 'Gasto'} ·{' '}
-                  {formatDate(detailMovement.date)}
+                  {detailMovement.type === 'income'
+                    ? 'Ingreso'
+                    : detailMovement.type === 'installment'
+                      ? 'Cuota proyectada'
+                      : 'Gasto'}{' '}
+                  · {formatDate(detailMovement.date)}
                 </DialogDescription>
               </DialogHeader>
               <p className="text-3xl font-bold tabular-nums">
@@ -929,7 +1044,11 @@ export function ExpensesExplorerSection({
                 <div>
                   <dt className="text-muted-foreground">Tipo</dt>
                   <dd className="font-medium">
-                    {detailMovement.type === 'income' ? 'Ingreso' : 'Gasto'}
+                    {detailMovement.type === 'income'
+                      ? 'Ingreso'
+                      : detailMovement.type === 'installment'
+                        ? 'Cuota proyectada'
+                        : 'Gasto'}
                   </dd>
                 </div>
                 <div className="col-span-2">
@@ -968,60 +1087,68 @@ export function ExpensesExplorerSection({
                   </Button>
                 </div>
               ) : null}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  className="w-full flex-1"
-                  variant="outline"
-                  onClick={() => {
-                    setDetail(null);
-                    if (detailMovement.type === 'expense') {
-                      setSelectedExpense(detailMovement.expense);
-                      setIsExpenseDialogOpen(true);
-                    } else {
-                      setSelectedIncome(detailMovement.income);
-                    }
-                  }}
-                >
-                  <Pencil className="size-4" />
-                  {detailMovement.type === 'income' &&
-                  detailMovement.income.recurringIncomeId
-                    ? 'Editar esta ocurrencia'
-                    : 'Editar'}
-                </Button>
-                {detailMovement.type === 'income' &&
-                detailMovement.income.recurringIncomeId &&
-                detailMovement.income.status === 'pending' ? (
+              {detailMovement.type === 'installment' ? (
+                <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  Esta cuota es una proyección del plan y todavía no es un gasto
+                  confirmado. Podés editar el plan desde Configuración del
+                  tablero.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
-                    className="w-full sm:w-auto"
+                    className="w-full flex-1"
                     variant="outline"
-                    onClick={() => void handleSkipIncome(detailMovement.id)}
+                    onClick={() => {
+                      setDetail(null);
+                      if (detailMovement.type === 'expense') {
+                        setSelectedExpense(detailMovement.expense);
+                        setIsExpenseDialogOpen(true);
+                      } else {
+                        setSelectedIncome(detailMovement.income);
+                      }
+                    }}
                   >
-                    Omitir esta ocurrencia
-                  </Button>
-                ) : null}
-                <Button
-                  variant="outline"
-                  className="w-full text-destructive sm:w-auto"
-                  onClick={() =>
-                    setDeleteTarget({
-                      type: detailMovement.type,
-                      id: detailMovement.id,
-                      label: detailMovement.label,
-                      isRecurringOccurrence:
-                        detailMovement.type === 'income' &&
-                        Boolean(detailMovement.income.recurringIncomeId),
-                    })
-                  }
-                >
-                  <Trash2 className="size-4" />
-                  <span>
+                    <Pencil className="size-4" />
                     {detailMovement.type === 'income' &&
                     detailMovement.income.recurringIncomeId
-                      ? 'Eliminar esta ocurrencia'
-                      : 'Eliminar'}
-                  </span>
-                </Button>
-              </div>
+                      ? 'Editar esta ocurrencia'
+                      : 'Editar'}
+                  </Button>
+                  {detailMovement.type === 'income' &&
+                  detailMovement.income.recurringIncomeId &&
+                  detailMovement.income.status === 'pending' ? (
+                    <Button
+                      className="w-full sm:w-auto"
+                      variant="outline"
+                      onClick={() => void handleSkipIncome(detailMovement.id)}
+                    >
+                      Omitir esta ocurrencia
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive sm:w-auto"
+                    onClick={() =>
+                      setDeleteTarget({
+                        type: detailMovement.type,
+                        id: detailMovement.id,
+                        label: detailMovement.label,
+                        isRecurringOccurrence:
+                          detailMovement.type === 'income' &&
+                          Boolean(detailMovement.income.recurringIncomeId),
+                      })
+                    }
+                  >
+                    <Trash2 className="size-4" />
+                    <span>
+                      {detailMovement.type === 'income' &&
+                      detailMovement.income.recurringIncomeId
+                        ? 'Eliminar esta ocurrencia'
+                        : 'Eliminar'}
+                    </span>
+                  </Button>
+                </div>
+              )}
             </>
           ) : null}
         </DialogContent>

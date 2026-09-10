@@ -10,6 +10,7 @@ export interface ForecastLineItem {
     installmentNumber?: number;
     totalInstallments?: number;
     daysOfMonth?: number[];
+    paymentMethodId?: string;
   };
 }
 
