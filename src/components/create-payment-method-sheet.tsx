@@ -36,7 +36,6 @@ interface FormState {
   institution: string;
   institutionCode: string;
   lastFourDigits: string;
-  closingDay: string;
 }
 
 const defaultForm: FormState = {
@@ -46,7 +45,6 @@ const defaultForm: FormState = {
   institution: '',
   institutionCode: '',
   lastFourDigits: '',
-  closingDay: '',
 };
 
 export function CreatePaymentMethodSheet({
@@ -76,14 +74,6 @@ export function CreatePaymentMethodSheet({
       return;
     }
 
-    if (formData.kind === 'credit' && formData.closingDay.trim()) {
-      const closingDay = Number(formData.closingDay);
-      if (closingDay < 1 || closingDay > 31) {
-        toast.error('El día de cierre debe estar entre 1 y 31');
-        return;
-      }
-    }
-
     const payload: CreatePaymentMethodDto = {
       ownerType: formData.ownerType,
       kind: formData.kind,
@@ -95,10 +85,6 @@ export function CreatePaymentMethodSheet({
 
     if (formData.ownerType === 'board') {
       payload.boardId = boardId;
-    }
-
-    if (formData.kind === 'credit' && formData.closingDay.trim()) {
-      payload.closingDay = Number(formData.closingDay);
     }
 
     setIsSaving(true);
@@ -217,30 +203,6 @@ export function CreatePaymentMethodSheet({
             disabled={isSaving}
           />
         </div>
-
-        {formData.kind === 'credit' ? (
-          <div className="space-y-2">
-            <Label htmlFor="pm-quick-closing">Día de cierre (opcional)</Label>
-            <Input
-              id="pm-quick-closing"
-              type="number"
-              min={1}
-              max={31}
-              value={formData.closingDay}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  closingDay: event.target.value,
-                }))
-              }
-              placeholder="14"
-              disabled={isSaving}
-            />
-            <p className="text-xs text-muted-foreground">
-              Podés configurarlo después desde Config. tablero.
-            </p>
-          </div>
-        ) : null}
 
         <div className="flex gap-2 pt-2">
           <Button

@@ -25,7 +25,7 @@ interface BoardForecastSectionProps {
 }
 
 function statusLabel(status?: ForecastLineItem['status']) {
-  if (status === 'pending') return 'Pendiente';
+  if (status === 'pending') return 'Próximo';
   if (status === 'confirmed') return 'Cobrado';
   if (status === 'paid') return 'Pagado';
   return null;
@@ -53,16 +53,6 @@ function ForecastList({
       onRefresh?.();
     } catch {
       toast.error('No se pudo confirmar el ingreso');
-    }
-  };
-
-  const handleSettleExpense = async (id: string) => {
-    try {
-      await expensesService.settleExpense(id);
-      toast.success('Gasto marcado como pagado');
-      onRefresh?.();
-    } catch {
-      toast.error('No se pudo marcar el gasto como pagado');
     }
   };
 
@@ -150,13 +140,6 @@ function ForecastList({
                   <div className="flex gap-1">
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => void handleSettleExpense(item.id)}
-                    >
-                      Pagado
-                    </Button>
-                    <Button
-                      size="sm"
                       variant="ghost"
                       onClick={() => void handleSkipExpense(item.id)}
                     >
@@ -211,7 +194,7 @@ export function BoardForecastSection({
         <CardDescription>
           {isFutureMonth
             ? 'Movimientos programados para este mes.'
-            : 'Ingresos y gastos recurrentes materializados. Confirmalos cuando ocurran.'}
+            : 'Ingresos y gastos recurrentes del mes.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

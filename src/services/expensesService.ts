@@ -1,7 +1,5 @@
 import { notifyExpensesChanged } from '@/lib/expense-events';
 import api from './api';
-import type { HomeMonthView } from '@/lib/expense-month-attribution';
-import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import type {
   Expense,
   CreateExpenseDto,
@@ -17,7 +15,7 @@ export interface ExpenseListFilters {
   status?: ExpenseStatus;
   categoryId?: string;
   paymentMethodId?: string;
-  billingCycleLabel?: string;
+  paymentYearMonth?: string;
   from?: string;
   to?: string;
 }
@@ -61,8 +59,8 @@ export const expensesService = {
     if (filters.paymentMethodId) {
       params.set('paymentMethodId', filters.paymentMethodId);
     }
-    if (filters.billingCycleLabel) {
-      params.set('billingCycleLabel', filters.billingCycleLabel);
+    if (filters.paymentYearMonth) {
+      params.set('paymentYearMonth', filters.paymentYearMonth);
     }
     if (filters.from) params.set('from', filters.from);
     if (filters.to) params.set('to', filters.to);
@@ -74,30 +72,12 @@ export const expensesService = {
   async listExpensesByMonth(
     boardId: string,
     yearMonth: string,
-    monthView: HomeMonthView,
     filters: ExpenseListFilters = {},
   ): Promise<{ expenses: Expense[] }> {
-    const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
-    const rangeRequest = this.listExpenses(boardId, { ...filters, from, to });
-
-    if (monthView === 'calendar') {
-      return rangeRequest;
-    }
-
-    const [rangeResult, cycleResult] = await Promise.all([
-      rangeRequest,
-      this.listExpenses(boardId, {
-        ...filters,
-        billingCycleLabel: yearMonth,
-      }),
-    ]);
-    const unique = new Map(
-      [...rangeResult.expenses, ...cycleResult.expenses].map((expense) => [
-        expense._id,
-        expense,
-      ]),
-    );
-    return { expenses: [...unique.values()] };
+    return this.listExpenses(boardId, {
+      ...filters,
+      paymentYearMonth: yearMonth,
+    });
   },
 
   async getExpenseById(id: string): Promise<{ expense: Expense }> {

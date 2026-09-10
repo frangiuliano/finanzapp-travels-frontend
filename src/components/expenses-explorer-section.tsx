@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import {
-  AlertTriangle,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
@@ -15,7 +14,6 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { StatStrip } from '@/components/stat-strip';
 import { Badge } from '@/components/ui/badge';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
@@ -52,12 +50,6 @@ import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useIncomesChangedRefresh } from '@/hooks/useIncomesChangedRefresh';
 import { getExpenseAmountInBoardCurrency } from '@/lib/expense-currency';
-import {
-  expenseBelongsToYearMonth,
-  readHomeMonthView,
-  writeHomeMonthView,
-  type HomeMonthView,
-} from '@/lib/expense-month-attribution';
 import { expensesService } from '@/services/expensesService';
 import { incomesService } from '@/services/incomesService';
 import { forecastService } from '@/services/forecastService';
@@ -93,7 +85,6 @@ const ALL_FILTER = 'all';
 interface ExpensesExplorerSectionProps {
   board: Board;
   initialYearMonth?: string;
-  initialMonthView?: HomeMonthView;
   initialPaymentMethodId?: string;
 }
 
@@ -119,14 +110,10 @@ function resolvePaymentMethodLabel(
 export function ExpensesExplorerSection({
   board,
   initialYearMonth,
-  initialMonthView,
   initialPaymentMethodId,
 }: ExpensesExplorerSectionProps) {
   const [yearMonth, setYearMonth] = useState(
     initialYearMonth ?? getCurrentYearMonth(),
-  );
-  const [monthView, setMonthView] = useState<HomeMonthView>(
-    initialMonthView ?? readHomeMonthView(),
   );
   const [paymentMethodId, setPaymentMethodId] = useState(
     initialPaymentMethodId ?? ALL_FILTER,
@@ -166,29 +153,14 @@ export function ExpensesExplorerSection({
   const { paymentMethods } = useAvailablePaymentMethods(board._id);
   const { categories } = useBoardCategories(board._id);
 
-  const paymentMethodMap = useMemo(
-    () => new Map(paymentMethods.map((method) => [method._id, method])),
-    [paymentMethods],
-  );
-
   const paymentMethodNameById = useMemo(
     () => new Map(paymentMethods.map((method) => [method._id, method.name])),
     [paymentMethods],
   );
 
   useEffect(() => {
-    writeHomeMonthView(monthView);
-  }, [monthView]);
-
-  useEffect(() => {
-    if (monthView === 'calendar' && status === 'projected') {
-      setStatus(ALL_FILTER);
-    }
-  }, [monthView, status]);
-
-  useEffect(() => {
     setPageIndex(0);
-  }, [yearMonth, monthView, paymentMethodId, categoryId, status, movementType]);
+  }, [yearMonth, paymentMethodId, categoryId, status, movementType]);
 
   useEffect(() => {
     if (board._id.startsWith('mock-')) {
@@ -205,7 +177,6 @@ export function ExpensesExplorerSection({
         const { expenses: items } = await expensesService.listExpensesByMonth(
           board._id,
           yearMonth,
-          monthView,
           {
             paymentMethodId:
               paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
@@ -219,20 +190,11 @@ export function ExpensesExplorerSection({
 
         if (stale) return;
 
-        const filtered = (status === 'projected' ? [] : items)
-          .filter((expense) =>
-            expenseBelongsToYearMonth(
-              expense,
-              yearMonth,
-              monthView,
-              paymentMethodMap,
-            ),
-          )
-          .sort(
-            (a, b) =>
-              new Date(b.expenseDate || b.createdAt).getTime() -
-              new Date(a.expenseDate || a.createdAt).getTime(),
-          );
+        const filtered = (status === 'projected' ? [] : items).sort(
+          (a, b) =>
+            new Date(b.expenseDate || b.createdAt).getTime() -
+            new Date(a.expenseDate || a.createdAt).getTime(),
+        );
 
         setExpenses(filtered);
       } catch {
@@ -255,16 +217,14 @@ export function ExpensesExplorerSection({
   }, [
     board._id,
     yearMonth,
-    monthView,
     paymentMethodId,
     categoryId,
     status,
-    paymentMethodMap,
     expensesChangedRefresh,
   ]);
 
   useEffect(() => {
-    if (board._id.startsWith('mock-') || monthView !== 'cash_impact') {
+    if (board._id.startsWith('mock-')) {
       setProjectedInstallments([]);
       setIsInstallmentsLoading(false);
       return;
@@ -273,7 +233,7 @@ export function ExpensesExplorerSection({
     let stale = false;
     setIsInstallmentsLoading(true);
     void forecastService
-      .getMonthlyForecast(board._id, yearMonth, 'cash_impact')
+      .getMonthlyForecast(board._id, yearMonth)
       .then(({ forecast }) => {
         if (!stale) setProjectedInstallments(forecast.planned.installments);
       })
@@ -290,7 +250,7 @@ export function ExpensesExplorerSection({
     return () => {
       stale = true;
     };
-  }, [board._id, yearMonth, monthView, expensesChangedRefresh]);
+  }, [board._id, yearMonth, expensesChangedRefresh]);
 
   useEffect(() => {
     let stale = false;
@@ -325,7 +285,6 @@ export function ExpensesExplorerSection({
 
   const visibleProjectedInstallments = useMemo(() => {
     if (
-      monthView !== 'cash_impact' ||
       categoryId !== ALL_FILTER ||
       (status !== ALL_FILTER && status !== 'projected')
     ) {
@@ -337,7 +296,7 @@ export function ExpensesExplorerSection({
         paymentMethodId === ALL_FILTER ||
         item.meta?.paymentMethodId === paymentMethodId,
     );
-  }, [projectedInstallments, monthView, categoryId, status, paymentMethodId]);
+  }, [projectedInstallments, categoryId, status, paymentMethodId]);
 
   const movements = useMemo(
     () =>
@@ -491,23 +450,6 @@ export function ExpensesExplorerSection({
     }
   };
 
-  const handleConfirmClosingDay = async (expenseId: string) => {
-    try {
-      const { expense: updated } = await expensesService.updateExpense(
-        expenseId,
-        {
-          closingDayReviewed: true,
-        },
-      );
-      setExpenses((current) =>
-        current.map((item) => (item._id === expenseId ? updated : item)),
-      );
-      toast.success('Gasto confirmado en este resumen');
-    } catch {
-      toast.error('No se pudo confirmar el gasto');
-    }
-  };
-
   const detailMovement = detail
     ? movements.find(
         (movement) =>
@@ -520,7 +462,7 @@ export function ExpensesExplorerSection({
     setSelectedExpense(null);
     setPageIndex(0);
     void expensesService
-      .listExpensesByMonth(board._id, yearMonth, monthView, {
+      .listExpensesByMonth(board._id, yearMonth, {
         paymentMethodId:
           paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
         categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
@@ -531,20 +473,11 @@ export function ExpensesExplorerSection({
       })
       .then(({ expenses: items }) => {
         setExpenses(
-          (status === 'projected' ? [] : items)
-            .filter((expense) =>
-              expenseBelongsToYearMonth(
-                expense,
-                yearMonth,
-                monthView,
-                paymentMethodMap,
-              ),
-            )
-            .sort(
-              (a, b) =>
-                new Date(b.expenseDate || b.createdAt).getTime() -
-                new Date(a.expenseDate || a.createdAt).getTime(),
-            ),
+          (status === 'projected' ? [] : items).sort(
+            (a, b) =>
+              new Date(b.expenseDate || b.createdAt).getTime() -
+              new Date(a.expenseDate || a.createdAt).getTime(),
+          ),
         );
       })
       .catch(() => {
@@ -565,8 +498,6 @@ export function ExpensesExplorerSection({
       </div>
 
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
-
-      <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
 
       <div className="flex items-center gap-2">
         <Tabs
@@ -663,12 +594,7 @@ export function ExpensesExplorerSection({
                 <SelectContent>
                   <SelectItem value={ALL_FILTER}>Todos</SelectItem>
                   <SelectItem value={ExpenseStatus.PAID}>Pagado</SelectItem>
-                  <SelectItem value={ExpenseStatus.PENDING}>
-                    Pendiente
-                  </SelectItem>
-                  {monthView === 'cash_impact' ? (
-                    <SelectItem value="projected">Proyectado</SelectItem>
-                  ) : null}
+                  <SelectItem value={ExpenseStatus.PENDING}>Próximo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -726,9 +652,7 @@ export function ExpensesExplorerSection({
         <CardHeader>
           <CardTitle className="text-lg">Detalle</CardTitle>
           <CardDescription>
-            {monthView === 'cash_impact'
-              ? `Movimientos que impactan en ${yearMonth}`
-              : `Movimientos con fecha de compra en ${yearMonth}`}
+            Movimientos con mes de pago {yearMonth}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -790,12 +714,9 @@ export function ExpensesExplorerSection({
                             </Badge>
                           ) : null}
                           {movement.type === 'expense' &&
-                          movement.expense.needsClosingDayReview ? (
-                            <Badge
-                              variant="secondary"
-                              className="gap-1 text-[10px] text-amber-700 dark:text-amber-300"
-                            >
-                              <AlertTriangle className="size-3" />A revisar
+                          movement.expense.status === ExpenseStatus.PENDING ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Próximo
                             </Badge>
                           ) : null}
                         </strong>
@@ -885,19 +806,10 @@ export function ExpensesExplorerSection({
                             {movement.type === 'expense'
                               ? movement.expense.status === ExpenseStatus.PAID
                                 ? 'Pagado'
-                                : 'Pendiente'
+                                : 'Próximo'
                               : movement.type === 'installment'
                                 ? 'Proyectado'
                                 : 'Ingreso'}
-                            {movement.type === 'expense' &&
-                            movement.expense.needsClosingDayReview ? (
-                              <Badge
-                                variant="secondary"
-                                className="gap-1 text-[10px] text-amber-700 dark:text-amber-300"
-                              >
-                                <AlertTriangle className="size-3" />A revisar
-                              </Badge>
-                            ) : null}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">
@@ -1057,30 +969,6 @@ export function ExpensesExplorerSection({
                   Este movimiento es una ocurrencia recurrente. Las acciones de
                   abajo afectan solamente esta fecha.
                 </p>
-              ) : null}
-              {detailMovement.type === 'expense' &&
-              detailMovement.expense.needsClosingDayReview ? (
-                <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-                  <p className="flex items-center gap-1.5 font-medium">
-                    <AlertTriangle className="size-4 shrink-0" />A revisar
-                  </p>
-                  <p className="text-xs">
-                    Cae justo el día de cierre de la tarjeta. Hasta que llegue
-                    el resumen no se sabe si entra en este ciclo o en el
-                    siguiente. Confirmalo cuando lo verifiques, o cambiá la
-                    fecha si en realidad corresponde al próximo resumen.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-fit border-amber-300 bg-transparent text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-950"
-                    onClick={() =>
-                      void handleConfirmClosingDay(detailMovement.id)
-                    }
-                  >
-                    Confirmar que va en este resumen
-                  </Button>
-                </div>
               ) : null}
               {detailMovement.type === 'installment' ? (
                 <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">

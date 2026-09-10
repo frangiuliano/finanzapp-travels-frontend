@@ -1,14 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import {
-  AlertTriangle,
-  Archive,
-  CalendarClock,
-  CalendarRange,
-  Pencil,
-  Plus,
-  Upload,
-} from 'lucide-react';
+import { Archive, Pencil, Plus, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +19,6 @@ import { DestructiveActionDialog } from '@/components/destructive-action-dialog'
 import { PaymentMethodInstitutionField } from '@/components/payment-method-institution-field';
 import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
 import { cn } from '@/lib/utils';
-import { billingPeriodsService } from '@/services/billingPeriodsService';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -53,7 +44,6 @@ interface PaymentMethodFormState {
   institutionCode: string;
   lastFourDigits: string;
   brand: string;
-  closingDay: string;
 }
 
 const defaultForm: PaymentMethodFormState = {
@@ -64,7 +54,6 @@ const defaultForm: PaymentMethodFormState = {
   institutionCode: '',
   lastFourDigits: '',
   brand: '',
-  closingDay: '',
 };
 
 function getOwnerLabel(method: PaymentMethod): string {
@@ -93,7 +82,6 @@ function formStateFromMethod(method: PaymentMethod): PaymentMethodFormState {
     institutionCode: method.institutionCode || '',
     lastFourDigits: method.lastFourDigits || '',
     brand: method.brand || '',
-    closingDay: method.closingDay ? String(method.closingDay) : '',
   };
 }
 
@@ -111,12 +99,6 @@ function buildUpdatePayload(
     updatePayload.lastFourDigits = formData.lastFourDigits.trim();
   }
 
-  if (formData.kind === 'credit') {
-    updatePayload.closingDay = formData.closingDay.trim()
-      ? Number(formData.closingDay)
-      : undefined;
-  }
-
   return updatePayload;
 }
 
@@ -128,9 +110,6 @@ function formatMethodSummary(method: PaymentMethod): string {
   const parts = [PAYMENT_METHOD_KIND_LABELS[method.kind]];
   if (method.lastFourDigits) {
     parts.push(`•••• ${method.lastFourDigits}`);
-  }
-  if (method.kind === 'credit' && method.closingDay) {
-    parts.push(`cierre día ${method.closingDay}`);
   }
   return parts.join(' · ');
 }
@@ -156,42 +135,10 @@ export function ManagePaymentMethodsSection({
     null,
   );
   const [formData, setFormData] = useState<PaymentMethodFormState>(defaultForm);
-  const [showClosingDayWarning, setShowClosingDayWarning] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState<PaymentMethod | null>(
     null,
   );
   const [isArchiving, setIsArchiving] = useState(false);
-  const [unconfirmedCycleIds, setUnconfirmedCycleIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-
-  const refreshUnconfirmedCycles = useCallback(
-    async (methods: PaymentMethod[]) => {
-      const candidates = methods.filter(
-        (method) => method.kind === 'credit' && method.closingDay,
-      );
-      if (candidates.length === 0) {
-        setUnconfirmedCycleIds(new Set());
-        return;
-      }
-      const results = await Promise.all(
-        candidates.map(async (method) => {
-          try {
-            const { pendingConfirmation } =
-              await billingPeriodsService.getStatus(method._id);
-            return pendingConfirmation ? method._id : null;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      setUnconfirmedCycleIds(
-        new Set(results.filter((id): id is string => Boolean(id))),
-      );
-    },
-    [],
-  );
-
   const fetchMethods = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -221,7 +168,6 @@ export function ManagePaymentMethodsSection({
         ),
       );
       setBoardMethods(nextBoardMethods);
-      void refreshUnconfirmedCycles([...nextUserMethods, ...nextBoardMethods]);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -233,31 +179,21 @@ export function ManagePaymentMethodsSection({
     } finally {
       setIsLoading(false);
     }
-  }, [boardId, userId, refreshUnconfirmedCycles]);
+  }, [boardId, userId]);
 
   useEffect(() => {
     void fetchMethods();
   }, [fetchMethods]);
 
-  const creditWithoutClosingDay = useMemo(
-    () =>
-      [...userMethods, ...boardMethods].filter(
-        (method) => method.kind === 'credit' && !method.closingDay,
-      ),
-    [userMethods, boardMethods],
-  );
-
   const openCreate = () => {
     setEditingMethod(null);
     setFormData(defaultForm);
-    setShowClosingDayWarning(false);
     setSheetOpen(true);
   };
 
   const openEdit = (method: PaymentMethod) => {
     setEditingMethod(method);
     setFormData(formStateFromMethod(method));
-    setShowClosingDayWarning(false);
     setSheetOpen(true);
   };
 
@@ -279,10 +215,6 @@ export function ManagePaymentMethodsSection({
       payload.lastFourDigits = formData.lastFourDigits.trim();
     }
 
-    if (formData.kind === 'credit' && formData.closingDay.trim()) {
-      payload.closingDay = Number(formData.closingDay);
-    }
-
     return payload;
   };
 
@@ -300,16 +232,7 @@ export function ManagePaymentMethodsSection({
       return;
     }
 
-    if (formData.kind === 'credit' && formData.closingDay.trim()) {
-      const closingDay = Number(formData.closingDay);
-      if (closingDay < 1 || closingDay > 31) {
-        toast.error('El día de cierre debe estar entre 1 y 31');
-        return;
-      }
-    }
-
     setIsSaving(true);
-    const wasPendingClosingDay = showClosingDayWarning;
     try {
       if (editingMethod) {
         await paymentMethodsService.update(
@@ -320,29 +243,16 @@ export function ManagePaymentMethodsSection({
         await fetchMethods();
         notifyPaymentMethodsChanged(boardId);
 
-        if (!wasPendingClosingDay || formData.closingDay.trim()) {
-          setSheetOpen(false);
-          setEditingMethod(null);
-          setShowClosingDayWarning(false);
-          setFormData(defaultForm);
-        }
+        setSheetOpen(false);
+        setEditingMethod(null);
+        setFormData(defaultForm);
       } else {
         const payload = buildPayload();
-        const { paymentMethod } = await paymentMethodsService.create(payload);
-
-        if (payload.kind === 'credit' && !payload.closingDay) {
-          setEditingMethod(paymentMethod);
-          setFormData(formStateFromMethod(paymentMethod));
-          setShowClosingDayWarning(true);
-          toast.success(
-            'Medio creado. Podés agregar el día de cierre ahora o cerrar.',
-          );
-        } else {
-          toast.success('Medio de pago creado');
-          setSheetOpen(false);
-          setEditingMethod(null);
-          setFormData(defaultForm);
-        }
+        await paymentMethodsService.create(payload);
+        toast.success('Medio de pago creado');
+        setSheetOpen(false);
+        setEditingMethod(null);
+        setFormData(defaultForm);
 
         await fetchMethods();
         notifyPaymentMethodsChanged(boardId);
@@ -454,26 +364,6 @@ export function ManagePaymentMethodsSection({
                     Predeterminado
                   </Badge>
                 ) : null}
-                {method.kind === 'credit' && !method.closingDay ? (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 text-[10px] text-amber-700 dark:text-amber-300"
-                  >
-                    <AlertTriangle className="size-3" />
-                    Sin cierre
-                  </Badge>
-                ) : null}
-                {method.kind === 'credit' &&
-                method.closingDay &&
-                unconfirmedCycleIds.has(method._id) ? (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 text-[10px] text-sky-700 dark:text-sky-300"
-                  >
-                    <CalendarClock className="size-3" />
-                    Cierre sin confirmar
-                  </Badge>
-                ) : null}
               </div>
               <p className="text-xs text-muted-foreground">
                 {formatMethodSummary(method)}
@@ -545,24 +435,6 @@ export function ManagePaymentMethodsSection({
                   <Upload className="size-4" />
                 </Button>
               ) : null}
-              {options.editable &&
-              method.kind === 'credit' &&
-              method.closingDay ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8"
-                  onClick={() =>
-                    navigate(
-                      `/billing-periods/confirm?paymentMethodId=${method._id}&mode=manage`,
-                    )
-                  }
-                  aria-label={`Gestionar ciclos de ${method.name}`}
-                >
-                  <CalendarRange className="size-4" />
-                </Button>
-              ) : null}
               {options.editable ? (
                 <Button
                   type="button"
@@ -625,20 +497,6 @@ export function ManagePaymentMethodsSection({
         </p>
       </div>
 
-      {creditWithoutClosingDay.length > 0 ? (
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium">Tarjetas de crédito sin día de cierre</p>
-            <p className="mt-1 text-amber-800/90 dark:text-amber-200/90">
-              {creditWithoutClosingDay.length === 1
-                ? `"${creditWithoutClosingDay[0].name}" no tiene día de cierre. Podés registrar gastos igual, pero los reportes por ciclo de facturación no estarán disponibles hasta configurarlo.`
-                : `${creditWithoutClosingDay.length} tarjetas de crédito no tienen día de cierre. Los gastos se registran igual; configurá el cierre para ver reportes por ciclo.`}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando medios…</p>
       ) : (
@@ -692,22 +550,11 @@ export function ManagePaymentMethodsSection({
           setSheetOpen(open);
           if (!open) {
             setEditingMethod(null);
-            setShowClosingDayWarning(false);
             setFormData(defaultForm);
           }
         }}
-        title={
-          showClosingDayWarning && editingMethod
-            ? 'Agregar día de cierre'
-            : editingMethod
-              ? 'Editar medio de pago'
-              : 'Nuevo medio de pago'
-        }
-        description={
-          showClosingDayWarning && editingMethod
-            ? 'El medio ya fue creado. Completá el día de cierre o cerrá para hacerlo después.'
-            : 'Los medios personales se comparten entre tableros; los del tablero solo en este.'
-        }
+        title={editingMethod ? 'Editar medio de pago' : 'Nuevo medio de pago'}
+        description="Los medios personales se comparten entre tableros; los del tablero solo en este."
       >
         <div className="space-y-4">
           {!editingMethod ? (
@@ -822,70 +669,14 @@ export function ManagePaymentMethodsSection({
             />
           </div>
 
-          {formData.kind === 'credit' ? (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="pm-closing">Día de cierre (opcional)</Label>
-                <Input
-                  id="pm-closing"
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={formData.closingDay}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      closingDay: event.target.value,
-                    }))
-                  }
-                  placeholder="14"
-                  disabled={isSaving}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Día del mes en que cierra el resumen (ej. 14 = cierra todos
-                  los meses el día 14). Se configura una vez; el sistema calcula
-                  cada ciclo automáticamente.
-                </p>
-              </div>
-            </>
-          ) : null}
-
-          {showClosingDayWarning ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-              Guardado sin día de cierre. Completá el campo de abajo y guardá, o
-              cerrá para configurarlo más tarde.
-            </div>
-          ) : null}
-
           <div className="flex gap-2 pt-2">
             <Button
               type="button"
               className="flex-1"
-              onClick={() => {
-                if (showClosingDayWarning && editingMethod) {
-                  if (formData.closingDay.trim()) {
-                    void handleSubmit();
-                    return;
-                  }
-                  setSheetOpen(false);
-                  setShowClosingDayWarning(false);
-                  setEditingMethod(null);
-                  setFormData(defaultForm);
-                  return;
-                }
-                void handleSubmit();
-              }}
+              onClick={() => void handleSubmit()}
               disabled={isSaving}
             >
-              {isSaving
-                ? 'Guardando…'
-                : showClosingDayWarning && editingMethod
-                  ? formData.closingDay.trim()
-                    ? 'Guardar cierre'
-                    : 'Cerrar'
-                  : editingMethod
-                    ? 'Actualizar'
-                    : 'Crear'}
+              {isSaving ? 'Guardando…' : editingMethod ? 'Actualizar' : 'Crear'}
             </Button>
             <Button
               type="button"

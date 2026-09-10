@@ -34,6 +34,7 @@ import { Card } from '@/types/card';
 import { cardsService } from '@/services/cardsService';
 import { ManageCardsDialog } from '@/components/manage-cards-dialog';
 import { Plus } from 'lucide-react';
+import { YearMonthSelector } from '@/components/year-month-selector';
 
 interface CreateExpenseDialogProps {
   open: boolean;
@@ -75,6 +76,9 @@ export function CreateExpenseDialog({
   >({});
   const [expenseDate, setExpenseDate] = useState(
     new Date().toISOString().split('T')[0],
+  );
+  const [paymentYearMonth, setPaymentYearMonth] = useState(
+    new Date().toISOString().slice(0, 7),
   );
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -124,6 +128,9 @@ export function CreateExpenseDialog({
           ? new Date(expense.expenseDate).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
       );
+      setPaymentYearMonth(
+        expense.paymentYearMonth ?? new Date().toISOString().slice(0, 7),
+      );
 
       if (expense.paidByParticipant || expense.paidByParticipantId) {
         const participantId =
@@ -166,6 +173,7 @@ export function CreateExpenseDialog({
       setIsDivisible(false);
       setSplitType(SplitType.EQUAL);
       setExpenseDate(new Date().toISOString().split('T')[0]);
+      setPaymentYearMonth(new Date().toISOString().slice(0, 7));
       // Inicializar manualSplits para todos los participantes deshabilitados
       const splits: Record<string, { amount: string; enabled: boolean }> = {};
       participants.forEach((p) => {
@@ -232,6 +240,10 @@ export function CreateExpenseDialog({
       newErrors.description = 'La descripción es obligatoria';
     } else if (description.trim().length < 3) {
       newErrors.description = 'La descripción debe tener al menos 3 caracteres';
+    }
+
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(paymentYearMonth)) {
+      newErrors.paymentYearMonth = 'Seleccioná el mes de pago';
     }
 
     if (!budgetId) {
@@ -343,6 +355,7 @@ export function CreateExpenseDialog({
         expenseDate: expenseDate
           ? new Date(expenseDate).toISOString()
           : undefined,
+        paymentYearMonth,
       };
 
       if (expense) {
@@ -581,9 +594,30 @@ export function CreateExpenseDialog({
               id="expenseDate"
               type="date"
               value={expenseDate}
-              onChange={(e) => setExpenseDate(e.target.value)}
+              onChange={(e) => {
+                setExpenseDate(e.target.value);
+                if (e.target.value) {
+                  setPaymentYearMonth(e.target.value.slice(0, 7));
+                }
+              }}
               disabled={isLoading}
             />
+            <p className="text-xs text-muted-foreground">
+              Es informativa y no define el mes de pago.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Mes de pago *</Label>
+            <YearMonthSelector
+              yearMonth={paymentYearMonth}
+              onChange={setPaymentYearMonth}
+            />
+            {errors.paymentYearMonth ? (
+              <p className="text-sm text-destructive">
+                {errors.paymentYearMonth}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">

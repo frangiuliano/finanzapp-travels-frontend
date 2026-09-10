@@ -23,8 +23,6 @@ export interface PaymentMethod {
   institutionCode?: string;
   lastFourDigits?: string;
   brand?: string;
-  closingDay?: number;
-  dueDay?: number;
   isActive: boolean;
   isDefault?: boolean;
   enabled?: boolean;
@@ -43,8 +41,6 @@ export interface CreatePaymentMethodDto {
   institutionCode?: string;
   lastFourDigits?: string;
   brand?: string;
-  closingDay?: number;
-  dueDay?: number;
 }
 
 export interface PaymentMethodVisibility {
@@ -59,8 +55,6 @@ export interface UpdatePaymentMethodDto {
   institutionCode?: string | null;
   lastFourDigits?: string;
   brand?: string;
-  closingDay?: number;
-  dueDay?: number;
   isActive?: boolean;
 }
 

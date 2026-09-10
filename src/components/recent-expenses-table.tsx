@@ -66,11 +66,6 @@ import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { expensesService } from '@/services/expensesService';
 import { ExpenseAmountDisplay } from '@/components/expense-amount-display';
-import {
-  expenseBelongsToYearMonth,
-  type HomeMonthView,
-} from '@/lib/expense-month-attribution';
-import type { PaymentMethod as BoardPaymentMethod } from '@/types/payment-method';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -304,8 +299,6 @@ interface RecentExpensesTableProps {
   boardCurrency?: string;
   showBoardCurrency?: boolean;
   yearMonth?: string;
-  monthView?: HomeMonthView;
-  paymentMethodMap?: Map<string, BoardPaymentMethod>;
   onEdit?: (expense: Expense) => void;
   onDelete?: (expenseId: string) => void;
   refreshTrigger?: number;
@@ -319,8 +312,6 @@ export function RecentExpensesTable({
   boardCurrency = DEFAULT_CURRENCY,
   showBoardCurrency = true,
   yearMonth,
-  monthView = 'cash_impact',
-  paymentMethodMap,
   onEdit,
   onDelete,
   refreshTrigger,
@@ -386,19 +377,12 @@ export function RecentExpensesTable({
   }, [tripId, refreshTrigger]);
 
   const filteredData = useMemo(() => {
-    if (!yearMonth || !paymentMethodMap) {
+    if (!yearMonth) {
       return data;
     }
 
-    return data.filter((expense) =>
-      expenseBelongsToYearMonth(
-        expense,
-        yearMonth,
-        monthView,
-        paymentMethodMap,
-      ),
-    );
-  }, [data, yearMonth, monthView, paymentMethodMap]);
+    return data.filter((expense) => expense.paymentYearMonth === yearMonth);
+  }, [data, yearMonth]);
 
   const columns = useMemo(
     () =>
@@ -458,9 +442,7 @@ export function RecentExpensesTable({
             </CardTitle>
             <CardDescription>
               {yearMonth
-                ? monthView === 'cash_impact'
-                  ? `Gastos que impactan en ${yearMonth} (incluye tarjeta por ciclo de cierre)`
-                  : `Gastos con fecha de compra en ${yearMonth}`
+                ? `Gastos con mes de pago ${yearMonth}`
                 : 'Gastos recientes ordenados por fecha de creación'}
             </CardDescription>
           </div>

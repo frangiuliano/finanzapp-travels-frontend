@@ -8,28 +8,20 @@ import {
 } from '@/components/ui/card';
 import { StatStrip } from '@/components/stat-strip';
 import type { MonthlyForecast } from '@/types/forecast';
-import type { HomeMonthView } from '@/lib/expense-month-attribution';
 import { formatCurrency, formatYearMonth } from '@/lib/utils';
 
 interface MonthlyPlanningCardsProps {
   forecast: MonthlyForecast;
-  monthView: HomeMonthView;
 }
 
-export function MonthlyPlanningCards({
-  forecast,
-  monthView,
-}: MonthlyPlanningCardsProps) {
+export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
   const { currency, yearMonth, isFutureMonth, actual, planned } = forecast;
   const monthLabel = formatYearMonth(yearMonth);
 
   const incomeTotal = actual.totalIncomes + planned.totalIncomes;
   const expenseTotal = actual.totalExpenses + planned.totalOutflows;
   const remaining = planned.projectedRemaining;
-  const expenseHint =
-    monthView === 'cash_impact'
-      ? 'Gastos que impactan en tu bolsillo este mes'
-      : 'Gastos por fecha de compra';
+  const expenseHint = 'Gastos según su mes de pago';
 
   return (
     <div className="space-y-3">

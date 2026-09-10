@@ -19,6 +19,7 @@ import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
 import { RecurringEscalationFields } from '@/components/recurring-escalation-fields';
+import { RecurringMonthsChecklist } from '@/components/recurring-months-checklist';
 import {
   buildRecurringEscalationPayload,
   defaultRecurringEscalationState,
@@ -41,6 +42,7 @@ interface FormState {
   dayOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
   escalation: RecurringEscalationFormState;
+  excludedYearMonths: string[];
 }
 
 const emptyForm: FormState = {
@@ -49,6 +51,7 @@ const emptyForm: FormState = {
   dayOfMonth: [1],
   amountChangeScope: 'from_month',
   escalation: defaultRecurringEscalationState,
+  excludedYearMonths: [],
 };
 
 export function ManageRecurringExpensesSection({
@@ -95,6 +98,7 @@ export function ManageRecurringExpensesSection({
       dayOfMonth: [item.dayOfMonth],
       amountChangeScope: 'from_month',
       escalation: recurringEscalationStateFromExpense(item),
+      excludedYearMonths: item.excludedYearMonths ?? [],
     });
     setSheetOpen(true);
   };
@@ -129,6 +133,7 @@ export function ManageRecurringExpensesSection({
         dayOfMonth: formData.dayOfMonth[0],
         amountChangeScope: formData.amountChangeScope,
         amountChangeYearMonth: getCurrentYearMonth(),
+        excludedYearMonths: formData.excludedYearMonths,
         ...(formData.escalation.enabled
           ? buildRecurringEscalationPayload(formData.escalation)
           : { disableEscalation: true }),
@@ -170,16 +175,16 @@ export function ManageRecurringExpensesSection({
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Alquiler, servicios y otros compromisos mensuales para proyectar meses
-        futuros. Se cargan desde el modal de gasto, en la pestaña "Recurrente";
-        acá podés editarlos o eliminarlos.
+        futuros. Se cargan desde el formulario de gasto marcando “¿Es
+        recurrente?”; acá podés editarlos o eliminarlos.
       </p>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Todavía no cargaste gastos fijos. Cargalos desde el botón + → Gasto →
-          Recurrente.
+          Todavía no cargaste gastos fijos. Cargalos desde el botón + → Gasto y
+          marcá “¿Es recurrente?”.
         </p>
       ) : (
         <ul className="divide-y rounded-xl border">
@@ -299,6 +304,14 @@ export function ManageRecurringExpensesSection({
             disabled={isSaving}
             currency={currency}
             idPrefix="recurring-edit-escalation"
+          />
+
+          <RecurringMonthsChecklist
+            excludedYearMonths={formData.excludedYearMonths}
+            onChange={(excludedYearMonths) =>
+              setFormData((prev) => ({ ...prev, excludedYearMonths }))
+            }
+            disabled={isSaving}
           />
 
           <Button

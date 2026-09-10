@@ -30,33 +30,6 @@ export interface BoardCalendarReport {
   };
 }
 
-export interface CreditCycleReport {
-  status: 'ok';
-  boardId: string;
-  paymentMethodId: string;
-  paymentMethodName: string;
-  closingDay: number;
-  cycleLabel: string;
-  periodFrom: string;
-  periodToInclusive: string;
-  currency: string;
-  totalExpenses: number;
-  expenseCount: number;
-  availableCycles: string[];
-}
-
-export interface CreditCycleClosingDayRequired {
-  status: 'closing_day_required';
-  boardId: string;
-  paymentMethodId: string;
-  paymentMethodName: string;
-  message: string;
-}
-
-export type CreditCycleReportResponse =
-  | CreditCycleReport
-  | CreditCycleClosingDayRequired;
-
 export interface ConsolidatedBoardSummary {
   boardId: string;
   boardName: string;

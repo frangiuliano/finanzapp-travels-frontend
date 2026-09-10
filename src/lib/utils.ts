@@ -17,6 +17,15 @@ export function shiftYearMonth(yearMonth: string, deltaMonths: number): string {
   return getCurrentYearMonth(date);
 }
 
+export function monthsBetweenYearMonths(
+  fromYearMonth: string,
+  toYearMonth: string,
+): number {
+  const [fromYear, fromMonth] = fromYearMonth.split('-').map(Number);
+  const [toYear, toMonth] = toYearMonth.split('-').map(Number);
+  return (toYear - fromYear) * 12 + (toMonth - fromMonth);
+}
+
 export function isDateInYearMonth(
   dateValue: string | Date,
   yearMonth: string,

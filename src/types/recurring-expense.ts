@@ -9,6 +9,7 @@ export interface RecurringExpense {
   dayOfMonth: number;
   categoryId?: string;
   paymentMethodId?: string;
+  excludedYearMonths: string[];
   isActive: boolean;
   escalationType?: RecurringEscalationType;
   escalationValue?: number;
@@ -25,6 +26,7 @@ export interface CreateRecurringExpenseDto {
   dayOfMonth: number;
   categoryId?: string;
   paymentMethodId?: string;
+  excludedYearMonths?: string[];
   escalationType?: RecurringEscalationType;
   escalationValue?: number;
   escalationFrequencyMonths?: number;
@@ -38,6 +40,7 @@ export interface UpdateRecurringExpenseDto {
   dayOfMonth?: number;
   categoryId?: string;
   paymentMethodId?: string;
+  excludedYearMonths?: string[];
   isActive?: boolean;
   amountChangeScope?: 'this_month' | 'from_month';
   amountChangeYearMonth?: string;

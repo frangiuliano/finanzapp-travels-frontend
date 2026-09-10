@@ -5,8 +5,6 @@ import { BarChart3 } from 'lucide-react';
 import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { ConsolidatedReportSection } from '@/components/consolidated-report-section';
-import { CreditCycleReportSection } from '@/components/credit-cycle-report-section';
-import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { ReportsBreakdownChart } from '@/components/reports-breakdown-chart';
 import { YearMonthSelector } from '@/components/year-month-selector';
@@ -27,11 +25,6 @@ import type { BoardCalendarReport } from '@/types/report';
 import type { MonthlyForecast } from '@/types/forecast';
 import { PAYMENT_METHOD_KIND_LABELS } from '@/types/payment-method';
 import { getCurrentYearMonth } from '@/lib/utils';
-import {
-  readHomeMonthView,
-  writeHomeMonthView,
-  type HomeMonthView,
-} from '@/lib/expense-month-attribution';
 
 type ReportsView = 'calendar' | 'consolidated';
 
@@ -44,20 +37,12 @@ export default function ReportsPage() {
   const activeView: ReportsView =
     searchParams.get('view') === 'consolidated' ? 'consolidated' : 'calendar';
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
-  const [monthView, setMonthView] = useState<HomeMonthView>(() =>
-    readHomeMonthView(),
-  );
-
   const [calendarReport, setCalendarReport] =
     useState<BoardCalendarReport | null>(null);
   const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const expensesChangedRefresh = useExpensesChangedRefresh();
-
-  useEffect(() => {
-    writeHomeMonthView(monthView);
-  }, [monthView]);
 
   const handleViewChange = (value: string) => {
     const view = value as ReportsView;
@@ -85,25 +70,13 @@ export default function ReportsPage() {
       setIsLoading(true);
       setLoadError(null);
       try {
-        const result =
-          monthView === 'calendar'
-            ? await reportsService.getBoardCalendarReport(
-                activeBoard._id,
-                yearMonth,
-              )
-            : await forecastService.getMonthlyForecast(
-                activeBoard._id,
-                yearMonth,
-                'cash_impact',
-              );
+        const [reportResult, forecastResult] = await Promise.all([
+          reportsService.getBoardCalendarReport(activeBoard._id, yearMonth),
+          forecastService.getMonthlyForecast(activeBoard._id, yearMonth),
+        ]);
         if (!stale) {
-          if ('report' in result) {
-            setCalendarReport(result.report);
-            setForecast(null);
-          } else {
-            setForecast(result.forecast);
-            setCalendarReport(null);
-          }
+          setCalendarReport(reportResult.report);
+          setForecast(forecastResult.forecast);
         }
       } catch {
         if (!stale) {
@@ -123,7 +96,7 @@ export default function ReportsPage() {
     return () => {
       stale = true;
     };
-  }, [activeBoard, yearMonth, monthView, activeView, expensesChangedRefresh]);
+  }, [activeBoard, yearMonth, activeView, expensesChangedRefresh]);
 
   const categoryItems = useMemo(
     () =>
@@ -158,7 +131,7 @@ export default function ReportsPage() {
         <h2 className="font-display text-2xl font-bold">Reportes</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Creá tu primer tablero para ver reportes mensuales, categorías y
-          ciclos de tarjeta.
+          compromisos del mes.
         </p>
         <Button asChild className="rounded-xl">
           <Link to="/onboarding">Crear tablero</Link>
@@ -202,8 +175,6 @@ export default function ReportsPage() {
         </TabsList>
 
         <TabsContent value="calendar" className="mt-6 space-y-6">
-          <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
-
           {isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-64 rounded-xl" />
@@ -216,7 +187,7 @@ export default function ReportsPage() {
                 {loadError}
               </CardContent>
             </Card>
-          ) : monthView === 'cash_impact' && forecast ? (
+          ) : calendarReport && forecast ? (
             <>
               {forecast.actual.totalIncomes === 0 &&
                 forecast.actual.totalExpenses === 0 &&
@@ -235,10 +206,7 @@ export default function ReportsPage() {
                   </Card>
                 )}
 
-              <MonthlyPlanningCards
-                forecast={forecast}
-                monthView="cash_impact"
-              />
+              <MonthlyPlanningCards forecast={forecast} />
 
               <BoardForecastSection
                 incomes={forecast.planned.incomes}
@@ -247,9 +215,6 @@ export default function ReportsPage() {
                 currency={forecast.currency}
                 isFutureMonth={forecast.isFutureMonth}
               />
-            </>
-          ) : calendarReport ? (
-            <>
               {calendarReport.totalIncomes === 0 &&
                 calendarReport.totalExpenses === 0 && (
                   <Card className="border-dashed">
@@ -266,7 +231,7 @@ export default function ReportsPage() {
 
               <ReportsBreakdownChart
                 title="Por categoría"
-                description="Gastos del mes calendario agrupados por categoría."
+                description="Gastos del mes de pago agrupados por categoría."
                 items={categoryItems}
                 currency={calendarReport.currency}
                 emptyMessage="Sin gastos categorizados este mes."
@@ -274,7 +239,7 @@ export default function ReportsPage() {
 
               <ReportsBreakdownChart
                 title="Por medio de pago"
-                description="Gastos del mes calendario por tarjeta, débito o efectivo."
+                description="Gastos del mes de pago por tarjeta, débito o efectivo."
                 items={paymentMethodItems}
                 currency={calendarReport.currency}
                 emptyMessage="Sin gastos con medio de pago este mes."
@@ -284,8 +249,6 @@ export default function ReportsPage() {
                 summary={calendarReport}
                 yearMonth={yearMonth}
               />
-
-              <CreditCycleReportSection boardId={activeBoard._id} />
             </>
           ) : null}
         </TabsContent>

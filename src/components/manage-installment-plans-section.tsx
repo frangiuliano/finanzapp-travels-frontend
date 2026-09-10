@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,9 +11,27 @@ import { Label } from '@/components/ui/label';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { YearMonthSelector } from '@/components/year-month-selector';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { installmentPlansService } from '@/services/installmentPlansService';
-import type { InstallmentPlan } from '@/types/installment-plan';
-import { formatCurrency, getCurrentYearMonth } from '@/lib/utils';
+import type {
+  InstallmentOverridePolicy,
+  InstallmentPlan,
+  InstallmentPlanUpdateNeedsDecision,
+  UpdateInstallmentPlanDto,
+} from '@/types/installment-plan';
+import {
+  cn,
+  formatCurrency,
+  getCurrentYearMonth,
+  shiftYearMonth,
+} from '@/lib/utils';
 
 interface ManageInstallmentPlansSectionProps {
   boardId: string;
@@ -24,7 +42,6 @@ interface FormState {
   label: string;
   installmentAmount: string;
   totalInstallments: string;
-  paidInstallments: string;
   startYearMonth: string;
   dayOfMonth: number[];
 }
@@ -33,10 +50,54 @@ const emptyForm = (yearMonth: string): FormState => ({
   label: '',
   installmentAmount: '',
   totalInstallments: '12',
-  paidInstallments: '0',
   startYearMonth: yearMonth,
   dayOfMonth: [10],
 });
+
+function toMonthSlash(yearMonth: string): string {
+  const [year, month] = yearMonth.split('-');
+  return `${month}/${year}`;
+}
+
+function pluralize(count: number, singular: string, plural: string): string {
+  return count === 1 ? singular : plural;
+}
+
+interface PillOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+function PillGroup<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: PillOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          aria-pressed={value === option.value}
+          className={cn(
+            'min-h-11 rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+            value === option.value
+              ? 'border-[var(--signal)] bg-[color-mix(in_oklab,var(--signal)_14%,transparent)]'
+              : 'border-border text-muted-foreground hover:border-foreground/20',
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function ManageInstallmentPlansSection({
   boardId,
@@ -53,6 +114,26 @@ export function ManageInstallmentPlansSection({
   const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<FormState>(
     emptyForm(getCurrentYearMonth()),
+  );
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewDecision, setReviewDecision] =
+    useState<InstallmentPlanUpdateNeedsDecision | null>(null);
+  const [reviewOverridePolicy, setReviewOverridePolicy] =
+    useState<InstallmentOverridePolicy>('preserve');
+
+  const totalInstallmentsForSchedule = Math.min(
+    Math.max(parseInt(formData.totalInstallments, 10) || 0, 0),
+    120,
+  );
+  const paidCount = editingItem?.paidCount ?? 0;
+  const schedule = useMemo(
+    () =>
+      Array.from({ length: totalInstallmentsForSchedule }, (_, index) => ({
+        installmentNumber: index + 1,
+        yearMonth: shiftYearMonth(formData.startYearMonth, index),
+        isPaid: index + 1 <= paidCount,
+      })),
+    [formData.startYearMonth, totalInstallmentsForSchedule, paidCount],
   );
 
   const fetchItems = useCallback(async () => {
@@ -83,60 +164,89 @@ export function ManageInstallmentPlansSection({
       label: item.label,
       installmentAmount: formatMoneyInputFromNumber(item.installmentAmount),
       totalInstallments: String(item.totalInstallments),
-      paidInstallments: String(item.paidInstallments),
       startYearMonth: item.startYearMonth,
       dayOfMonth: [item.dayOfMonth],
     });
+    setReviewOpen(false);
+    setReviewDecision(null);
+    setReviewOverridePolicy('preserve');
     setSheetOpen(true);
   };
 
-  const handleSubmit = async () => {
-    if (!editingItem) return;
+  const buildBasePayload = (): UpdateInstallmentPlanDto | null => {
     if (!formData.label.trim()) {
       toast.error('El concepto es obligatorio');
-      return;
+      return null;
     }
-
     const installmentAmount = parseMoneyInput(formData.installmentAmount);
     const totalInstallments = parseInt(formData.totalInstallments, 10);
-    const paidInstallments = parseInt(formData.paidInstallments, 10);
-
     if (installmentAmount === null || installmentAmount < 0.01) {
       toast.error('Ingresá un monto de cuota válido');
-      return;
+      return null;
     }
     if (isNaN(totalInstallments) || totalInstallments < 1) {
       toast.error('Cantidad de cuotas inválida');
-      return;
+      return null;
     }
-    if (isNaN(paidInstallments) || paidInstallments < 0) {
-      toast.error('Cuotas pagadas inválidas');
-      return;
+
+    const payload: UpdateInstallmentPlanDto = {
+      label: formData.label.trim(),
+      installmentAmount,
+      totalInstallments,
+      startYearMonth: formData.startYearMonth,
+      currency,
+    };
+    if (formData.dayOfMonth.length > 0) {
+      payload.dayOfMonth = formData.dayOfMonth[0];
     }
-    if (paidInstallments > totalInstallments) {
-      toast.error('Las cuotas pagadas no pueden superar el total');
-      return;
-    }
-    if (formData.dayOfMonth.length === 0) {
-      toast.error('Seleccioná el día del mes');
-      return;
-    }
+    return payload;
+  };
+
+  const runSave = async (
+    decisions?: Pick<UpdateInstallmentPlanDto, 'overridePolicy'>,
+  ) => {
+    if (!editingItem) return;
+    const basePayload = buildBasePayload();
+    if (!basePayload) return;
 
     setIsSaving(true);
     try {
-      const payload = {
-        label: formData.label.trim(),
-        installmentAmount,
-        totalInstallments,
-        paidInstallments,
-        startYearMonth: formData.startYearMonth,
-        dayOfMonth: formData.dayOfMonth[0],
-        currency,
-      };
+      const result = await installmentPlansService.update(editingItem._id, {
+        ...basePayload,
+        ...decisions,
+      });
 
-      await installmentPlansService.update(editingItem._id, payload);
-      toast.success('Plan de cuotas actualizado');
+      if (result.status === 'needs_decision') {
+        setReviewDecision(result);
+        setReviewOverridePolicy('preserve');
+        setReviewOpen(true);
+        return;
+      }
 
+      const parts: string[] = [];
+      if (result.applied.datesUpdated > 0) {
+        parts.push(
+          `${result.applied.datesUpdated} ${pluralize(result.applied.datesUpdated, 'fecha corregida', 'fechas corregidas')}`,
+        );
+      }
+      if (result.applied.overridesPreserved > 0) {
+        parts.push(
+          `${result.applied.overridesPreserved} ${pluralize(result.applied.overridesPreserved, 'cuota con cambios propios conservada', 'cuotas con cambios propios conservadas')}`,
+        );
+      }
+      if (result.applied.overridesReplaced > 0) {
+        parts.push(
+          `${result.applied.overridesReplaced} ${pluralize(result.applied.overridesReplaced, 'cuota actualizada con el plan', 'cuotas actualizadas con el plan')}`,
+        );
+      }
+      toast.success(
+        parts.length > 0
+          ? `Plan guardado: ${parts.join(', ')}.`
+          : 'Plan de cuotas actualizado',
+      );
+
+      setReviewOpen(false);
+      setReviewDecision(null);
       setSheetOpen(false);
       await fetchItems();
     } catch (error) {
@@ -148,6 +258,15 @@ export function ManageInstallmentPlansSection({
       setIsSaving(false);
     }
   };
+
+  const handleSubmit = () => void runSave();
+
+  const handleConfirmReview = () =>
+    void runSave({
+      overridePolicy: reviewDecision?.customOverrides
+        ? reviewOverridePolicy
+        : undefined,
+    });
 
   const handleDelete = async (item: InstallmentPlan) => {
     setIsDeleting(true);
@@ -198,8 +317,8 @@ export function ManageInstallmentPlansSection({
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {formatCurrency(item.installmentAmount, item.currency)} ·{' '}
-                  {item.paidInstallments}/{item.totalInstallments} cuotas · día{' '}
-                  {item.dayOfMonth} · desde {item.startYearMonth}
+                  {item.paidCount}/{item.totalInstallments} pagadas · desde{' '}
+                  {item.startYearMonth}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1">
@@ -254,52 +373,57 @@ export function ManageInstallmentPlansSection({
               disabled={isSaving}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Total cuotas</Label>
-              <Input
-                type="number"
-                min="1"
-                value={formData.totalInstallments}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    totalInstallments: e.target.value,
-                  }))
-                }
-                disabled={isSaving}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Ya pagadas</Label>
-              <Input
-                type="number"
-                min="0"
-                value={formData.paidInstallments}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    paidInstallments: e.target.value,
-                  }))
-                }
-                disabled={isSaving}
-              />
-            </div>
-          </div>
           <div className="space-y-2">
-            <Label>Primer mes de cuota</Label>
+            <Label>Total cuotas</Label>
             <Input
-              type="month"
-              value={formData.startYearMonth}
+              type="number"
+              min="1"
+              value={formData.totalInstallments}
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  startYearMonth: e.target.value,
+                  totalInstallments: e.target.value,
                 }))
               }
               disabled={isSaving}
             />
+            <p className="text-muted-foreground text-[11px]">
+              Ya pagadas: {editingItem?.paidCount}/
+              {editingItem?.totalInstallments}, calculado solo de las cuotas que
+              realmente ya vencieron — no es un valor que se edite a mano.
+            </p>
           </div>
+          <div className="space-y-2">
+            <Label>Primer mes de cuota</Label>
+            <YearMonthSelector
+              yearMonth={formData.startYearMonth}
+              onChange={(yearMonth) =>
+                setFormData((prev) => ({ ...prev, startYearMonth: yearMonth }))
+              }
+            />
+            {schedule.length > 0 ? (
+              <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto rounded-xl border bg-card p-2">
+                {schedule.map((entry) => (
+                  <span
+                    key={entry.installmentNumber}
+                    className={cn(
+                      'whitespace-nowrap rounded-lg border px-2 py-1 text-[11px]',
+                      entry.isPaid
+                        ? 'border-transparent bg-muted text-muted-foreground line-through'
+                        : 'border-border',
+                    )}
+                  >
+                    {toMonthSlash(entry.yearMonth)} · Cuota{' '}
+                    {entry.installmentNumber}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <p className="text-muted-foreground text-[11px]">
+              Mover esto solo corre las cuotas que todavía no se pagaron.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label>Día del mes</Label>
             <DayOfMonthPicker
@@ -310,16 +434,78 @@ export function ManageInstallmentPlansSection({
               }
               disabled={isSaving}
             />
+            <p className="text-muted-foreground text-[11px]">
+              Es informativo y no cambia el mes de pago de las cuotas.
+            </p>
           </div>
-          <Button
-            className="w-full"
-            onClick={() => void handleSubmit()}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Guardando…' : 'Guardar'}
+
+          <Button className="w-full" onClick={handleSubmit} disabled={isSaving}>
+            {isSaving ? 'Guardando…' : 'Guardar cambios'}
           </Button>
         </div>
       </ResponsiveFormDialog>
+
+      <Dialog
+        open={reviewOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReviewOpen(false);
+            setReviewDecision(null);
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100%-2rem)] rounded-3xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hay cuotas con cambios propios</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            {reviewDecision?.customOverrides ? (
+              <div className="space-y-2">
+                <p className="font-medium text-sm">
+                  Hay {reviewDecision.customOverrides.count}{' '}
+                  {pluralize(
+                    reviewDecision.customOverrides.count,
+                    'cuota con cambios propios',
+                    'cuotas con cambios propios',
+                  )}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Tienen un monto o concepto diferente al plan.
+                </p>
+                <PillGroup
+                  options={[
+                    {
+                      value: 'preserve' as const,
+                      label: 'Conservar sus cambios',
+                    },
+                    {
+                      value: 'replace' as const,
+                      label: 'Reemplazarlos con los datos del plan',
+                    },
+                  ]}
+                  value={reviewOverridePolicy}
+                  onChange={setReviewOverridePolicy}
+                />
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReviewOpen(false);
+                setReviewDecision(null);
+              }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmReview} disabled={isSaving}>
+              {isSaving ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DestructiveActionDialog
         open={deleteTarget !== null}

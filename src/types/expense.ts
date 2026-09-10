@@ -5,7 +5,7 @@ export enum ExpenseStatus {
   PENDING = 'pending',
 }
 
-export type ExpenseFxPolicy = 'spot' | 'credit_cycle';
+export type ExpenseFxPolicy = 'spot';
 export type ExpenseFxPurpose = 'referential' | 'settled';
 
 export interface ExpenseDisplayFx {
@@ -71,7 +71,8 @@ export interface Expense {
   fxCapturedAt?: string;
   fxPolicy?: ExpenseFxPolicy;
   fxPurpose?: ExpenseFxPurpose;
-  billingCycleLabel?: string;
+  /** Month (YYYY-MM) this expense counts toward — an explicit user choice. */
+  paymentYearMonth: string;
   displayFx?: ExpenseDisplayFx;
   description: string;
   merchantName?: string;
@@ -109,6 +110,10 @@ export interface Expense {
   isDivisible: boolean;
   splitType?: SplitType;
   splits?: ExpenseSplit[];
+  recurringExpenseId?: string;
+  installmentPlanId?: string;
+  installmentNumber?: number;
+  skippedAt?: string;
   createdBy: {
     _id: string;
     firstName: string;
@@ -116,8 +121,6 @@ export interface Expense {
     email?: string;
   };
   expenseDate: string;
-  closingDayReviewed?: boolean;
-  needsClosingDayReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -147,6 +150,8 @@ export interface CreateExpenseDto {
     percentage?: number;
   }[];
   expenseDate?: string;
+  /** Month (YYYY-MM) this expense counts toward. Mandatory for every expense. */
+  paymentYearMonth: string;
   clientRequestId?: string;
 }
 
@@ -163,7 +168,6 @@ export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {
     amount: number;
     percentage?: number;
   }[];
-  closingDayReviewed?: boolean;
 }
 
 export interface TripExpenseSummary {

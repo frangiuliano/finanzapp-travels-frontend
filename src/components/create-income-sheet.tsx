@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { RecurringMonthsChecklist } from '@/components/recurring-months-checklist';
 import { incomesService } from '@/services/incomesService';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
 import type { Income } from '@/types/income';
@@ -60,6 +61,7 @@ export function CreateIncomeSheet({
   const [amount, setAmount] = useState('');
   const [incomeDate, setIncomeDate] = useState('');
   const [daysOfMonth, setDaysOfMonth] = useState<number[]>([1]);
+  const [excludedYearMonths, setExcludedYearMonths] = useState<string[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -78,12 +80,14 @@ export function CreateIncomeSheet({
         setAmount(formatMoneyInputFromNumber(income.amount));
         setIncomeDate(income.incomeDate.slice(0, 10));
         setDaysOfMonth([1]);
+        setExcludedYearMonths([]);
       } else {
         setMode('one-time');
         setLabel('Sueldo');
         setAmount('');
         setIncomeDate(new Date().toISOString().slice(0, 10));
         setDaysOfMonth([1]);
+        setExcludedYearMonths([]);
       }
       setErrors({});
       setShowDetails(false);
@@ -161,6 +165,7 @@ export function CreateIncomeSheet({
           amount: parseMoneyInput(amount)!,
           currency: resolvedCurrency,
           daysOfMonth,
+          excludedYearMonths,
         });
         toast.success('Ingreso recurrente configurado');
       }
@@ -207,7 +212,7 @@ export function CreateIncomeSheet({
               <TabsTrigger value="recurring">Recurrente</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="recurring" className="mt-4 space-y-2">
+            <TabsContent value="recurring" className="mt-4 space-y-4">
               <Label className="text-xs text-muted-foreground">
                 Días de acreditación
               </Label>
@@ -220,6 +225,11 @@ export function CreateIncomeSheet({
               {errors.daysOfMonth && (
                 <p className="text-xs text-destructive">{errors.daysOfMonth}</p>
               )}
+              <RecurringMonthsChecklist
+                excludedYearMonths={excludedYearMonths}
+                onChange={setExcludedYearMonths}
+                disabled={isLoading}
+              />
             </TabsContent>
           </Tabs>
         ) : null}

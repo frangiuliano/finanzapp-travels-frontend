@@ -18,6 +18,7 @@ import {
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { RecurringMonthsChecklist } from '@/components/recurring-months-checklist';
 import { formatDaysOfMonth } from '@/lib/format-days-of-month';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
 import type { RecurringIncome } from '@/types/recurring-income';
@@ -34,6 +35,7 @@ interface FormState {
   daysOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
   amountChangeYearMonth: string;
+  excludedYearMonths: string[];
 }
 
 const emptyForm: FormState = {
@@ -42,6 +44,7 @@ const emptyForm: FormState = {
   daysOfMonth: [1],
   amountChangeScope: 'from_month',
   amountChangeYearMonth: getCurrentYearMonth(),
+  excludedYearMonths: [],
 };
 
 export function ManageRecurringIncomesSection({
@@ -89,6 +92,7 @@ export function ManageRecurringIncomesSection({
       daysOfMonth: item.daysOfMonth,
       amountChangeScope: 'from_month',
       amountChangeYearMonth: getCurrentYearMonth(),
+      excludedYearMonths: item.excludedYearMonths ?? [],
     });
     setSheetOpen(true);
   };
@@ -122,6 +126,7 @@ export function ManageRecurringIncomesSection({
         daysOfMonth: formData.daysOfMonth,
         amountChangeScope: formData.amountChangeScope,
         amountChangeYearMonth: formData.amountChangeYearMonth,
+        excludedYearMonths: formData.excludedYearMonths,
       };
 
       await recurringIncomesService.update(editingItem._id, payload);
@@ -298,6 +303,13 @@ export function ManageRecurringIncomesSection({
               </Select>
             </div>
           </div>
+          <RecurringMonthsChecklist
+            excludedYearMonths={formData.excludedYearMonths}
+            onChange={(excludedYearMonths) =>
+              setFormData((prev) => ({ ...prev, excludedYearMonths }))
+            }
+            disabled={isSaving}
+          />
           <Button
             className="w-full"
             onClick={() => void handleSubmit()}

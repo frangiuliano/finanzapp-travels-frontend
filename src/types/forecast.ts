@@ -14,13 +14,10 @@ export interface ForecastLineItem {
   };
 }
 
-export type HomeMonthView = 'calendar' | 'cash_impact';
-
 export interface MonthlyForecast {
   boardId: string;
   yearMonth: string;
   currency: string;
-  attributionMode?: HomeMonthView;
   isFutureMonth: boolean;
   actual: {
     totalIncomes: number;

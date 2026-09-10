@@ -12,7 +12,6 @@ import { BoardForecastSection } from '@/components/board-forecast-section';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
-import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { MonthBudgetsProgress } from '@/components/month-budgets-progress';
 import { YearMonthSelector } from '@/components/year-month-selector';
@@ -26,13 +25,6 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
-import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
-import {
-  readHomeMonthView,
-  writeHomeMonthView,
-  expenseBelongsToYearMonth,
-  type HomeMonthView,
-} from '@/lib/expense-month-attribution';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
@@ -63,11 +55,7 @@ export function EverydayBoardHome({
   onRefresh,
 }: EverydayBoardHomeProps) {
   const [yearMonth, setYearMonth] = useState(getCurrentYearMonth());
-  const [monthView, setMonthView] = useState<HomeMonthView>(() =>
-    readHomeMonthView(),
-  );
   const { categories } = useBoardCategories(board._id);
-  const { paymentMethods } = useAvailablePaymentMethods(board._id);
 
   const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
   const [budgetProgress, setBudgetProgress] = useState<
@@ -88,15 +76,6 @@ export function EverydayBoardHome({
   const [isDeleting, setIsDeleting] = useState(false);
   const incomesChangedRefresh = useIncomesChangedRefresh();
 
-  const paymentMethodMap = useMemo(
-    () => new Map(paymentMethods.map((method) => [method._id, method])),
-    [paymentMethods],
-  );
-
-  useEffect(() => {
-    writeHomeMonthView(monthView);
-  }, [monthView]);
-
   useEffect(() => {
     if (board._id.startsWith('mock-')) {
       return;
@@ -110,7 +89,7 @@ export function EverydayBoardHome({
         const [forecastResult, progressResult, incomesResult, expensesResult] =
           await Promise.all([
             forecastService
-              .getMonthlyForecast(board._id, yearMonth, monthView)
+              .getMonthlyForecast(board._id, yearMonth)
               .then(({ forecast: f }) => f)
               .catch(() => null),
             boardMonthBudgetsService
@@ -122,7 +101,7 @@ export function EverydayBoardHome({
               .then(({ incomes }) => incomes)
               .catch(() => []),
             expensesService
-              .listExpensesByMonth(board._id, yearMonth, monthView)
+              .listExpensesByMonth(board._id, yearMonth)
               .then(({ expenses }) => expenses)
               .catch(() => []),
           ]);
@@ -146,20 +125,11 @@ export function EverydayBoardHome({
             ),
         );
         setMonthExpenses(
-          expensesResult
-            .filter((expense) =>
-              expenseBelongsToYearMonth(
-                expense,
-                yearMonth,
-                monthView,
-                paymentMethodMap,
-              ),
-            )
-            .sort(
-              (a, b) =>
-                new Date(b.expenseDate || b.createdAt).getTime() -
-                new Date(a.expenseDate || a.createdAt).getTime(),
-            ),
+          expensesResult.sort(
+            (a, b) =>
+              new Date(b.expenseDate || b.createdAt).getTime() -
+              new Date(a.expenseDate || a.createdAt).getTime(),
+          ),
         );
       } finally {
         if (!stale) {
@@ -173,14 +143,7 @@ export function EverydayBoardHome({
     return () => {
       stale = true;
     };
-  }, [
-    board._id,
-    yearMonth,
-    monthView,
-    refreshTrigger,
-    incomesChangedRefresh,
-    paymentMethodMap,
-  ]);
+  }, [board._id, yearMonth, refreshTrigger, incomesChangedRefresh]);
 
   const recentMovements = useMemo(
     () =>
@@ -285,15 +248,13 @@ export function EverydayBoardHome({
     <div className="space-y-6">
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
 
-      <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
-
       {isLoading ? (
         <div className="space-y-3">
           <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-32 rounded-xl" />
         </div>
       ) : forecast ? (
-        <MonthlyPlanningCards forecast={forecast} monthView={monthView} />
+        <MonthlyPlanningCards forecast={forecast} />
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
@@ -422,7 +383,7 @@ export function EverydayBoardHome({
             </ul>
           )}
           <Button asChild variant="link" className="mt-3 h-auto px-0">
-            <Link to={`/expenses?yearMonth=${yearMonth}&view=${monthView}`}>
+            <Link to={`/expenses?yearMonth=${yearMonth}`}>
               Ver todos los movimientos
             </Link>
           </Button>

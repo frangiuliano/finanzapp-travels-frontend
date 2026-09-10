@@ -2,7 +2,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Receipt } from 'lucide-react';
 import { ExpensesExplorerSection } from '@/components/expenses-explorer-section';
 import { Button } from '@/components/ui/button';
-import type { HomeMonthView } from '@/lib/expense-month-attribution';
 import { getCurrentYearMonth } from '@/lib/utils';
 import { useBoardsStore } from '@/store/boardsStore';
 
@@ -14,12 +13,6 @@ export default function ExpensesPage() {
 
   const initialYearMonth =
     searchParams.get('yearMonth') ?? getCurrentYearMonth();
-  const initialMonthViewParam = searchParams.get('view');
-  const initialMonthView: HomeMonthView | undefined =
-    initialMonthViewParam === 'calendar' ||
-    initialMonthViewParam === 'cash_impact'
-      ? initialMonthViewParam
-      : undefined;
   const initialPaymentMethodId =
     searchParams.get('paymentMethodId') ?? undefined;
 
@@ -56,7 +49,6 @@ export default function ExpensesPage() {
       <ExpensesExplorerSection
         board={activeBoard}
         initialYearMonth={initialYearMonth}
-        initialMonthView={initialMonthView}
         initialPaymentMethodId={initialPaymentMethodId}
       />
     </div>

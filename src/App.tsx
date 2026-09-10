@@ -21,7 +21,6 @@ import ReportsPage from '@/pages/ReportsPage';
 import ExpensesPage from '@/pages/ExpensesPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import BoardSettingsPage from '@/pages/BoardSettingsPage';
-import BillingPeriodConfirmPage from '@/pages/BillingPeriodConfirmPage';
 import StatementImportPage from '@/pages/StatementImportPage';
 import SimulateExpensePage from '@/pages/SimulateExpensePage';
 import WealthPage from '@/pages/WealthPage';
@@ -161,10 +160,6 @@ function AppRoutes() {
         <Route path="/wealth" element={<WealthPage />} />
         <Route path="/boards" element={<Navigate to="/travel" replace />} />
         <Route path="/boards/settings" element={<BoardSettingsPage />} />
-        <Route
-          path="/billing-periods/confirm"
-          element={<BillingPeriodConfirmPage />}
-        />
         <Route path="/statement-imports" element={<StatementImportPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/account" element={<SettingsPage />} />
