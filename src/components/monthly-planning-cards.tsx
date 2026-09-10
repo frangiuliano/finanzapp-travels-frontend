@@ -23,12 +23,8 @@ export function MonthlyPlanningCards({
   const { currency, yearMonth, isFutureMonth, actual, planned } = forecast;
   const monthLabel = formatYearMonth(yearMonth);
 
-  const incomeTotal = isFutureMonth
-    ? planned.totalIncomes
-    : actual.totalIncomes;
-  const expenseTotal = isFutureMonth
-    ? planned.totalOutflows
-    : actual.totalExpenses;
+  const incomeTotal = actual.totalIncomes + planned.totalIncomes;
+  const expenseTotal = actual.totalExpenses + planned.totalOutflows;
   const remaining = planned.projectedRemaining;
   const expenseHint =
     monthView === 'cash_impact'
@@ -49,7 +45,7 @@ export function MonthlyPlanningCards({
         centered
         items={[
           {
-            label: isFutureMonth ? 'Ingresos planificados' : 'Ingresos',
+            label: 'Ingresos',
             value: incomeTotal,
             currency,
             description: isFutureMonth
@@ -57,7 +53,7 @@ export function MonthlyPlanningCards({
               : `Plan: ${formatCurrency(planned.totalIncomes, currency)}`,
           },
           {
-            label: isFutureMonth ? 'Compromisos' : 'Gastos',
+            label: 'Gastos',
             value: expenseTotal,
             currency,
             description: isFutureMonth
