@@ -78,8 +78,8 @@ export function CreatePaymentMethodSheet({
 
     if (formData.kind === 'credit' && formData.closingDay.trim()) {
       const closingDay = Number(formData.closingDay);
-      if (closingDay < 1 || closingDay > 28) {
-        toast.error('El día de cierre debe estar entre 1 y 28');
+      if (closingDay < 1 || closingDay > 31) {
+        toast.error('El día de cierre debe estar entre 1 y 31');
         return;
       }
     }
@@ -225,7 +225,7 @@ export function CreatePaymentMethodSheet({
               id="pm-quick-closing"
               type="number"
               min={1}
-              max={28}
+              max={31}
               value={formData.closingDay}
               onChange={(event) =>
                 setFormData((prev) => ({

@@ -29,6 +29,13 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { RecurringEscalationFields } from '@/components/recurring-escalation-fields';
+import {
+  buildRecurringEscalationPayload,
+  defaultRecurringEscalationState,
+  validateRecurringEscalation,
+  type RecurringEscalationFormState,
+} from '@/lib/recurring-escalation';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
@@ -153,6 +160,8 @@ export function QuickExpenseForm({
   ) as SupportedCurrency;
   const [mode, setMode] = useState<'one-time' | 'recurring'>('one-time');
   const [daysOfMonth, setDaysOfMonth] = useState<number[]>([1]);
+  const [recurringEscalation, setRecurringEscalation] =
+    useState<RecurringEscalationFormState>(defaultRecurringEscalationState);
   const [expenseCurrency, setExpenseCurrency] =
     useState<SupportedCurrency>(boardCurrency);
   const [installments, setInstallments] = useState('1');
@@ -514,6 +523,7 @@ export function QuickExpenseForm({
     setStatus(ExpenseStatus.PAID);
     setMode('one-time');
     setDaysOfMonth([1]);
+    setRecurringEscalation(defaultRecurringEscalationState);
     setExpenseCurrency(boardCurrency);
     setInstallments('1');
     setInstallmentOrigin('new');
@@ -597,6 +607,10 @@ export function QuickExpenseForm({
     if (isEveryday && !isEditing && mode === 'recurring') {
       if (daysOfMonth.length === 0) {
         nextErrors.daysOfMonth = 'Seleccioná el día del mes';
+      }
+      const escalationError = validateRecurringEscalation(recurringEscalation);
+      if (escalationError) {
+        nextErrors.escalation = escalationError;
       }
     }
 
@@ -700,6 +714,7 @@ export function QuickExpenseForm({
           dayOfMonth: daysOfMonth[0],
           categoryId,
           paymentMethodId,
+          ...buildRecurringEscalationPayload(recurringEscalation),
         });
         toast.success('Gasto recurrente configurado');
         resetForm();
@@ -867,21 +882,35 @@ export function QuickExpenseForm({
             <TabsTrigger value="one-time">Puntual</TabsTrigger>
             <TabsTrigger value="recurring">Recurrente</TabsTrigger>
           </TabsList>
-          <TabsContent value="recurring" className="mt-4 space-y-2">
-            <Label className="text-muted-foreground text-xs">Día del mes</Label>
-            <DayOfMonthPicker
-              mode="single"
-              value={daysOfMonth}
-              onChange={setDaysOfMonth}
+          <TabsContent value="recurring" className="mt-4 space-y-3">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground text-xs">
+                Día del mes
+              </Label>
+              <DayOfMonthPicker
+                mode="single"
+                value={daysOfMonth}
+                onChange={setDaysOfMonth}
+                disabled={isSubmitting}
+              />
+              {errors.daysOfMonth ? (
+                <p className="text-destructive text-xs">{errors.daysOfMonth}</p>
+              ) : (
+                <p className="text-muted-foreground text-[11px]">
+                  Se generarán gastos programados cada mes en ese día.
+                </p>
+              )}
+            </div>
+            <RecurringEscalationFields
+              value={recurringEscalation}
+              onChange={setRecurringEscalation}
               disabled={isSubmitting}
+              currency={expenseCurrency}
+              idPrefix="quick-recurring-escalation"
             />
-            {errors.daysOfMonth ? (
-              <p className="text-destructive text-xs">{errors.daysOfMonth}</p>
-            ) : (
-              <p className="text-muted-foreground text-[11px]">
-                Se generarán gastos programados cada mes en ese día.
-              </p>
-            )}
+            {errors.escalation ? (
+              <p className="text-destructive text-xs">{errors.escalation}</p>
+            ) : null}
           </TabsContent>
         </Tabs>
       ) : null}

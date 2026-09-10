@@ -116,6 +116,8 @@ export interface Expense {
     email?: string;
   };
   expenseDate: string;
+  closingDayReviewed?: boolean;
+  needsClosingDayReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -161,6 +163,7 @@ export interface UpdateExpenseDto extends Partial<CreateExpenseDto> {
     amount: number;
     percentage?: number;
   }[];
+  closingDayReviewed?: boolean;
 }
 
 export interface TripExpenseSummary {

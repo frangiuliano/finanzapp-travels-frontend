@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import {
+  AlertTriangle,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
@@ -15,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
 import { StatStrip } from '@/components/stat-strip';
+import { Badge } from '@/components/ui/badge';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
@@ -408,6 +410,23 @@ export function ExpensesExplorerSection({
     }
   };
 
+  const handleConfirmClosingDay = async (expenseId: string) => {
+    try {
+      const { expense: updated } = await expensesService.updateExpense(
+        expenseId,
+        {
+          closingDayReviewed: true,
+        },
+      );
+      setExpenses((current) =>
+        current.map((item) => (item._id === expenseId ? updated : item)),
+      );
+      toast.success('Gasto confirmado en este resumen');
+    } catch {
+      toast.error('No se pudo confirmar el gasto');
+    }
+  };
+
   const detailMovement = detail
     ? movements.find(
         (movement) =>
@@ -679,8 +698,17 @@ export function ExpensesExplorerSection({
                         )}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <strong className="block break-words text-sm">
+                        <strong className="flex flex-wrap items-center gap-1 break-words text-sm">
                           {movement.label}
+                          {movement.type === 'expense' &&
+                          movement.expense.needsClosingDayReview ? (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 text-[10px] text-amber-700 dark:text-amber-300"
+                            >
+                              <AlertTriangle className="size-3" />A revisar
+                            </Badge>
+                          ) : null}
                         </strong>
                         <span className="block break-words text-xs text-muted-foreground">
                           {formatDate(movement.date)} · {movement.meta}
@@ -753,11 +781,22 @@ export function ExpensesExplorerSection({
                             : '—'}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          {movement.type === 'expense'
-                            ? movement.expense.status === ExpenseStatus.PAID
-                              ? 'Pagado'
-                              : 'Pendiente'
-                            : 'Ingreso'}
+                          <div className="flex flex-wrap items-center gap-1">
+                            {movement.type === 'expense'
+                              ? movement.expense.status === ExpenseStatus.PAID
+                                ? 'Pagado'
+                                : 'Pendiente'
+                              : 'Ingreso'}
+                            {movement.type === 'expense' &&
+                            movement.expense.needsClosingDayReview ? (
+                              <Badge
+                                variant="secondary"
+                                className="gap-1 text-[10px] text-amber-700 dark:text-amber-300"
+                              >
+                                <AlertTriangle className="size-3" />A revisar
+                              </Badge>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">
                           <span className="sr-only">
@@ -904,6 +943,30 @@ export function ExpensesExplorerSection({
                   Este movimiento es una ocurrencia recurrente. Las acciones de
                   abajo afectan solamente esta fecha.
                 </p>
+              ) : null}
+              {detailMovement.type === 'expense' &&
+              detailMovement.expense.needsClosingDayReview ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <AlertTriangle className="size-4 shrink-0" />A revisar
+                  </p>
+                  <p className="text-xs">
+                    Cae justo el día de cierre de la tarjeta. Hasta que llegue
+                    el resumen no se sabe si entra en este ciclo o en el
+                    siguiente. Confirmalo cuando lo verifiques, o cambiá la
+                    fecha si en realidad corresponde al próximo resumen.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-fit border-amber-300 bg-transparent text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-100 dark:hover:bg-amber-950"
+                    onClick={() =>
+                      void handleConfirmClosingDay(detailMovement.id)
+                    }
+                  >
+                    Confirmar que va en este resumen
+                  </Button>
+                </div>
               ) : null}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button

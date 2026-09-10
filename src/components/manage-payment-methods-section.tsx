@@ -302,8 +302,8 @@ export function ManagePaymentMethodsSection({
 
     if (formData.kind === 'credit' && formData.closingDay.trim()) {
       const closingDay = Number(formData.closingDay);
-      if (closingDay < 1 || closingDay > 28) {
-        toast.error('El día de cierre debe estar entre 1 y 28');
+      if (closingDay < 1 || closingDay > 31) {
+        toast.error('El día de cierre debe estar entre 1 y 31');
         return;
       }
     }
@@ -441,7 +441,7 @@ export function ManagePaymentMethodsSection({
         {methods.map((method) => (
           <li
             key={method._id}
-            className="flex items-start justify-between gap-3 rounded-xl border bg-card px-4 py-3"
+            className="flex flex-col gap-3 rounded-xl border bg-card px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
           >
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -500,7 +500,7 @@ export function ManagePaymentMethodsSection({
                 </p>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center justify-end gap-1 self-end sm:self-auto">
               {options.toggleVisibility ? (
                 <button
                   type="button"
@@ -830,7 +830,7 @@ export function ManagePaymentMethodsSection({
                   id="pm-closing"
                   type="number"
                   min={1}
-                  max={28}
+                  max={31}
                   value={formData.closingDay}
                   onChange={(event) =>
                     setFormData((prev) => ({

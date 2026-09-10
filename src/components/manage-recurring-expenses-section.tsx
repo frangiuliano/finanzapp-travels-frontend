@@ -18,6 +18,14 @@ import {
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { RecurringEscalationFields } from '@/components/recurring-escalation-fields';
+import {
+  buildRecurringEscalationPayload,
+  defaultRecurringEscalationState,
+  recurringEscalationStateFromExpense,
+  validateRecurringEscalation,
+  type RecurringEscalationFormState,
+} from '@/lib/recurring-escalation';
 import { recurringExpensesService } from '@/services/recurringExpensesService';
 import type { RecurringExpense } from '@/types/recurring-expense';
 import { formatCurrency, getCurrentYearMonth } from '@/lib/utils';
@@ -32,6 +40,7 @@ interface FormState {
   amount: string;
   dayOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
+  escalation: RecurringEscalationFormState;
 }
 
 const emptyForm: FormState = {
@@ -39,6 +48,7 @@ const emptyForm: FormState = {
   amount: '',
   dayOfMonth: [1],
   amountChangeScope: 'from_month',
+  escalation: defaultRecurringEscalationState,
 };
 
 export function ManageRecurringExpensesSection({
@@ -84,6 +94,7 @@ export function ManageRecurringExpensesSection({
       amount: formatMoneyInputFromNumber(item.amount),
       dayOfMonth: [item.dayOfMonth],
       amountChangeScope: 'from_month',
+      escalation: recurringEscalationStateFromExpense(item),
     });
     setSheetOpen(true);
   };
@@ -103,6 +114,11 @@ export function ManageRecurringExpensesSection({
       toast.error('Seleccioná el día del mes');
       return;
     }
+    const escalationError = validateRecurringEscalation(formData.escalation);
+    if (escalationError) {
+      toast.error(escalationError);
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -113,6 +129,9 @@ export function ManageRecurringExpensesSection({
         dayOfMonth: formData.dayOfMonth[0],
         amountChangeScope: formData.amountChangeScope,
         amountChangeYearMonth: getCurrentYearMonth(),
+        ...(formData.escalation.enabled
+          ? buildRecurringEscalationPayload(formData.escalation)
+          : { disableEscalation: true }),
       };
 
       await recurringExpensesService.update(editingItem._id, payload);
@@ -179,6 +198,15 @@ export function ManageRecurringExpensesSection({
                 <p className="text-xs text-muted-foreground">
                   Día {item.dayOfMonth} ·{' '}
                   {formatCurrency(item.amount, item.currency)}
+                  {item.escalationType &&
+                  item.escalationValue &&
+                  item.escalationFrequencyMonths
+                    ? ` · +${
+                        item.escalationType === 'percent'
+                          ? `${item.escalationValue}%`
+                          : formatCurrency(item.escalationValue, item.currency)
+                      } cada ${item.escalationFrequencyMonths} ${item.escalationFrequencyMonths === 1 ? 'mes' : 'meses'}`
+                    : ''}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1">
@@ -262,6 +290,17 @@ export function ManageRecurringExpensesSection({
               </SelectContent>
             </Select>
           </div>
+
+          <RecurringEscalationFields
+            value={formData.escalation}
+            onChange={(escalation) =>
+              setFormData((prev) => ({ ...prev, escalation }))
+            }
+            disabled={isSaving}
+            currency={currency}
+            idPrefix="recurring-edit-escalation"
+          />
+
           <Button
             className="w-full"
             onClick={() => void handleSubmit()}
