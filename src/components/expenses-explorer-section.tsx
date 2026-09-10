@@ -58,7 +58,6 @@ import {
   writeHomeMonthView,
   type HomeMonthView,
 } from '@/lib/expense-month-attribution';
-import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import { expensesService } from '@/services/expensesService';
 import { incomesService } from '@/services/incomesService';
 import { forecastService } from '@/services/forecastService';
@@ -203,12 +202,11 @@ export function ExpensesExplorerSection({
     const load = async () => {
       setIsLoading(true);
       try {
-        const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
-        const { expenses: items } = await expensesService.listExpenses(
+        const { expenses: items } = await expensesService.listExpensesByMonth(
           board._id,
+          yearMonth,
+          monthView,
           {
-            from,
-            to,
             paymentMethodId:
               paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
             categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
@@ -521,11 +519,8 @@ export function ExpensesExplorerSection({
     setIsExpenseDialogOpen(false);
     setSelectedExpense(null);
     setPageIndex(0);
-    const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
     void expensesService
-      .listExpenses(board._id, {
-        from,
-        to,
+      .listExpensesByMonth(board._id, yearMonth, monthView, {
         paymentMethodId:
           paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
         categoryId: categoryId === ALL_FILTER ? undefined : categoryId,

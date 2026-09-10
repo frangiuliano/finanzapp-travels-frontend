@@ -33,7 +33,6 @@ import {
   expenseBelongsToYearMonth,
   type HomeMonthView,
 } from '@/lib/expense-month-attribution';
-import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
@@ -108,7 +107,6 @@ export function EverydayBoardHome({
     const load = async () => {
       setIsLoading(true);
       try {
-        const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
         const [forecastResult, progressResult, incomesResult, expensesResult] =
           await Promise.all([
             forecastService
@@ -124,7 +122,7 @@ export function EverydayBoardHome({
               .then(({ incomes }) => incomes)
               .catch(() => []),
             expensesService
-              .listExpenses(board._id, { from, to })
+              .listExpensesByMonth(board._id, yearMonth, monthView)
               .then(({ expenses }) => expenses)
               .catch(() => []),
           ]);
