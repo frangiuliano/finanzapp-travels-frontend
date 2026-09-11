@@ -49,7 +49,6 @@ import {
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useIncomesChangedRefresh } from '@/hooks/useIncomesChangedRefresh';
-import { getExpenseAmountInBoardCurrency } from '@/lib/expense-currency';
 import { expensesService } from '@/services/expensesService';
 import { incomesService } from '@/services/incomesService';
 import { forecastService } from '@/services/forecastService';
@@ -359,19 +358,18 @@ export function ExpensesExplorerSection({
   const totals = useMemo(() => {
     let expenseTotal = 0;
     let incomeTotal = 0;
-    let excludedExpenses = 0;
-    let excludedIncomes = 0;
+    const expensesByCurrency = new Map<string, number>();
+    const incomesByCurrency = new Map<string, number>();
 
     for (const expense of expenses) {
-      const amount = getExpenseAmountInBoardCurrency(
-        expense,
-        board.baseCurrency,
-      );
-      if (amount == null) {
-        excludedExpenses += 1;
-        continue;
+      if (expense.currency === board.baseCurrency) {
+        expenseTotal += expense.amount;
+      } else {
+        expensesByCurrency.set(
+          expense.currency,
+          (expensesByCurrency.get(expense.currency) ?? 0) + expense.amount,
+        );
       }
-      expenseTotal += amount;
     }
 
     for (const installment of visibleProjectedInstallments) {
@@ -379,18 +377,25 @@ export function ExpensesExplorerSection({
     }
 
     for (const income of incomes) {
-      if (income.currency !== board.baseCurrency) {
-        excludedIncomes += 1;
-        continue;
+      if (income.currency === board.baseCurrency) {
+        incomeTotal += income.amount;
+      } else {
+        incomesByCurrency.set(
+          income.currency,
+          (incomesByCurrency.get(income.currency) ?? 0) + income.amount,
+        );
       }
-      incomeTotal += income.amount;
     }
 
     return {
       expenseTotal,
       incomeTotal,
-      excludedExpenses,
-      excludedIncomes,
+      expensesByCurrency: [...expensesByCurrency.entries()].map(
+        ([currency, total]) => ({ currency, total }),
+      ),
+      incomesByCurrency: [...incomesByCurrency.entries()].map(
+        ([currency, total]) => ({ currency, total }),
+      ),
     };
   }, [expenses, visibleProjectedInstallments, incomes, board.baseCurrency]);
 
@@ -623,13 +628,6 @@ export function ExpensesExplorerSection({
                 : totals.expenseTotal,
             currency: board.baseCurrency,
             sign: movementType === 'income' ? '+' : '−',
-            description:
-              !isMovementLoading &&
-              (movementType === 'income'
-                ? totals.excludedIncomes
-                : totals.excludedExpenses) > 0
-                ? `${movementType === 'income' ? totals.excludedIncomes : totals.excludedExpenses} en otra moneda no incluidos.`
-                : undefined,
           },
           ...(movementType === 'all'
             ? [
@@ -638,12 +636,24 @@ export function ExpensesExplorerSection({
                   value: totals.incomeTotal,
                   currency: board.baseCurrency,
                   sign: '+' as const,
-                  description:
-                    !isMovementLoading && totals.excludedIncomes > 0
-                      ? `${totals.excludedIncomes} ingresos en otra moneda no incluidos.`
-                      : undefined,
                 },
               ]
+            : []),
+          ...(movementType !== 'income'
+            ? totals.expensesByCurrency.map((entry) => ({
+                label: `Gastos en ${entry.currency}`,
+                value: entry.total,
+                currency: entry.currency,
+                sign: '−' as const,
+              }))
+            : []),
+          ...(movementType !== 'expense'
+            ? totals.incomesByCurrency.map((entry) => ({
+                label: `Ingresos en ${entry.currency}`,
+                value: entry.total,
+                currency: entry.currency,
+                sign: '+' as const,
+              }))
             : []),
         ]}
       />

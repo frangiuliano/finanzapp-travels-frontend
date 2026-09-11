@@ -1,3 +1,5 @@
+import type { CurrencyBreakdownEntry } from '@/types/currency-breakdown';
+
 export interface ForecastLineItem {
   id: string;
   label: string;
@@ -23,6 +25,8 @@ export interface MonthlyForecast {
     totalIncomes: number;
     totalExpenses: number;
     remaining: number;
+    incomesByCurrency: CurrencyBreakdownEntry[];
+    expensesByCurrency: CurrencyBreakdownEntry[];
   };
   planned: {
     incomes: ForecastLineItem[];
@@ -31,5 +35,7 @@ export interface MonthlyForecast {
     totalIncomes: number;
     totalOutflows: number;
     projectedRemaining: number;
+    incomesByCurrency: CurrencyBreakdownEntry[];
+    outflowsByCurrency: CurrencyBreakdownEntry[];
   };
 }

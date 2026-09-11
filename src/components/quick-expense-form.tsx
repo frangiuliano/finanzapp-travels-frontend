@@ -694,9 +694,13 @@ export function QuickExpenseForm({
       nextErrors.paymentYearMonth = 'Seleccioná el mes de pago';
     }
 
-    const description = note.trim() || selectedCategory?.name || '';
-    if (description.length < 3) {
-      nextErrors.note = 'La nota debe tener al menos 3 caracteres';
+    const isRecurringOrInstallmentCreate =
+      isEveryday &&
+      !isEditing &&
+      (isRecurring || (showInstallments && parsedInstallments > 1));
+
+    if (!isRecurringOrInstallmentCreate && !merchantName.trim()) {
+      nextErrors.merchantName = 'El comercio es obligatorio';
     }
 
     if (isEveryday && !isEditing && isRecurring) {
@@ -795,7 +799,8 @@ export function QuickExpenseForm({
 
     try {
       const numAmount = parseMoneyInput(amount)!;
-      const description = note.trim() || selectedCategory?.name || 'Gasto';
+      const description =
+        note.trim() || merchantName.trim() || selectedCategory?.name || 'Gasto';
       const fxRateOverride = resolveFxOverride();
 
       if (isEveryday && !isEditing && isRecurring) {
@@ -855,6 +860,7 @@ export function QuickExpenseForm({
         currency: expenseCurrency,
         fxRateOverride,
         description,
+        merchantName: merchantName.trim() || undefined,
         categoryId,
         paymentMethodId,
         expenseDate: localDateToIso(expenseDate),
@@ -864,7 +870,6 @@ export function QuickExpenseForm({
       if (isTravel) {
         payload.paidByParticipantId = paidByParticipantId;
         payload.status = status;
-        payload.merchantName = merchantName.trim() || undefined;
         if (budgetId && budgetId !== 'none') {
           payload.budgetId = budgetId;
         }
@@ -1169,20 +1174,36 @@ export function QuickExpenseForm({
           htmlFor="quick-merchant"
           className="text-muted-foreground text-xs"
         >
-          Comercio (opcional)
+          Comercio
         </Label>
         <Input
           id="quick-merchant"
+          aria-invalid={Boolean(errors.merchantName)}
+          aria-describedby={
+            errors.merchantName ? 'quick-merchant-error' : undefined
+          }
           value={merchantName}
           onChange={(event) => setMerchantName(event.target.value)}
           placeholder="Ej. Restaurante, farmacia…"
-          className="rounded-xl"
+          className={cn(
+            'rounded-xl',
+            errors.merchantName && 'border-destructive',
+          )}
         />
+        {errors.merchantName ? (
+          <p
+            id="quick-merchant-error"
+            role="alert"
+            className="text-destructive text-xs"
+          >
+            {errors.merchantName}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="quick-note" className="text-muted-foreground text-xs">
-          Descripción
+          Descripción (opcional)
         </Label>
         <Input
           id="quick-note"

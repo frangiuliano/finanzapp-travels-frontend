@@ -132,7 +132,7 @@ export interface CreateExpenseDto {
   amount: number;
   currency?: string;
   fxRateOverride?: number;
-  description: string;
+  description?: string;
   merchantName?: string;
   tags?: string[];
   category?: string;

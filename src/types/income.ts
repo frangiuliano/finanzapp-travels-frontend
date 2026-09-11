@@ -1,4 +1,5 @@
 import type { SupportedCurrency } from '@/constants/currencies';
+import type { CurrencyBreakdownEntry } from '@/types/currency-breakdown';
 
 export enum IncomeStatus {
   PENDING = 'pending',
@@ -27,10 +28,8 @@ export interface MonthlyBoardSummary {
   totalIncomes: number;
   totalExpenses: number;
   remaining: number;
-  excludedDueToCurrencyMismatch: {
-    incomes: number;
-    expenses: number;
-  };
+  incomesByCurrency: CurrencyBreakdownEntry[];
+  expensesByCurrency: CurrencyBreakdownEntry[];
 }
 
 export interface CreateIncomeDto {

@@ -13,12 +13,14 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { formatCurrency } from '@/lib/utils';
+import type { CurrencyBreakdownEntry } from '@/types/currency-breakdown';
 
 export interface BreakdownChartItem {
   id: string;
   label: string;
   total: number;
   count: number;
+  otherCurrencyTotals?: CurrencyBreakdownEntry[];
 }
 
 interface ReportsBreakdownChartProps {
@@ -46,7 +48,11 @@ export function ReportsBreakdownChart({
   emptyMessage,
 }: ReportsBreakdownChartProps) {
   const chartData = items
-    .filter((item) => item.total > 0)
+    .filter(
+      (item) =>
+        item.total > 0 ||
+        item.otherCurrencyTotals?.some((entry) => entry.total > 0),
+    )
     .sort((a, b) => b.total - a.total)
     .map((item) => ({
       id: item.id,
@@ -55,6 +61,7 @@ export function ReportsBreakdownChart({
       fullLabel: item.label,
       total: item.total,
       count: item.count,
+      otherCurrencyTotals: item.otherCurrencyTotals ?? [],
     }));
 
   return (
@@ -130,9 +137,21 @@ export function ReportsBreakdownChart({
                       {item.count} movimiento{item.count === 1 ? '' : 's'}
                     </p>
                   </div>
-                  <span className="shrink-0 font-medium tabular-nums">
-                    {formatCurrency(item.total, currency)}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    {item.total > 0 || item.otherCurrencyTotals.length === 0 ? (
+                      <p className="font-medium tabular-nums">
+                        {formatCurrency(item.total, currency)}
+                      </p>
+                    ) : null}
+                    {item.otherCurrencyTotals.map((entry) => (
+                      <p
+                        key={entry.currency}
+                        className="text-xs text-muted-foreground tabular-nums"
+                      >
+                        {formatCurrency(entry.total, entry.currency)}
+                      </p>
+                    ))}
+                  </div>
                 </li>
               ))}
             </ul>

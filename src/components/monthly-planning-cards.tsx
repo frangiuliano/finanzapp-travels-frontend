@@ -6,9 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { StatStrip } from '@/components/stat-strip';
+import { StatStrip, type StatStripItem } from '@/components/stat-strip';
 import type { MonthlyForecast } from '@/types/forecast';
 import { formatCurrency, formatYearMonth } from '@/lib/utils';
+import { mergeCurrencyBreakdowns } from '@/lib/currency-breakdown';
 
 interface MonthlyPlanningCardsProps {
   forecast: MonthlyForecast;
@@ -23,6 +24,44 @@ export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
   const remaining = planned.projectedRemaining;
   const expenseHint = 'Gastos según su mes de pago';
 
+  const incomesByCurrency = mergeCurrencyBreakdowns(
+    actual.incomesByCurrency,
+    planned.incomesByCurrency,
+  );
+  const expensesByCurrency = mergeCurrencyBreakdowns(
+    actual.expensesByCurrency,
+    planned.outflowsByCurrency,
+  );
+
+  const items: StatStripItem[] = [
+    {
+      label: 'Ingresos',
+      value: incomeTotal,
+      currency,
+      description: isFutureMonth
+        ? 'Recurrentes del mes'
+        : `Plan: ${formatCurrency(planned.totalIncomes, currency)}`,
+    },
+    {
+      label: 'Gastos',
+      value: expenseTotal,
+      currency,
+      description: isFutureMonth
+        ? 'Fijos + cuotas'
+        : `Fijos/cuotas: ${formatCurrency(planned.totalOutflows, currency)}`,
+    },
+    ...incomesByCurrency.map((entry) => ({
+      label: `Ingresos en ${entry.currency}`,
+      value: entry.total,
+      currency: entry.currency,
+    })),
+    ...expensesByCurrency.map((entry) => ({
+      label: `Gastos en ${entry.currency}`,
+      value: entry.total,
+      currency: entry.currency,
+    })),
+  ];
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground capitalize">{monthLabel}</p>
@@ -33,27 +72,7 @@ export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
         </p>
       ) : null}
 
-      <StatStrip
-        centered
-        items={[
-          {
-            label: 'Ingresos',
-            value: incomeTotal,
-            currency,
-            description: isFutureMonth
-              ? 'Recurrentes del mes'
-              : `Plan: ${formatCurrency(planned.totalIncomes, currency)}`,
-          },
-          {
-            label: 'Gastos',
-            value: expenseTotal,
-            currency,
-            description: isFutureMonth
-              ? 'Fijos + cuotas'
-              : `Fijos/cuotas: ${formatCurrency(planned.totalOutflows, currency)}`,
-          },
-        ]}
-      />
+      <StatStrip centered items={items} />
       <div>
         <Card className="@container/card">
           <CardHeader className="text-center">

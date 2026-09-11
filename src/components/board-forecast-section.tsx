@@ -19,7 +19,6 @@ interface BoardForecastSectionProps {
   incomes: ForecastLineItem[];
   fixedExpenses: ForecastLineItem[];
   installments: ForecastLineItem[];
-  currency: string;
   isFutureMonth: boolean;
   onRefresh?: () => void;
 }
@@ -34,13 +33,11 @@ function statusLabel(status?: ForecastLineItem['status']) {
 function ForecastList({
   title,
   items,
-  currency,
   amountClassName,
   onRefresh,
 }: {
   title: string;
   items: ForecastLineItem[];
-  currency: string;
   amountClassName?: string;
   onRefresh?: () => void;
 }) {
@@ -114,7 +111,7 @@ function ForecastList({
                 <span
                   className={`text-sm font-medium tabular-nums ${amountClassName ?? ''}`}
                 >
-                  {formatCurrency(item.amount, currency)}
+                  {formatCurrency(item.amount, item.currency)}
                 </span>
                 {item.status === 'pending' &&
                 item.kind === 'recurring-income' ? (
@@ -160,7 +157,6 @@ export function BoardForecastSection({
   incomes,
   fixedExpenses,
   installments,
-  currency,
   isFutureMonth,
   onRefresh,
 }: BoardForecastSectionProps) {
@@ -201,21 +197,18 @@ export function BoardForecastSection({
         <ForecastList
           title="Ingresos recurrentes"
           items={incomes}
-          currency={currency}
           amountClassName="text-emerald-700 dark:text-emerald-400"
           onRefresh={onRefresh}
         />
         <ForecastList
           title="Gastos fijos"
           items={fixedExpenses}
-          currency={currency}
           amountClassName="text-rose-700 dark:text-rose-400"
           onRefresh={onRefresh}
         />
         <ForecastList
           title="Cuotas de tarjeta"
           items={installments}
-          currency={currency}
           amountClassName="text-rose-700 dark:text-rose-400"
           onRefresh={onRefresh}
         />

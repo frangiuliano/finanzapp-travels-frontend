@@ -376,7 +376,6 @@ export function EverydayBoardHome({
           incomes={forecast.planned.incomes}
           fixedExpenses={forecast.planned.fixedExpenses}
           installments={forecast.planned.installments}
-          currency={currency}
           isFutureMonth={forecast.isFutureMonth}
           onRefresh={onRefresh}
         />

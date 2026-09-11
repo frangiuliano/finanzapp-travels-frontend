@@ -105,6 +105,7 @@ export default function ReportsPage() {
         label: item.categoryName,
         total: item.total,
         count: item.count,
+        otherCurrencyTotals: item.otherCurrencyTotals,
       })),
     [calendarReport?.byCategory],
   );
@@ -118,6 +119,7 @@ export default function ReportsPage() {
           : item.paymentMethodName,
         total: item.total,
         count: item.count,
+        otherCurrencyTotals: item.otherCurrencyTotals,
       })),
     [calendarReport?.byPaymentMethod],
   );
@@ -212,7 +214,6 @@ export default function ReportsPage() {
                 incomes={forecast.planned.incomes}
                 fixedExpenses={forecast.planned.fixedExpenses}
                 installments={forecast.planned.installments}
-                currency={forecast.currency}
                 isFutureMonth={forecast.isFutureMonth}
               />
               {calendarReport.totalIncomes === 0 &&
