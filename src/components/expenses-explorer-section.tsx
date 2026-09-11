@@ -11,6 +11,9 @@ import {
   WalletIcon,
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   SearchIcon,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -131,6 +134,53 @@ function getMovementAmountDisplay(movement: {
   return { sign: '−', amount: movement.amount };
 }
 
+type SortDirection = 'asc' | 'desc';
+type MovementSortField =
+  | 'createdAt'
+  | 'date'
+  | 'label'
+  | 'categoryLabel'
+  | 'paymentMethodLabel'
+  | 'statusLabel'
+  | 'amount';
+
+type SortableMovement = {
+  date: string;
+  createdAt: string;
+  label: string;
+  categoryLabel: string;
+  paymentMethodLabel: string;
+  statusLabel: string;
+  type: 'expense' | 'income' | 'installment';
+  amount: number;
+};
+
+function compareMovements(
+  a: SortableMovement,
+  b: SortableMovement,
+  field: MovementSortField,
+  direction: SortDirection,
+): number {
+  const dir = direction === 'asc' ? 1 : -1;
+  switch (field) {
+    case 'amount':
+      return (
+        dir *
+        (getMovementAmountDisplay(a).amount -
+          getMovementAmountDisplay(b).amount)
+      );
+    case 'date':
+      return dir * (new Date(a.date).getTime() - new Date(b.date).getTime());
+    case 'createdAt':
+      return (
+        dir *
+        (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      );
+    default:
+      return dir * a[field].localeCompare(b[field], 'es');
+  }
+}
+
 export function ExpensesExplorerSection({
   board,
   initialYearMonth,
@@ -145,6 +195,8 @@ export function ExpensesExplorerSection({
   const [categoryId, setCategoryId] = useState(ALL_FILTER);
   const [status, setStatus] = useState(ALL_FILTER);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<MovementSortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [projectedInstallments, setProjectedInstallments] = useState<
     ForecastLineItem[]
@@ -331,17 +383,32 @@ export function ExpensesExplorerSection({
   }, [projectedInstallments, categoryId, status, paymentMethodId]);
 
   const movements = useMemo(
-    () =>
-      [
-        ...(movementType !== 'income'
-          ? expenses.map((expense) => ({
+    () => [
+      ...(movementType !== 'income'
+        ? expenses.map((expense) => {
+            const categoryLabel =
+              getExpenseCategoryLabel(expense.category) || 'Gasto';
+            const paymentMethodLabel = resolvePaymentMethodLabel(
+              expense,
+              paymentMethodNameById,
+            );
+            const statusLabel = expense.isRefund
+              ? 'Devolución'
+              : expense.status === ExpenseStatus.PAID
+                ? 'Pagado'
+                : 'Próximo';
+            return {
               id: expense._id,
               type: 'expense' as const,
               date: expense.expenseDate || expense.createdAt,
+              createdAt: expense.createdAt,
               label: expense.description,
+              categoryLabel,
+              paymentMethodLabel,
+              statusLabel,
               meta: [
-                getExpenseCategoryLabel(expense.category) || 'Gasto',
-                resolvePaymentMethodLabel(expense, paymentMethodNameById),
+                categoryLabel,
+                paymentMethodLabel,
                 expense.installmentNumber != null &&
                 expense.installmentTotalInstallments
                   ? `Cuota ${expense.installmentNumber}/${expense.installmentTotalInstallments}`
@@ -357,33 +424,53 @@ export function ExpensesExplorerSection({
               amount: expense.amount,
               currency: expense.currency,
               expense,
-            }))
-          : []),
-        ...(movementType !== 'income'
-          ? visibleProjectedInstallments.map((installment) => ({
+            };
+          })
+        : []),
+      ...(movementType !== 'income'
+        ? visibleProjectedInstallments.map((installment) => {
+            const date = `${yearMonth}-${String(installment.dayOfMonth).padStart(2, '0')}T12:00:00.000Z`;
+            const paymentMethodLabel = installment.meta?.paymentMethodId
+              ? (paymentMethodNameById.get(installment.meta.paymentMethodId) ??
+                'Sin medio')
+              : 'Sin medio';
+            return {
               id: installment.id,
               type: 'installment' as const,
-              date: `${yearMonth}-${String(installment.dayOfMonth).padStart(2, '0')}T12:00:00.000Z`,
+              date,
+              createdAt: date,
               label: installment.label,
-              meta: `Cuota ${installment.meta?.installmentNumber}/${installment.meta?.totalInstallments} · ${installment.meta?.paymentMethodId ? (paymentMethodNameById.get(installment.meta.paymentMethodId) ?? 'Sin medio') : 'Sin medio'} · Proyectado`,
+              categoryLabel: '—',
+              paymentMethodLabel,
+              statusLabel: 'Proyectado',
+              meta: `Cuota ${installment.meta?.installmentNumber}/${installment.meta?.totalInstallments} · ${paymentMethodLabel} · Proyectado`,
               amount: installment.amount,
               currency: installment.currency,
               installment,
-            }))
-          : []),
-        ...(movementType !== 'expense'
-          ? incomes.map((income) => ({
+            };
+          })
+        : []),
+      ...(movementType !== 'expense'
+        ? incomes.map((income) => {
+            const statusLabel =
+              income.status === 'pending' ? 'Pendiente' : 'Cobrado';
+            return {
               id: income._id,
               type: 'income' as const,
               date: income.incomeDate,
+              createdAt: income.createdAt,
               label: income.label,
-              meta: `${income.recurringIncomeId ? 'Ingreso recurrente' : 'Ingreso puntual'} · ${income.status === 'pending' ? 'Pendiente' : 'Cobrado'}`,
+              categoryLabel: 'Ingreso',
+              paymentMethodLabel: '—',
+              statusLabel,
+              meta: `${income.recurringIncomeId ? 'Ingreso recurrente' : 'Ingreso puntual'} · ${statusLabel}`,
               amount: income.amount,
               currency: income.currency,
               income,
-            }))
-          : []),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+            };
+          })
+        : []),
+    ],
     [
       expenses,
       visibleProjectedInstallments,
@@ -402,10 +489,57 @@ export function ExpensesExplorerSection({
     );
   }, [movements, searchQuery]);
 
+  const sortedMovements = useMemo(
+    () =>
+      [...filteredMovements].sort((a, b) =>
+        compareMovements(a, b, sortField, sortDirection),
+      ),
+    [filteredMovements, sortField, sortDirection],
+  );
+
+  const handleSort = (field: MovementSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    setPageIndex(0);
+  };
+
+  const renderSortIcon = (field: MovementSortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="size-3.5 opacity-40" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="size-3.5" />
+    ) : (
+      <ArrowDown className="size-3.5" />
+    );
+  };
+
+  const renderSortButton = (
+    field: MovementSortField,
+    label: string,
+    align: 'start' | 'end' = 'start',
+  ) => (
+    <button
+      type="button"
+      onClick={() => handleSort(field)}
+      className={cn(
+        'flex items-center gap-1 hover:text-foreground',
+        align === 'end' && 'ml-auto',
+      )}
+    >
+      {label}
+      {renderSortIcon(field)}
+    </button>
+  );
+
   const pageSize = 15;
-  const pageCount = Math.max(1, Math.ceil(filteredMovements.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(sortedMovements.length / pageSize));
   const currentPage = Math.min(pageIndex, pageCount - 1);
-  const pageMovements = filteredMovements.slice(
+  const pageMovements = sortedMovements.slice(
     currentPage * pageSize,
     currentPage * pageSize + pageSize,
   );
@@ -595,6 +729,49 @@ export function ExpensesExplorerSection({
           className="rounded-xl pl-9"
           aria-label="Buscar movimientos"
         />
+      </div>
+
+      <div className="flex items-center gap-2 sm:hidden">
+        <Select
+          value={sortField}
+          onValueChange={(value) => handleSort(value as MovementSortField)}
+        >
+          <SelectTrigger
+            className="rounded-xl"
+            aria-label="Ordenar movimientos por"
+          >
+            <SelectValue placeholder="Ordenar por" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="createdAt">Último cargado</SelectItem>
+            <SelectItem value="date">Fecha</SelectItem>
+            <SelectItem value="label">Descripción</SelectItem>
+            <SelectItem value="categoryLabel">Categoría</SelectItem>
+            <SelectItem value="paymentMethodLabel">Medio de pago</SelectItem>
+            <SelectItem value="statusLabel">Estado</SelectItem>
+            <SelectItem value="amount">Monto</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 rounded-xl"
+          onClick={() =>
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+          }
+          aria-label={
+            sortDirection === 'asc'
+              ? 'Orden ascendente, tocar para invertir'
+              : 'Orden descendente, tocar para invertir'
+          }
+        >
+          {sortDirection === 'asc' ? (
+            <ArrowUp className="size-4" />
+          ) : (
+            <ArrowDown className="size-4" />
+          )}
+        </Button>
       </div>
 
       {movementType !== 'income' ? (
@@ -830,18 +1007,22 @@ export function ExpensesExplorerSection({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Descripción</TableHead>
+                      <TableHead>{renderSortButton('date', 'Fecha')}</TableHead>
+                      <TableHead>
+                        {renderSortButton('label', 'Descripción')}
+                      </TableHead>
                       <TableHead className="hidden sm:table-cell">
-                        Categoría
+                        {renderSortButton('categoryLabel', 'Categoría')}
                       </TableHead>
                       <TableHead className="hidden md:table-cell">
-                        Medio
+                        {renderSortButton('paymentMethodLabel', 'Medio')}
                       </TableHead>
                       <TableHead className="hidden lg:table-cell">
-                        Estado
+                        {renderSortButton('statusLabel', 'Estado')}
                       </TableHead>
-                      <TableHead className="text-right">Monto</TableHead>
+                      <TableHead className="text-right">
+                        {renderSortButton('amount', 'Monto', 'end')}
+                      </TableHead>
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
@@ -877,38 +1058,14 @@ export function ExpensesExplorerSection({
                           </span>
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
-                          {movement.type === 'expense'
-                            ? getExpenseCategoryLabel(
-                                movement.expense.category,
-                              ) || '—'
-                            : movement.type === 'income'
-                              ? 'Ingreso'
-                              : '—'}
+                          {movement.categoryLabel}
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground md:table-cell">
-                          {movement.type === 'expense'
-                            ? resolvePaymentMethodLabel(
-                                movement.expense,
-                                paymentMethodNameById,
-                              )
-                            : movement.type === 'installment' &&
-                                movement.installment.meta?.paymentMethodId
-                              ? (paymentMethodNameById.get(
-                                  movement.installment.meta.paymentMethodId,
-                                ) ?? 'Sin medio')
-                              : '—'}
+                          {movement.paymentMethodLabel}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex flex-wrap items-center gap-1">
-                            {movement.type === 'expense'
-                              ? movement.expense.isRefund
-                                ? 'Devolución'
-                                : movement.expense.status === ExpenseStatus.PAID
-                                  ? 'Pagado'
-                                  : 'Próximo'
-                              : movement.type === 'installment'
-                                ? 'Proyectado'
-                                : 'Ingreso'}
+                            {movement.statusLabel}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-semibold tabular-nums">
