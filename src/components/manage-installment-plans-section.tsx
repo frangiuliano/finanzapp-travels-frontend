@@ -19,8 +19,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { installmentPlansService } from '@/services/installmentPlansService';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
+import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
+import { formatPaymentMethodLabel } from '@/lib/format-payment-method-label';
 import type {
   InstallmentOverridePolicy,
   InstallmentPlan,
@@ -33,6 +42,8 @@ import {
   getCurrentYearMonth,
   shiftYearMonth,
 } from '@/lib/utils';
+
+const ALL_FILTER = 'all';
 
 interface ManageInstallmentPlansSectionProps {
   boardId: string;
@@ -121,6 +132,14 @@ export function ManageInstallmentPlansSection({
   currency,
 }: ManageInstallmentPlansSectionProps) {
   const { categories } = useBoardCategories(boardId);
+  const { paymentMethods } = useAvailablePaymentMethods(boardId);
+  const paymentMethodById = useMemo(
+    () => new Map(paymentMethods.map((method) => [method._id, method])),
+    [paymentMethods],
+  );
+  const [filterPaymentMethodId, setFilterPaymentMethodId] =
+    useState(ALL_FILTER);
+  const [filterCategoryId, setFilterCategoryId] = useState(ALL_FILTER);
   const [items, setItems] = useState<InstallmentPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -159,6 +178,26 @@ export function ManageInstallmentPlansSection({
       totalInstallmentsForSchedule,
       paidInstallmentsForSchedule,
     ],
+  );
+
+  const filteredItems = useMemo(
+    () =>
+      items.filter((item) => {
+        if (
+          filterPaymentMethodId !== ALL_FILTER &&
+          item.paymentMethodId !== filterPaymentMethodId
+        ) {
+          return false;
+        }
+        if (
+          filterCategoryId !== ALL_FILTER &&
+          getPlanCategoryId(item) !== filterCategoryId
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [items, filterPaymentMethodId, filterCategoryId],
   );
 
   const fetchItems = useCallback(async () => {
@@ -330,6 +369,45 @@ export function ManageInstallmentPlansSection({
         podés editarlas o eliminarlas.
       </p>
 
+      {items.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          <Select
+            value={filterPaymentMethodId}
+            onValueChange={setFilterPaymentMethodId}
+          >
+            <SelectTrigger className="w-auto rounded-xl">
+              <SelectValue placeholder="Tarjeta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER}>Todas las tarjetas</SelectItem>
+              {paymentMethods.map((method) => (
+                <SelectItem key={method._id} value={method._id}>
+                  {formatPaymentMethodLabel(method)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {categories.length > 0 ? (
+            <Select
+              value={filterCategoryId}
+              onValueChange={setFilterCategoryId}
+            >
+              <SelectTrigger className="w-auto rounded-xl">
+                <SelectValue placeholder="Categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_FILTER}>Todas las categorías</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category._id} value={category._id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+        </div>
+      ) : null}
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : items.length === 0 ? (
@@ -337,50 +415,62 @@ export function ManageInstallmentPlansSection({
           Todavía no cargaste compras en cuotas. Cargalas desde el botón + →
           Gasto, eligiendo tu tarjeta de crédito.
         </p>
+      ) : filteredItems.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Ningún plan de cuotas coincide con esos filtros.
+        </p>
       ) : (
         <ul className="divide-y rounded-xl border">
-          {items.map((item) => (
-            <li
-              key={item._id}
-              className="flex items-center justify-between gap-3 px-3 py-3"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium truncate">{item.label}</p>
-                  {!item.isActive ? (
-                    <Badge variant="secondary">Inactivo</Badge>
-                  ) : null}
-                  {getPlanCategoryLabel(item) ? (
-                    <Badge variant="outline">
-                      {getPlanCategoryLabel(item)}
-                    </Badge>
-                  ) : null}
+          {filteredItems.map((item) => {
+            const paymentMethod = item.paymentMethodId
+              ? paymentMethodById.get(item.paymentMethodId)
+              : undefined;
+            return (
+              <li
+                key={item._id}
+                className="flex items-center justify-between gap-3 px-3 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{item.label}</p>
+                    {!item.isActive ? (
+                      <Badge variant="secondary">Inactivo</Badge>
+                    ) : null}
+                    {getPlanCategoryLabel(item) ? (
+                      <Badge variant="outline">
+                        {getPlanCategoryLabel(item)}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatCurrency(item.installmentAmount, item.currency)} ·{' '}
+                    {item.paidCount}/{item.totalInstallments} pagadas · desde{' '}
+                    {item.startYearMonth} ·{' '}
+                    {paymentMethod
+                      ? formatPaymentMethodLabel(paymentMethod)
+                      : 'Sin tarjeta'}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(item.installmentAmount, item.currency)} ·{' '}
-                  {item.paidCount}/{item.totalInstallments} pagadas · desde{' '}
-                  {item.startYearMonth}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => openEdit(item)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleteTarget(item)}
-                  aria-label={`Eliminar ${item.label}`}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </li>
-          ))}
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEdit(item)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeleteTarget(item)}
+                    aria-label={`Eliminar ${item.label}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 
