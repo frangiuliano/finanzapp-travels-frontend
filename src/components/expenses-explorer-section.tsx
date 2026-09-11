@@ -76,7 +76,7 @@ import {
   cn,
   formatCurrency,
   formatDate,
-  getCurrentYearMonth,
+  getDefaultViewYearMonth,
 } from '@/lib/utils';
 import { triggerDestructiveHaptic } from '@/lib/haptics';
 
@@ -113,7 +113,7 @@ export function ExpensesExplorerSection({
   initialPaymentMethodId,
 }: ExpensesExplorerSectionProps) {
   const [yearMonth, setYearMonth] = useState(
-    initialYearMonth ?? getCurrentYearMonth(),
+    initialYearMonth ?? getDefaultViewYearMonth(),
   );
   const [paymentMethodId, setPaymentMethodId] = useState(
     initialPaymentMethodId ?? ALL_FILTER,

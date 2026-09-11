@@ -17,6 +17,11 @@ export function shiftYearMonth(yearMonth: string, deltaMonths: number): string {
   return getCurrentYearMonth(date);
 }
 
+/** Month a "vista" (Inicio, Movimientos, Reportes) opens on by default: next month. */
+export function getDefaultViewYearMonth(): string {
+  return shiftYearMonth(getCurrentYearMonth(), 1);
+}
+
 export function monthsBetweenYearMonths(
   fromYearMonth: string,
   toYearMonth: string,

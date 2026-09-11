@@ -24,7 +24,7 @@ import { useBoardsStore } from '@/store/boardsStore';
 import type { BoardCalendarReport } from '@/types/report';
 import type { MonthlyForecast } from '@/types/forecast';
 import { PAYMENT_METHOD_KIND_LABELS } from '@/types/payment-method';
-import { getCurrentYearMonth } from '@/lib/utils';
+import { getDefaultViewYearMonth } from '@/lib/utils';
 
 type ReportsView = 'calendar' | 'consolidated';
 
@@ -36,7 +36,7 @@ export default function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView: ReportsView =
     searchParams.get('view') === 'consolidated' ? 'consolidated' : 'calendar';
-  const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
+  const [yearMonth, setYearMonth] = useState(getDefaultViewYearMonth);
   const [calendarReport, setCalendarReport] =
     useState<BoardCalendarReport | null>(null);
   const [forecast, setForecast] = useState<MonthlyForecast | null>(null);

@@ -37,7 +37,7 @@ import { IncomeStatus, type Income } from '@/types/income';
 import {
   formatCurrency,
   formatDate,
-  getCurrentYearMonth,
+  getDefaultViewYearMonth,
   isDateInYearMonth,
 } from '@/lib/utils';
 import { triggerDestructiveHaptic } from '@/lib/haptics';
@@ -54,7 +54,7 @@ export function EverydayBoardHome({
   refreshTrigger,
   onRefresh,
 }: EverydayBoardHomeProps) {
-  const [yearMonth, setYearMonth] = useState(getCurrentYearMonth());
+  const [yearMonth, setYearMonth] = useState(getDefaultViewYearMonth());
   const { categories } = useBoardCategories(board._id);
 
   const [forecast, setForecast] = useState<MonthlyForecast | null>(null);

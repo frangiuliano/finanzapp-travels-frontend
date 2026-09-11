@@ -2,7 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Receipt } from 'lucide-react';
 import { ExpensesExplorerSection } from '@/components/expenses-explorer-section';
 import { Button } from '@/components/ui/button';
-import { getCurrentYearMonth } from '@/lib/utils';
+import { getDefaultViewYearMonth } from '@/lib/utils';
 import { useBoardsStore } from '@/store/boardsStore';
 
 export default function ExpensesPage() {
@@ -12,7 +12,7 @@ export default function ExpensesPage() {
   const [searchParams] = useSearchParams();
 
   const initialYearMonth =
-    searchParams.get('yearMonth') ?? getCurrentYearMonth();
+    searchParams.get('yearMonth') ?? getDefaultViewYearMonth();
   const initialPaymentMethodId =
     searchParams.get('paymentMethodId') ?? undefined;
 
