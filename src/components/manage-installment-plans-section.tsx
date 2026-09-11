@@ -43,6 +43,7 @@ interface FormState {
   label: string;
   installmentAmount: string;
   totalInstallments: string;
+  paidInstallments: string;
   startYearMonth: string;
   dayOfMonth: number[];
   categoryId: string;
@@ -52,6 +53,7 @@ const emptyForm = (yearMonth: string): FormState => ({
   label: '',
   installmentAmount: '',
   totalInstallments: '12',
+  paidInstallments: '0',
   startYearMonth: yearMonth,
   dayOfMonth: [10],
   categoryId: '',
@@ -141,15 +143,22 @@ export function ManageInstallmentPlansSection({
     Math.max(parseInt(formData.totalInstallments, 10) || 0, 0),
     120,
   );
-  const paidCount = editingItem?.paidCount ?? 0;
+  const paidInstallmentsForSchedule = Math.min(
+    Math.max(parseInt(formData.paidInstallments, 10) || 0, 0),
+    totalInstallmentsForSchedule,
+  );
   const schedule = useMemo(
     () =>
       Array.from({ length: totalInstallmentsForSchedule }, (_, index) => ({
         installmentNumber: index + 1,
         yearMonth: shiftYearMonth(formData.startYearMonth, index),
-        isPaid: index + 1 <= paidCount,
+        isPaid: index + 1 <= paidInstallmentsForSchedule,
       })),
-    [formData.startYearMonth, totalInstallmentsForSchedule, paidCount],
+    [
+      formData.startYearMonth,
+      totalInstallmentsForSchedule,
+      paidInstallmentsForSchedule,
+    ],
   );
 
   const fetchItems = useCallback(async () => {
@@ -180,6 +189,7 @@ export function ManageInstallmentPlansSection({
       label: item.label,
       installmentAmount: formatMoneyInputFromNumber(item.installmentAmount),
       totalInstallments: String(item.totalInstallments),
+      paidInstallments: String(item.paidInstallments),
       startYearMonth: item.startYearMonth,
       dayOfMonth: [item.dayOfMonth],
       categoryId: getPlanCategoryId(item),
@@ -205,11 +215,17 @@ export function ManageInstallmentPlansSection({
       toast.error('Cantidad de cuotas inválida');
       return null;
     }
+    const paidInstallments = parseInt(formData.paidInstallments, 10) || 0;
+    if (paidInstallments < 0 || paidInstallments > totalInstallments) {
+      toast.error('Cuotas ya pagadas inválido');
+      return null;
+    }
 
     const payload: UpdateInstallmentPlanDto = {
       label: formData.label.trim(),
       installmentAmount,
       totalInstallments,
+      paidInstallments,
       startYearMonth: formData.startYearMonth,
       currency,
     };
@@ -427,10 +443,28 @@ export function ManageInstallmentPlansSection({
               }
               disabled={isSaving}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Cuotas ya pagadas antes de cargar esto</Label>
+            <Input
+              type="number"
+              min="0"
+              max={formData.totalInstallments || undefined}
+              value={formData.paidInstallments}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  paidInstallments: e.target.value,
+                }))
+              }
+              disabled={isSaving}
+            />
             <p className="text-muted-foreground text-[11px]">
-              Ya pagadas: {editingItem?.paidCount}/
-              {editingItem?.totalInstallments}, calculado solo de las cuotas que
-              realmente ya vencieron — no es un valor que se edite a mano.
+              Pagadas en total ahora mismo: {editingItem?.paidCount}/
+              {editingItem?.totalInstallments} (incluye las que ya vencieron por
+              fecha, además de estas). Corregir este número no afecta a ninguna
+              cuota que ya esté marcada como pagada — solo ajusta cuántas se
+              asumen pagadas de antes de cargar el plan.
             </p>
           </div>
           <div className="space-y-2">

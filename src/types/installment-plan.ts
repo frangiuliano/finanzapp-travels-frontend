@@ -44,6 +44,8 @@ export interface UpdateInstallmentPlanDto {
   label?: string;
   installmentAmount?: number;
   totalInstallments?: number;
+  /** Cuotas already paid before this plan started being tracked here. */
+  paidInstallments?: number;
   startYearMonth?: string;
   paymentMethodId?: string;
   categoryId?: string;
