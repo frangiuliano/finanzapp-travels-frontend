@@ -52,12 +52,15 @@ async function runAuthBootstrap(): Promise<void> {
       const { accessToken: newToken, user: refreshedUser } = refreshRes.data;
       if (refreshedUser && newToken) {
         setAuth(refreshedUser, newToken);
-        try {
-          const profileRes = await api.get('/auth/me');
-          setAuth(profileRes.data, newToken);
-        } catch {
-          // keep partial user from refresh
-        }
+        // Non-blocking: /auth/refresh already returns a full user object,
+        // this only refines it with a live read. Don't hold up rendering
+        // (and the boards fetch that follows it) for an extra round trip.
+        void api
+          .get('/auth/me')
+          .then((profileRes) => setAuth(profileRes.data, newToken))
+          .catch(() => {
+            // keep partial user from refresh
+          });
       }
       return;
     } catch (error) {
@@ -97,12 +100,13 @@ async function runAuthBootstrap(): Promise<void> {
     const { accessToken, user: refreshedUser } = response.data;
     if (refreshedUser && accessToken) {
       setAuth(refreshedUser, accessToken);
-      try {
-        const profileRes = await api.get('/auth/me');
-        setAuth(profileRes.data, accessToken);
-      } catch {
-        // keep partial user from refresh
-      }
+      // Non-blocking, same reasoning as above.
+      void api
+        .get('/auth/me')
+        .then((profileRes) => setAuth(profileRes.data, accessToken))
+        .catch(() => {
+          // keep partial user from refresh
+        });
     } else {
       logoutForInvalidSession();
     }
