@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import {
   ChevronLeftIcon,
@@ -206,9 +207,6 @@ export function ExpensesExplorerSection({
     'all' | 'expense' | 'income'
   >('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInstallmentsLoading, setIsInstallmentsLoading] = useState(false);
-  const [isIncomeLoading, setIsIncomeLoading] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
@@ -246,119 +244,103 @@ export function ExpensesExplorerSection({
     searchQuery,
   ]);
 
+  const isMockBoard = board._id.startsWith('mock-');
+
+  const expensesQuery = useQuery({
+    queryKey: [
+      'expenses',
+      board._id,
+      yearMonth,
+      paymentMethodId,
+      categoryId,
+      status,
+      expensesChangedRefresh,
+    ],
+    queryFn: () =>
+      expensesService.listExpensesByMonth(board._id, yearMonth, {
+        paymentMethodId:
+          paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
+        categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
+        status:
+          status === ALL_FILTER || status === 'projected'
+            ? undefined
+            : (status as ExpenseStatus),
+      }),
+    enabled: !isMockBoard,
+  });
+  const isLoading = expensesQuery.isLoading;
+
   useEffect(() => {
-    if (board._id.startsWith('mock-')) {
+    if (isMockBoard) {
       setExpenses([]);
-      setIsLoading(false);
       return;
     }
-
-    let stale = false;
-
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const { expenses: items } = await expensesService.listExpensesByMonth(
-          board._id,
-          yearMonth,
-          {
-            paymentMethodId:
-              paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
-            categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
-            status:
-              status === ALL_FILTER || status === 'projected'
-                ? undefined
-                : (status as ExpenseStatus),
-          },
-        );
-
-        if (stale) return;
-
-        const filtered = (status === 'projected' ? [] : items).sort(
-          (a, b) =>
-            new Date(b.expenseDate || b.createdAt).getTime() -
-            new Date(a.expenseDate || a.createdAt).getTime(),
-        );
-
-        setExpenses(filtered);
-      } catch {
-        if (!stale) {
-          toast.error('No se pudieron cargar los gastos');
-          setExpenses([]);
-        }
-      } finally {
-        if (!stale) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      stale = true;
-    };
-  }, [
-    board._id,
-    yearMonth,
-    paymentMethodId,
-    categoryId,
-    status,
-    expensesChangedRefresh,
-  ]);
+    if (expensesQuery.data) {
+      const filtered = (
+        status === 'projected' ? [] : expensesQuery.data.expenses
+      ).sort(
+        (a, b) =>
+          new Date(b.expenseDate || b.createdAt).getTime() -
+          new Date(a.expenseDate || a.createdAt).getTime(),
+      );
+      setExpenses(filtered);
+    }
+  }, [isMockBoard, status, expensesQuery.data]);
 
   useEffect(() => {
-    if (board._id.startsWith('mock-')) {
+    if (expensesQuery.isError) {
+      toast.error('No se pudieron cargar los gastos');
+      setExpenses([]);
+    }
+  }, [expensesQuery.isError]);
+
+  const forecastQuery = useQuery({
+    queryKey: ['forecast', board._id, yearMonth, expensesChangedRefresh],
+    queryFn: () => forecastService.getMonthlyForecast(board._id, yearMonth),
+    enabled: !isMockBoard,
+  });
+  const isInstallmentsLoading = forecastQuery.isLoading;
+
+  useEffect(() => {
+    if (isMockBoard) {
       setProjectedInstallments([]);
-      setIsInstallmentsLoading(false);
       return;
     }
-
-    let stale = false;
-    setIsInstallmentsLoading(true);
-    void forecastService
-      .getMonthlyForecast(board._id, yearMonth)
-      .then(({ forecast }) => {
-        if (!stale) setProjectedInstallments(forecast.planned.installments);
-      })
-      .catch(() => {
-        if (!stale) {
-          setProjectedInstallments([]);
-          toast.error('No se pudieron cargar las cuotas proyectadas');
-        }
-      })
-      .finally(() => {
-        if (!stale) setIsInstallmentsLoading(false);
-      });
-
-    return () => {
-      stale = true;
-    };
-  }, [board._id, yearMonth, expensesChangedRefresh]);
+    if (forecastQuery.data) {
+      setProjectedInstallments(
+        forecastQuery.data.forecast.planned.installments,
+      );
+    }
+  }, [isMockBoard, forecastQuery.data]);
 
   useEffect(() => {
-    let stale = false;
-    setIsIncomeLoading(true);
-    void incomesService
-      .getIncomes(board._id)
-      .then(({ incomes: items }) => {
-        if (!stale)
-          setIncomes(
-            items.filter((item) =>
-              isDateInYearMonth(item.incomeDate, yearMonth),
-            ),
-          );
-      })
-      .catch(() => {
-        if (!stale) setIncomes([]);
-      })
-      .finally(() => {
-        if (!stale) setIsIncomeLoading(false);
-      });
-    return () => {
-      stale = true;
-    };
-  }, [board._id, yearMonth, incomesChangedRefresh]);
+    if (forecastQuery.isError) {
+      setProjectedInstallments([]);
+      toast.error('No se pudieron cargar las cuotas proyectadas');
+    }
+  }, [forecastQuery.isError]);
+
+  const incomesQuery = useQuery({
+    queryKey: ['incomes', board._id, incomesChangedRefresh],
+    queryFn: () => incomesService.getIncomes(board._id),
+  });
+  const isIncomeLoading = incomesQuery.isLoading;
+
+  useEffect(() => {
+    if (incomesQuery.data) {
+      setIncomes(
+        incomesQuery.data.incomes.filter((item) =>
+          isDateInYearMonth(item.incomeDate, yearMonth),
+        ),
+      );
+    }
+  }, [incomesQuery.data, yearMonth]);
+
+  useEffect(() => {
+    if (incomesQuery.isError) {
+      setIncomes([]);
+    }
+  }, [incomesQuery.isError]);
 
   const isMovementLoading =
     movementType === 'expense'

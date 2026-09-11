@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Column,
   ColumnDef,
@@ -335,8 +336,6 @@ export function RecentExpensesTable({
     );
   }, [showBoardCurrencyLocal]);
 
-  const [data, setData] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -348,33 +347,29 @@ export function RecentExpensesTable({
     pageSize: 5,
   });
 
+  const expensesQuery = useQuery({
+    queryKey: ['expenses', tripId, refreshTrigger],
+    queryFn: () => expensesService.getExpenses(tripId),
+    enabled: !!tripId,
+  });
+
+  const loading = expensesQuery.isLoading;
+
   useEffect(() => {
-    const fetchExpenses = async () => {
-      if (!tripId) {
-        setLoading(false);
-        return;
-      }
+    if (expensesQuery.isError) {
+      console.error('Error al cargar gastos recientes:', expensesQuery.error);
+      toast.error('Error al cargar los gastos');
+    }
+  }, [expensesQuery.isError, expensesQuery.error]);
 
-      try {
-        setLoading(true);
-        const response = await expensesService.getExpenses(tripId);
-        const expenses = response.expenses.sort(
-          (a, b) =>
-            new Date(b.expenseDate || b.createdAt).getTime() -
-            new Date(a.expenseDate || a.createdAt).getTime(),
-        );
-        setData(expenses);
-      } catch (error) {
-        console.error('Error al cargar gastos recientes:', error);
-        toast.error('Error al cargar los gastos');
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpenses();
-  }, [tripId, refreshTrigger]);
+  const data = useMemo(() => {
+    const expenses = expensesQuery.data?.expenses ?? [];
+    return [...expenses].sort(
+      (a, b) =>
+        new Date(b.expenseDate || b.createdAt).getTime() -
+        new Date(a.expenseDate || a.createdAt).getTime(),
+    );
+  }, [expensesQuery.data]);
 
   const filteredData = useMemo(() => {
     if (!yearMonth) {

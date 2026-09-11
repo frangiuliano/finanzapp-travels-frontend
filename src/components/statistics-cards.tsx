@@ -1,4 +1,5 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { CreditCardIcon, ArrowRightIcon } from 'lucide-react';
 import {
   Card,
@@ -30,50 +31,30 @@ import { ExpenseStatus } from '@/types/expense';
 import { formatDate } from '@/lib/utils';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 
+const EMPTY_EXPENSES: Expense[] = [];
+const EMPTY_DEBTS: ParticipantDebt[] = [];
+
 export function StatisticsCards() {
   const currentTrip = useTripsStore((state) => state.currentTrip);
-  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
-  const [allDebts, setAllDebts] = useState<ParticipantDebt[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedDebt, setSelectedDebt] = useState<ParticipantDebt | null>(
     null,
   );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!currentTrip) {
-        setAllExpenses([]);
-        setAllDebts([]);
-        setIsLoading(false);
-        return;
-      }
+  const expensesQuery = useQuery({
+    queryKey: ['expenses', currentTrip?._id],
+    queryFn: () => expensesService.getExpenses(currentTrip!._id),
+    enabled: !!currentTrip,
+  });
 
-      setIsLoading(true);
-      try {
-        const [expensesResult, debtsResult] = await Promise.all([
-          expensesService
-            .getExpenses(currentTrip._id)
-            .then(({ expenses }) => expenses)
-            .catch(() => []),
-          expensesService
-            .getParticipantDebts(currentTrip._id)
-            .then(({ debts }) => debts)
-            .catch(() => []),
-        ]);
+  const debtsQuery = useQuery({
+    queryKey: ['participant-debts', currentTrip?._id],
+    queryFn: () => expensesService.getParticipantDebts(currentTrip!._id),
+    enabled: !!currentTrip,
+  });
 
-        setAllExpenses(expensesResult);
-        setAllDebts(debtsResult);
-      } catch (error) {
-        console.error('Error al cargar datos de estadísticas:', error);
-        setAllExpenses([]);
-        setAllDebts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [currentTrip]);
+  const allExpenses = expensesQuery.data?.expenses ?? EMPTY_EXPENSES;
+  const allDebts = debtsQuery.data?.debts ?? EMPTY_DEBTS;
+  const isLoading = expensesQuery.isLoading || debtsQuery.isLoading;
 
   const cardsData = useMemo(() => {
     const cardMap = new Map<string, { name: string; total: number }>();

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
@@ -37,11 +38,6 @@ export default function ReportsPage() {
   const activeView: ReportsView =
     searchParams.get('view') === 'consolidated' ? 'consolidated' : 'calendar';
   const [yearMonth, setYearMonth] = useState(getDefaultViewYearMonth);
-  const [calendarReport, setCalendarReport] =
-    useState<BoardCalendarReport | null>(null);
-  const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const expensesChangedRefresh = useExpensesChangedRefresh();
 
   const handleViewChange = (value: string) => {
@@ -53,50 +49,38 @@ export default function ReportsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!activeBoard || activeBoard._id.startsWith('mock-')) {
-      setCalendarReport(null);
-      setForecast(null);
-      return;
-    }
+  const canFetchReport =
+    !!activeBoard &&
+    !activeBoard._id.startsWith('mock-') &&
+    activeView === 'calendar';
 
-    if (activeView !== 'calendar') {
-      return;
-    }
+  const reportQuery = useQuery({
+    queryKey: [
+      'board-calendar-report',
+      activeBoard?._id,
+      yearMonth,
+      expensesChangedRefresh,
+    ],
+    queryFn: () =>
+      reportsService.getBoardCalendarReport(activeBoard!._id, yearMonth),
+    enabled: canFetchReport,
+  });
 
-    let stale = false;
+  const forecastQuery = useQuery({
+    queryKey: ['forecast', activeBoard?._id, yearMonth, expensesChangedRefresh],
+    queryFn: () =>
+      forecastService.getMonthlyForecast(activeBoard!._id, yearMonth),
+    enabled: canFetchReport,
+  });
 
-    const load = async () => {
-      setIsLoading(true);
-      setLoadError(null);
-      try {
-        const [reportResult, forecastResult] = await Promise.all([
-          reportsService.getBoardCalendarReport(activeBoard._id, yearMonth),
-          forecastService.getMonthlyForecast(activeBoard._id, yearMonth),
-        ]);
-        if (!stale) {
-          setCalendarReport(reportResult.report);
-          setForecast(forecastResult.forecast);
-        }
-      } catch {
-        if (!stale) {
-          setLoadError('No se pudo cargar el reporte del mes.');
-          setCalendarReport(null);
-          setForecast(null);
-        }
-      } finally {
-        if (!stale) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      stale = true;
-    };
-  }, [activeBoard, yearMonth, activeView, expensesChangedRefresh]);
+  const isLoading = reportQuery.isLoading || forecastQuery.isLoading;
+  const calendarReport: BoardCalendarReport | null =
+    reportQuery.data?.report ?? null;
+  const forecast: MonthlyForecast | null = forecastQuery.data?.forecast ?? null;
+  const loadError =
+    reportQuery.isError || forecastQuery.isError
+      ? 'No se pudo cargar el reporte del mes.'
+      : null;
 
   const categoryItems = useMemo(
     () =>
