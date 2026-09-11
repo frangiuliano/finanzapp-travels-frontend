@@ -152,6 +152,7 @@ export function EverydayBoardHome({
           id: expense._id,
           type: 'expense' as const,
           date: expense.expenseDate || expense.createdAt,
+          createdAt: expense.createdAt,
           label: expense.description,
           meta: expense.isRefund
             ? `${getExpenseCategoryLabel(expense.category) || 'Gasto'} · Devolución`
@@ -164,6 +165,7 @@ export function EverydayBoardHome({
           id: income._id,
           type: 'income' as const,
           date: income.incomeDate,
+          createdAt: income.createdAt,
           label: income.label,
           meta: income.recurringIncomeId
             ? 'Ingreso recurrente'
@@ -173,7 +175,12 @@ export function EverydayBoardHome({
           income,
         })),
       ]
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        // "Últimos movimientos" = orden de carga real, no la fecha informativa
+        // (expenseDate/incomeDate) que el usuario puede elegir libremente.
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
         .slice(0, 5),
     [monthExpenses, monthIncomes],
   );

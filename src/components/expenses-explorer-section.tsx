@@ -347,6 +347,10 @@ export function ExpensesExplorerSection({
                   ? `Cuota ${expense.installmentNumber}/${expense.installmentTotalInstallments}`
                   : null,
                 expense.isRefund ? 'Devolución' : null,
+                expense.merchantName &&
+                expense.merchantName !== expense.description
+                  ? expense.merchantName
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · '),
