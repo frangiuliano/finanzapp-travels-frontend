@@ -379,12 +379,20 @@ export function ExpensesExplorerSection({
               : expense.status === ExpenseStatus.PAID
                 ? 'Pagado'
                 : 'Próximo';
+            const primaryLabel = expense.merchantName || expense.description;
+            const secondaryLabel =
+              expense.merchantName &&
+              expense.description &&
+              expense.merchantName !== expense.description
+                ? expense.description
+                : null;
             return {
               id: expense._id,
               type: 'expense' as const,
               date: expense.expenseDate || expense.createdAt,
               createdAt: expense.createdAt,
-              label: expense.description,
+              label: primaryLabel,
+              secondaryLabel,
               categoryLabel,
               paymentMethodLabel,
               statusLabel,
@@ -396,10 +404,6 @@ export function ExpensesExplorerSection({
                   ? `Cuota ${expense.installmentNumber}/${expense.installmentTotalInstallments}`
                   : null,
                 expense.isRefund ? 'Devolución' : null,
-                expense.merchantName &&
-                expense.merchantName !== expense.description
-                  ? expense.merchantName
-                  : null,
               ]
                 .filter(Boolean)
                 .join(' · '),
@@ -422,6 +426,7 @@ export function ExpensesExplorerSection({
               date,
               createdAt: date,
               label: installment.label,
+              secondaryLabel: null,
               categoryLabel: '—',
               paymentMethodLabel,
               statusLabel: 'Proyectado',
@@ -442,6 +447,7 @@ export function ExpensesExplorerSection({
               date: income.incomeDate,
               createdAt: income.createdAt,
               label: income.label,
+              secondaryLabel: null,
               categoryLabel: 'Ingreso',
               paymentMethodLabel: '—',
               statusLabel,
@@ -467,7 +473,9 @@ export function ExpensesExplorerSection({
     const query = normalizeSearchText(searchQuery.trim());
     if (!query) return movements;
     return movements.filter((movement) =>
-      normalizeSearchText(`${movement.label} ${movement.meta}`).includes(query),
+      normalizeSearchText(
+        `${movement.label} ${movement.secondaryLabel ?? ''} ${movement.meta}`,
+      ).includes(query),
     );
   }, [movements, searchQuery]);
 
@@ -707,7 +715,7 @@ export function ExpensesExplorerSection({
         <Input
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Buscar por descripción, categoría o medio de pago…"
+          placeholder="Buscar por comercio, descripción, categoría o medio de pago…"
           className="rounded-xl pl-9"
           aria-label="Buscar movimientos"
         />
@@ -727,7 +735,7 @@ export function ExpensesExplorerSection({
           <SelectContent>
             <SelectItem value="createdAt">Último cargado</SelectItem>
             <SelectItem value="date">Fecha</SelectItem>
-            <SelectItem value="label">Descripción</SelectItem>
+            <SelectItem value="label">Comercio</SelectItem>
             <SelectItem value="categoryLabel">Categoría</SelectItem>
             <SelectItem value="paymentMethodLabel">Medio de pago</SelectItem>
             <SelectItem value="statusLabel">Estado</SelectItem>
@@ -966,6 +974,11 @@ export function ExpensesExplorerSection({
                             </Badge>
                           ) : null}
                         </strong>
+                        {movement.secondaryLabel ? (
+                          <span className="block break-words text-xs text-muted-foreground">
+                            {movement.secondaryLabel}
+                          </span>
+                        ) : null}
                         <span className="block break-words text-xs text-muted-foreground">
                           {formatDate(movement.date)} · {movement.meta}
                         </span>
@@ -991,7 +1004,7 @@ export function ExpensesExplorerSection({
                     <TableRow>
                       <TableHead>{renderSortButton('date', 'Fecha')}</TableHead>
                       <TableHead>
-                        {renderSortButton('label', 'Descripción')}
+                        {renderSortButton('label', 'Comercio')}
                       </TableHead>
                       <TableHead className="hidden sm:table-cell">
                         {renderSortButton('categoryLabel', 'Categoría')}
@@ -1024,6 +1037,11 @@ export function ExpensesExplorerSection({
                           <span className="block truncate">
                             {movement.label}
                           </span>
+                          {movement.secondaryLabel ? (
+                            <span className="block truncate text-xs font-normal text-muted-foreground">
+                              {movement.secondaryLabel}
+                            </span>
+                          ) : null}
                           <span className="text-xs text-muted-foreground">
                             {movement.type === 'income'
                               ? 'Ingreso'
@@ -1165,6 +1183,11 @@ export function ExpensesExplorerSection({
             <>
               <DialogHeader>
                 <DialogTitle>{detailMovement.label}</DialogTitle>
+                {detailMovement.secondaryLabel ? (
+                  <p className="text-sm text-muted-foreground">
+                    {detailMovement.secondaryLabel}
+                  </p>
+                ) : null}
                 <DialogDescription>
                   {detailMovement.type === 'income'
                     ? 'Ingreso'

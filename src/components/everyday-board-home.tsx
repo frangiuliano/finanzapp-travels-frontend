@@ -153,7 +153,13 @@ export function EverydayBoardHome({
           type: 'expense' as const,
           date: expense.expenseDate || expense.createdAt,
           createdAt: expense.createdAt,
-          label: expense.description,
+          label: expense.merchantName || expense.description,
+          secondaryLabel:
+            expense.merchantName &&
+            expense.description &&
+            expense.merchantName !== expense.description
+              ? expense.description
+              : null,
           meta: expense.isRefund
             ? `${getExpenseCategoryLabel(expense.category) || 'Gasto'} · Devolución`
             : getExpenseCategoryLabel(expense.category) || 'Gasto',
@@ -167,6 +173,7 @@ export function EverydayBoardHome({
           date: income.incomeDate,
           createdAt: income.createdAt,
           label: income.label,
+          secondaryLabel: null,
           meta: income.recurringIncomeId
             ? 'Ingreso recurrente'
             : 'Ingreso puntual',
@@ -317,6 +324,11 @@ export function EverydayBoardHome({
                     <strong className="block truncate text-sm">
                       {movement.label}
                     </strong>
+                    {movement.secondaryLabel ? (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {movement.secondaryLabel}
+                      </span>
+                    ) : null}
                     <span className="block truncate text-xs text-muted-foreground">
                       {formatDate(movement.date)} · {movement.meta}
                     </span>

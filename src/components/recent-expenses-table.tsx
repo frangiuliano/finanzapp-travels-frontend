@@ -77,7 +77,7 @@ const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
     return header;
   }
   const headerMap: Record<string, string> = {
-    description: 'Descripción',
+    description: 'Comercio',
     budget: 'Presupuesto',
     paidBy: 'Pagado por',
     paymentMethod: 'Método de pago',
@@ -99,12 +99,24 @@ const createColumns = (
   const baseColumns: ColumnDef<Expense>[] = [
     {
       accessorKey: 'description',
-      header: 'Descripción',
+      header: 'Comercio',
       cell: ({ row }) => {
         const expense = row.original;
+        const primaryLabel = expense.merchantName || expense.description;
+        const secondaryLabel =
+          expense.merchantName &&
+          expense.description &&
+          expense.merchantName !== expense.description
+            ? expense.description
+            : null;
         return (
           <div className="min-w-0 font-medium">
-            <div>{expense.description}</div>
+            <div>{primaryLabel}</div>
+            {secondaryLabel ? (
+              <div className="text-xs font-normal text-muted-foreground">
+                {secondaryLabel}
+              </div>
+            ) : null}
             {expense.sourceBoardId && expense.sourceBoardId !== tripId ? (
               <Badge
                 variant="outline"
