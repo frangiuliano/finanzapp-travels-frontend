@@ -263,25 +263,6 @@ export function EverydayBoardHome({
         </Card>
       )}
 
-      {!isLoading && forecast ? (
-        <BoardForecastSection
-          incomes={forecast.planned.incomes}
-          fixedExpenses={forecast.planned.fixedExpenses}
-          installments={forecast.planned.installments}
-          currency={currency}
-          isFutureMonth={forecast.isFutureMonth}
-          onRefresh={onRefresh}
-        />
-      ) : null}
-
-      {!isLoading && (
-        <MonthBudgetsProgress
-          progress={budgetProgress}
-          categories={categories}
-          yearMonth={yearMonth}
-        />
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Últimos movimientos</CardTitle>
@@ -389,6 +370,25 @@ export function EverydayBoardHome({
           </Button>
         </CardContent>
       </Card>
+
+      {!isLoading && forecast ? (
+        <BoardForecastSection
+          incomes={forecast.planned.incomes}
+          fixedExpenses={forecast.planned.fixedExpenses}
+          installments={forecast.planned.installments}
+          currency={currency}
+          isFutureMonth={forecast.isFutureMonth}
+          onRefresh={onRefresh}
+        />
+      ) : null}
+
+      {!isLoading && (
+        <MonthBudgetsProgress
+          progress={budgetProgress}
+          categories={categories}
+          yearMonth={yearMonth}
+        />
+      )}
 
       <CreateIncomeSheet
         open={isIncomeSheetOpen}
