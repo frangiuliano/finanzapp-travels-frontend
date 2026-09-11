@@ -113,6 +113,8 @@ export interface Expense {
   recurringExpenseId?: string;
   installmentPlanId?: string;
   installmentNumber?: number;
+  installmentTotalInstallments?: number;
+  isRefund?: boolean;
   skippedAt?: string;
   createdBy: {
     _id: string;
@@ -153,6 +155,8 @@ export interface CreateExpenseDto {
   /** Month (YYYY-MM) this expense counts toward. Mandatory for every expense. */
   paymentYearMonth: string;
   clientRequestId?: string;
+  /** True for a refund/devolución: entered as a positive amount but stored so it reduces totals instead of adding to them. */
+  isRefund?: boolean;
 }
 
 export const getExpenseCategoryLabel = (

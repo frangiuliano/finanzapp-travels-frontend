@@ -1,6 +1,5 @@
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { QuickExpenseForm } from '@/components/quick-expense-form';
-import type { ExpenseSimulatorInitialValues } from '@/components/expense-simulator-form';
 import type { Board } from '@/types/board';
 import type { Budget } from '@/types/budget';
 import type { Expense } from '@/types/expense';
@@ -14,7 +13,6 @@ interface ExpenseFormDialogProps {
   participants?: Participant[];
   expense?: Expense | null;
   onSuccess?: () => void;
-  onOpenSimulator?: (values: ExpenseSimulatorInitialValues) => void;
 }
 
 export function ExpenseFormDialog({
@@ -25,7 +23,6 @@ export function ExpenseFormDialog({
   participants,
   expense,
   onSuccess,
-  onOpenSimulator,
 }: ExpenseFormDialogProps) {
   const handleSuccess = () => {
     onSuccess?.();
@@ -47,7 +44,6 @@ export function ExpenseFormDialog({
         prefilledParticipants={participants}
         isDialog
         onSuccess={handleSuccess}
-        onOpenSimulator={onOpenSimulator}
       />
     </ResponsiveFormDialog>
   );

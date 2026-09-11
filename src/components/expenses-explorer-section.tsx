@@ -11,6 +11,7 @@ import {
   WalletIcon,
   ArrowDownLeft,
   ArrowUpRight,
+  SearchIcon,
   SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -29,6 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -106,6 +108,29 @@ function resolvePaymentMethodLabel(
   return 'Sin medio';
 }
 
+const DIACRITICS_PATTERN = new RegExp('[\\u0300-\\u036f]', 'g');
+
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(DIACRITICS_PATTERN, '');
+}
+
+/**
+ * Refunds are stored as a negative expense amount so totals net out
+ * automatically; for display we need the sign and magnitude split back out.
+ */
+function getMovementAmountDisplay(movement: {
+  type: 'expense' | 'income' | 'installment';
+  amount: number;
+}): { sign: '+' | '−'; amount: number } {
+  if (movement.type === 'income') {
+    return { sign: '+', amount: movement.amount };
+  }
+  if (movement.amount < 0) {
+    return { sign: '+', amount: Math.abs(movement.amount) };
+  }
+  return { sign: '−', amount: movement.amount };
+}
+
 export function ExpensesExplorerSection({
   board,
   initialYearMonth,
@@ -119,6 +144,7 @@ export function ExpensesExplorerSection({
   );
   const [categoryId, setCategoryId] = useState(ALL_FILTER);
   const [status, setStatus] = useState(ALL_FILTER);
+  const [searchQuery, setSearchQuery] = useState('');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [projectedInstallments, setProjectedInstallments] = useState<
     ForecastLineItem[]
@@ -159,7 +185,14 @@ export function ExpensesExplorerSection({
 
   useEffect(() => {
     setPageIndex(0);
-  }, [yearMonth, paymentMethodId, categoryId, status, movementType]);
+  }, [
+    yearMonth,
+    paymentMethodId,
+    categoryId,
+    status,
+    movementType,
+    searchQuery,
+  ]);
 
   useEffect(() => {
     if (board._id.startsWith('mock-')) {
@@ -306,7 +339,17 @@ export function ExpensesExplorerSection({
               type: 'expense' as const,
               date: expense.expenseDate || expense.createdAt,
               label: expense.description,
-              meta: `${getExpenseCategoryLabel(expense.category) || 'Gasto'} · ${resolvePaymentMethodLabel(expense, paymentMethodNameById)}`,
+              meta: [
+                getExpenseCategoryLabel(expense.category) || 'Gasto',
+                resolvePaymentMethodLabel(expense, paymentMethodNameById),
+                expense.installmentNumber != null &&
+                expense.installmentTotalInstallments
+                  ? `Cuota ${expense.installmentNumber}/${expense.installmentTotalInstallments}`
+                  : null,
+                expense.isRefund ? 'Devolución' : null,
+              ]
+                .filter(Boolean)
+                .join(' · '),
               amount: expense.amount,
               currency: expense.currency,
               expense,
@@ -347,10 +390,18 @@ export function ExpensesExplorerSection({
     ],
   );
 
+  const filteredMovements = useMemo(() => {
+    const query = normalizeSearchText(searchQuery.trim());
+    if (!query) return movements;
+    return movements.filter((movement) =>
+      normalizeSearchText(`${movement.label} ${movement.meta}`).includes(query),
+    );
+  }, [movements, searchQuery]);
+
   const pageSize = 15;
-  const pageCount = Math.max(1, Math.ceil(movements.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(filteredMovements.length / pageSize));
   const currentPage = Math.min(pageIndex, pageCount - 1);
-  const pageMovements = movements.slice(
+  const pageMovements = filteredMovements.slice(
     currentPage * pageSize,
     currentPage * pageSize + pageSize,
   );
@@ -531,6 +582,17 @@ export function ExpensesExplorerSection({
         ) : null}
       </div>
 
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Buscar por descripción, categoría o medio de pago…"
+          className="rounded-xl pl-9"
+          aria-label="Buscar movimientos"
+        />
+      </div>
+
       {movementType !== 'income' ? (
         <Card className={showFilters ? '' : 'hidden sm:block'}>
           <CardHeader className="pb-3">
@@ -618,16 +680,21 @@ export function ExpensesExplorerSection({
                 : movementType === 'income'
                   ? 'Ingresos encontrados'
                   : 'Movimientos',
-            value: movements.length,
+            value: filteredMovements.length,
           },
           {
             label: movementType === 'income' ? 'Entradas' : 'Salidas',
             value:
               movementType === 'income'
                 ? totals.incomeTotal
-                : totals.expenseTotal,
+                : Math.abs(totals.expenseTotal),
             currency: board.baseCurrency,
-            sign: movementType === 'income' ? '+' : '−',
+            sign:
+              movementType === 'income'
+                ? '+'
+                : totals.expenseTotal < 0
+                  ? '+'
+                  : '−',
           },
           ...(movementType === 'all'
             ? [
@@ -729,6 +796,12 @@ export function ExpensesExplorerSection({
                               Próximo
                             </Badge>
                           ) : null}
+                          {movement.type === 'expense' &&
+                          movement.expense.isRefund ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Devolución
+                            </Badge>
+                          ) : null}
                         </strong>
                         <span className="block break-words text-xs text-muted-foreground">
                           {formatDate(movement.date)} · {movement.meta}
@@ -739,8 +812,11 @@ export function ExpensesExplorerSection({
                           {movement.type === 'income' ? 'Entrada' : 'Salida'}
                           :{' '}
                         </span>
-                        {movement.type === 'income' ? '+' : '−'}
-                        {formatCurrency(movement.amount, movement.currency)}
+                        {getMovementAmountDisplay(movement).sign}
+                        {formatCurrency(
+                          getMovementAmountDisplay(movement).amount,
+                          movement.currency,
+                        )}
                       </span>
                     </button>
                   </li>
@@ -786,7 +862,14 @@ export function ExpensesExplorerSection({
                               ? 'Ingreso'
                               : movement.type === 'installment'
                                 ? 'Cuota proyectada'
-                                : 'Gasto'}
+                                : movement.expense.isRefund
+                                  ? 'Devolución'
+                                  : 'Gasto'}
+                            {movement.type === 'expense' &&
+                            movement.expense.installmentNumber != null &&
+                            movement.expense.installmentTotalInstallments
+                              ? ` · Cuota ${movement.expense.installmentNumber}/${movement.expense.installmentTotalInstallments}`
+                              : null}
                           </span>
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
@@ -814,9 +897,11 @@ export function ExpensesExplorerSection({
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex flex-wrap items-center gap-1">
                             {movement.type === 'expense'
-                              ? movement.expense.status === ExpenseStatus.PAID
-                                ? 'Pagado'
-                                : 'Próximo'
+                              ? movement.expense.isRefund
+                                ? 'Devolución'
+                                : movement.expense.status === ExpenseStatus.PAID
+                                  ? 'Pagado'
+                                  : 'Próximo'
                               : movement.type === 'installment'
                                 ? 'Proyectado'
                                 : 'Ingreso'}
@@ -827,8 +912,11 @@ export function ExpensesExplorerSection({
                             {movement.type === 'income' ? 'Entrada' : 'Salida'}
                             :{' '}
                           </span>
-                          {movement.type === 'income' ? '+' : '−'}
-                          {formatCurrency(movement.amount, movement.currency)}
+                          {getMovementAmountDisplay(movement).sign}
+                          {formatCurrency(
+                            getMovementAmountDisplay(movement).amount,
+                            movement.currency,
+                          )}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -939,7 +1027,9 @@ export function ExpensesExplorerSection({
                     ? 'Ingreso'
                     : detailMovement.type === 'installment'
                       ? 'Cuota proyectada'
-                      : 'Gasto'}{' '}
+                      : detailMovement.expense.isRefund
+                        ? 'Devolución'
+                        : 'Gasto'}{' '}
                   · {formatDate(detailMovement.date)}
                 </DialogDescription>
               </DialogHeader>
@@ -948,8 +1038,11 @@ export function ExpensesExplorerSection({
                   {detailMovement.type === 'income' ? 'Entrada' : 'Salida'}
                   :{' '}
                 </span>
-                {detailMovement.type === 'income' ? '+' : '−'}
-                {formatCurrency(detailMovement.amount, detailMovement.currency)}
+                {getMovementAmountDisplay(detailMovement).sign}
+                {formatCurrency(
+                  getMovementAmountDisplay(detailMovement).amount,
+                  detailMovement.currency,
+                )}
               </p>
               <dl className="grid grid-cols-2 gap-4 rounded-2xl bg-muted/50 p-4 text-sm">
                 <div>
@@ -965,7 +1058,9 @@ export function ExpensesExplorerSection({
                       ? 'Ingreso'
                       : detailMovement.type === 'installment'
                         ? 'Cuota proyectada'
-                        : 'Gasto'}
+                        : detailMovement.expense.isRefund
+                          ? 'Devolución'
+                          : 'Gasto'}
                   </dd>
                 </div>
                 <div className="col-span-2">

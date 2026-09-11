@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AxiosError } from 'axios';
-import {
-  Calculator,
-  ChevronDown,
-  Loader2,
-  Plus,
-  Settings2,
-} from 'lucide-react';
+import { ChevronDown, Loader2, Plus, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatePaymentMethodSheet } from '@/components/create-payment-method-sheet';
 import { Button } from '@/components/ui/button';
@@ -88,11 +82,6 @@ interface QuickExpenseFormProps {
   prefilledBudgets?: Budget[];
   prefilledParticipants?: Participant[];
   isDialog?: boolean;
-  onOpenSimulator?: (values: {
-    label: string;
-    totalAmount: string;
-    startYearMonth: string;
-  }) => void;
 }
 
 const PARTICIPANTS_CACHE_NAMESPACE = 'participants';
@@ -153,7 +142,6 @@ export function QuickExpenseForm({
   prefilledBudgets,
   prefilledParticipants,
   isDialog = false,
-  onOpenSimulator,
 }: QuickExpenseFormProps) {
   const isEditing = Boolean(expense);
   const user = useAuthStore((state) => state.user);
@@ -219,6 +207,7 @@ export function QuickExpenseForm({
   const [merchantName, setMerchantName] = useState('');
   const [status, setStatus] = useState<ExpenseStatus>(ExpenseStatus.PAID);
   const [isDivisible, setIsDivisible] = useState(false);
+  const [isRefund, setIsRefund] = useState(false);
   const [splitType, setSplitType] = useState<SplitType>(SplitType.EQUAL);
   const [splitParticipantIds, setSplitParticipantIds] = useState<string[]>([]);
   const [manualSplits, setManualSplits] = useState<
@@ -249,6 +238,7 @@ export function QuickExpenseForm({
     isEveryday &&
     !isEditing &&
     !isRecurring &&
+    !isRefund &&
     selectedPaymentMethod?.kind === 'credit';
   const isOngoingInstallmentPlan =
     showInstallments &&
@@ -259,6 +249,9 @@ export function QuickExpenseForm({
     expense?.installmentPlanId &&
     expense.installmentNumber != null,
   );
+  const showRefundToggle =
+    !(isEveryday && !isEditing && isRecurring) &&
+    !(isEveryday && !isEditing && showInstallments && parsedInstallments > 1);
   const installmentSchedulePreview = useMemo(() => {
     if (
       !installmentPlanSchedule ||
@@ -534,7 +527,8 @@ export function QuickExpenseForm({
   useEffect(() => {
     if (!expense) return;
 
-    setAmount(formatMoneyInputFromNumber(expense.amount));
+    setAmount(formatMoneyInputFromNumber(Math.abs(expense.amount)));
+    setIsRefund(expense.isRefund ?? false);
     setNote(expense.description);
     setMerchantName(expense.merchantName || '');
     setStatus(expense.status);
@@ -611,6 +605,7 @@ export function QuickExpenseForm({
     setShowTravelOptions(isDialog && isTravel);
     setBudgetId('');
     setIsDivisible(false);
+    setIsRefund(false);
     setSplitType(SplitType.EQUAL);
     setManualSplits({});
     setMerchantName('');
@@ -740,7 +735,12 @@ export function QuickExpenseForm({
       nextErrors.paidBy = 'Seleccioná quién pagó';
     }
 
-    if (isTravel && isDivisible) {
+    if (isTravel && isDivisible && isRefund) {
+      nextErrors.splits =
+        'Una devolución no se puede dividir entre participantes';
+    }
+
+    if (isTravel && isDivisible && !isRefund) {
       if (splitType === SplitType.EQUAL && splitParticipantIds.length === 0) {
         nextErrors.splits = 'Incluí al menos un participante en el split';
       }
@@ -865,6 +865,7 @@ export function QuickExpenseForm({
         paymentMethodId,
         expenseDate: localDateToIso(expenseDate),
         paymentYearMonth,
+        isRefund,
       };
 
       if (isTravel) {
@@ -1092,6 +1093,27 @@ export function QuickExpenseForm({
                 </p>
               ) : null}
             </div>
+          </div>
+        ) : null}
+
+        {showRefundToggle ? (
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="quick-refund"
+              checked={isRefund}
+              onCheckedChange={(checked) => {
+                const next = checked === true;
+                setIsRefund(next);
+                if (next) {
+                  setIsRecurring(false);
+                  setInstallments('1');
+                  setIsDivisible(false);
+                }
+              }}
+            />
+            <Label htmlFor="quick-refund" className="text-sm">
+              Es una devolución (suma en vez de restar)
+            </Label>
           </div>
         ) : null}
       </div>
@@ -1492,7 +1514,7 @@ export function QuickExpenseForm({
         </div>
       ) : null}
 
-      {isEveryday && !isEditing ? (
+      {isEveryday && !isEditing && !isRefund ? (
         <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
           <div className="flex items-center gap-2">
             <Checkbox
@@ -1696,20 +1718,22 @@ export function QuickExpenseForm({
                     </Select>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="quick-divisible"
-                      checked={isDivisible}
-                      onCheckedChange={(checked) =>
-                        setIsDivisible(checked === true)
-                      }
-                    />
-                    <Label htmlFor="quick-divisible" className="text-sm">
-                      Dividir entre participantes
-                    </Label>
-                  </div>
+                  {!isRefund ? (
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="quick-divisible"
+                        checked={isDivisible}
+                        onCheckedChange={(checked) =>
+                          setIsDivisible(checked === true)
+                        }
+                      />
+                      <Label htmlFor="quick-divisible" className="text-sm">
+                        Dividir entre participantes
+                      </Label>
+                    </div>
+                  ) : null}
 
-                  {isDivisible ? (
+                  {!isRefund && isDivisible ? (
                     <div className="space-y-3">
                       <div className="space-y-2">
                         <Label className="text-xs">Tipo de división</Label>
@@ -1826,24 +1850,6 @@ export function QuickExpenseForm({
         <p className="text-destructive text-xs">{errors.paidBy}</p>
       ) : null}
 
-      {isEveryday && !isEditing && onOpenSimulator ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 rounded-xl"
-          onClick={() =>
-            onOpenSimulator({
-              label: note,
-              totalAmount: expenseCurrency === boardCurrency ? amount : '',
-              startYearMonth: paymentYearMonth,
-            })
-          }
-        >
-          <Calculator className="mr-2 size-4" />
-          Simular compra en cuotas
-        </Button>
-      ) : null}
-
       <Button
         type="submit"
         disabled={isSubmitting || (isTravel && travelDataLoading)}
@@ -1856,6 +1862,8 @@ export function QuickExpenseForm({
           </>
         ) : isEditing ? (
           'Actualizar gasto'
+        ) : isRefund ? (
+          'Registrar devolución'
         ) : isRecurring && isEveryday ? (
           'Configurar gasto recurrente'
         ) : showInstallments && parsedInstallments > 1 ? (

@@ -153,7 +153,9 @@ export function EverydayBoardHome({
           type: 'expense' as const,
           date: expense.expenseDate || expense.createdAt,
           label: expense.description,
-          meta: getExpenseCategoryLabel(expense.category) || 'Gasto',
+          meta: expense.isRefund
+            ? `${getExpenseCategoryLabel(expense.category) || 'Gasto'} · Devolución`
+            : getExpenseCategoryLabel(expense.category) || 'Gasto',
           amount: expense.amount,
           currency: expense.currency,
           expense,
@@ -314,13 +316,19 @@ export function EverydayBoardHome({
                   </span>
                   <span
                     className={`shrink-0 text-sm font-semibold tabular-nums ${
-                      movement.type === 'income'
+                      movement.type === 'income' ||
+                      (movement.type === 'expense' && movement.amount < 0)
                         ? 'text-emerald-700 dark:text-emerald-400'
                         : 'text-foreground'
                     }`}
                   >
-                    {movement.type === 'income' ? '+' : '−'}
-                    {formatCurrency(movement.amount, movement.currency)}
+                    {movement.type === 'income' || movement.amount < 0
+                      ? '+'
+                      : '−'}
+                    {formatCurrency(
+                      Math.abs(movement.amount),
+                      movement.currency,
+                    )}
                   </span>
                   <div className="flex shrink-0 items-center">
                     <Button
