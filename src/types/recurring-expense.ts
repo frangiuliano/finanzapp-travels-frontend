@@ -30,6 +30,7 @@ export interface CreateRecurringExpenseDto {
   escalationType?: RecurringEscalationType;
   escalationValue?: number;
   escalationFrequencyMonths?: number;
+  anchorYearMonth?: string;
 }
 
 export interface UpdateRecurringExpenseDto {

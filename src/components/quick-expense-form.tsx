@@ -813,7 +813,9 @@ export function QuickExpenseForm({
           categoryId,
           paymentMethodId,
           excludedYearMonths,
-          ...buildRecurringEscalationPayload(recurringEscalation),
+          ...buildRecurringEscalationPayload(recurringEscalation, {
+            includeAnchor: true,
+          }),
         });
         toast.success('Gasto recurrente configurado');
         resetForm();
@@ -1567,6 +1569,8 @@ export function QuickExpenseForm({
                 disabled={isSubmitting}
                 currency={expenseCurrency}
                 idPrefix="quick-recurring-escalation"
+                showAnchorMonth
+                baseAmount={parseMoneyInput(amount) ?? undefined}
               />
               {errors.escalation ? (
                 <p className="text-destructive text-xs">{errors.escalation}</p>
