@@ -329,10 +329,14 @@ export function QuickExpenseForm({
     : fxRate;
 
   useEffect(() => {
-    if (!categoryId && categories.length > 0) {
+    // Only pick a default for a brand-new expense. Defaulting during an edit
+    // would silently assign a category to an existing expense/cuota that
+    // genuinely has none (e.g. an installment cuota created before it had a
+    // category), making the form look like it already has one selected.
+    if (!isEditing && !categoryId && categories.length > 0) {
       setCategoryId(categories[0]._id);
     }
-  }, [categories, categoryId]);
+  }, [categories, categoryId, isEditing]);
 
   useEffect(() => {
     if (!paymentMethodId && paymentMethods.length > 0) {
@@ -833,6 +837,7 @@ export function QuickExpenseForm({
           startYearMonth: installmentStartYearMonth,
           dayOfMonth: resolveInstallmentDay(),
           paymentMethodId,
+          categoryId,
           currency: expenseCurrency,
           fxRateOverride,
         });
@@ -1157,6 +1162,22 @@ export function QuickExpenseForm({
           ) : null}
         </div>
       ) : null}
+
+      <div className="space-y-2">
+        <Label
+          htmlFor="quick-merchant"
+          className="text-muted-foreground text-xs"
+        >
+          Comercio (opcional)
+        </Label>
+        <Input
+          id="quick-merchant"
+          value={merchantName}
+          onChange={(event) => setMerchantName(event.target.value)}
+          placeholder="Ej. Restaurante, farmacia…"
+          className="rounded-xl"
+        />
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="quick-note" className="text-muted-foreground text-xs">
@@ -1630,19 +1651,6 @@ export function QuickExpenseForm({
                       </Select>
                     </div>
                   ) : null}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="quick-merchant" className="text-xs">
-                      Comercio (opcional)
-                    </Label>
-                    <Input
-                      id="quick-merchant"
-                      value={merchantName}
-                      onChange={(event) => setMerchantName(event.target.value)}
-                      placeholder="Ej. Restaurante, farmacia…"
-                      className="rounded-xl"
-                    />
-                  </div>
 
                   <div className="space-y-2">
                     <Label className="text-xs">Estado</Label>

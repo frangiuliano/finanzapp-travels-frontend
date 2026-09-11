@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { installmentPlansService } from '@/services/installmentPlansService';
+import { useBoardCategories } from '@/hooks/useBoardCategories';
 import type {
   InstallmentOverridePolicy,
   InstallmentPlan,
@@ -44,6 +45,7 @@ interface FormState {
   totalInstallments: string;
   startYearMonth: string;
   dayOfMonth: number[];
+  categoryId: string;
 }
 
 const emptyForm = (yearMonth: string): FormState => ({
@@ -52,7 +54,20 @@ const emptyForm = (yearMonth: string): FormState => ({
   totalInstallments: '12',
   startYearMonth: yearMonth,
   dayOfMonth: [10],
+  categoryId: '',
 });
+
+function getPlanCategoryId(item: InstallmentPlan): string {
+  if (!item.categoryId) return '';
+  return typeof item.categoryId === 'string'
+    ? item.categoryId
+    : item.categoryId._id;
+}
+
+function getPlanCategoryLabel(item: InstallmentPlan): string | undefined {
+  if (!item.categoryId || typeof item.categoryId === 'string') return undefined;
+  return item.categoryId.name;
+}
 
 function toMonthSlash(yearMonth: string): string {
   const [year, month] = yearMonth.split('-');
@@ -103,6 +118,7 @@ export function ManageInstallmentPlansSection({
   boardId,
   currency,
 }: ManageInstallmentPlansSectionProps) {
+  const { categories } = useBoardCategories(boardId);
   const [items, setItems] = useState<InstallmentPlan[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -166,6 +182,7 @@ export function ManageInstallmentPlansSection({
       totalInstallments: String(item.totalInstallments),
       startYearMonth: item.startYearMonth,
       dayOfMonth: [item.dayOfMonth],
+      categoryId: getPlanCategoryId(item),
     });
     setReviewOpen(false);
     setReviewDecision(null);
@@ -198,6 +215,9 @@ export function ManageInstallmentPlansSection({
     };
     if (formData.dayOfMonth.length > 0) {
       payload.dayOfMonth = formData.dayOfMonth[0];
+    }
+    if (formData.categoryId) {
+      payload.categoryId = formData.categoryId;
     }
     return payload;
   };
@@ -314,6 +334,11 @@ export function ManageInstallmentPlansSection({
                   {!item.isActive ? (
                     <Badge variant="secondary">Inactivo</Badge>
                   ) : null}
+                  {getPlanCategoryLabel(item) ? (
+                    <Badge variant="outline">
+                      {getPlanCategoryLabel(item)}
+                    </Badge>
+                  ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {formatCurrency(item.installmentAmount, item.currency)} ·{' '}
@@ -360,6 +385,21 @@ export function ManageInstallmentPlansSection({
               disabled={isSaving}
             />
           </div>
+          {categories.length > 0 ? (
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <PillGroup
+                options={categories.map((category) => ({
+                  value: category._id,
+                  label: category.name,
+                }))}
+                value={formData.categoryId}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, categoryId: value }))
+                }
+              />
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label>Monto por cuota ({currency})</Label>
             <MoneyInput

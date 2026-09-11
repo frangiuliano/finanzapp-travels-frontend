@@ -10,6 +10,15 @@ export interface InstallmentPlan {
   startYearMonth: string;
   dayOfMonth: number;
   paymentMethodId?: string;
+  categoryId?:
+    | string
+    | {
+        _id: string;
+        name: string;
+        icon?: string;
+        color?: string;
+        isActive?: boolean;
+      };
   currency: string;
   isActive: boolean;
   createdAt: string;
@@ -24,6 +33,7 @@ export interface CreateInstallmentPlanDto {
   startYearMonth: string;
   dayOfMonth: number;
   paymentMethodId?: string;
+  categoryId?: string;
   currency?: string;
   fxRateOverride?: number;
 }
@@ -36,6 +46,7 @@ export interface UpdateInstallmentPlanDto {
   totalInstallments?: number;
   startYearMonth?: string;
   paymentMethodId?: string;
+  categoryId?: string;
   currency?: string;
   isActive?: boolean;
   /** Purely informational — which day of the month each cuota displays. */
