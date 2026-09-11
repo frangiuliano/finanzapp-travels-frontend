@@ -42,7 +42,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatStrip } from '@/components/stat-strip';
 import { CURRENCY_OPTIONS } from '@/constants/currencies';
-import { parseMoneyInput } from '@/lib/money';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { wealthService } from '@/services/wealthService';
 import { useBoardsStore } from '@/store/boardsStore';
 import type {
@@ -309,7 +309,7 @@ export default function WealthPage() {
   const openBalance = (holding: Holding) => {
     resetForm();
     setSelectedHolding(holding);
-    setAmount(String(holding.currentBalance).replace('.', ','));
+    setAmount(formatMoneyInputFromNumber(holding.currentBalance));
     setDialogMode('balance');
   };
 

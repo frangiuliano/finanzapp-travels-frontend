@@ -18,7 +18,7 @@ import {
   getBoardScopedCache,
   saveBoardScopedCache,
 } from '@/lib/board-scoped-cache';
-import { parseMoneyInput } from '@/lib/money';
+import { formatMoneyInputFromNumber, parseMoneyInput } from '@/lib/money';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -534,7 +534,7 @@ export function QuickExpenseForm({
   useEffect(() => {
     if (!expense) return;
 
-    setAmount(expense.amount.toString());
+    setAmount(formatMoneyInputFromNumber(expense.amount));
     setNote(expense.description);
     setMerchantName(expense.merchantName || '');
     setStatus(expense.status);
@@ -595,7 +595,7 @@ export function QuickExpenseForm({
       const splits: Record<string, { amount: string; enabled: boolean }> = {};
       expense.splits.forEach((split) => {
         splits[split.participantId] = {
-          amount: split.amount.toString(),
+          amount: formatMoneyInputFromNumber(split.amount),
           enabled: true,
         };
       });
