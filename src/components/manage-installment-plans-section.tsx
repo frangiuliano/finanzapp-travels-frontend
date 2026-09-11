@@ -516,6 +516,7 @@ export function ManageInstallmentPlansSection({
                   installmentAmount: value,
                 }))
               }
+              currency={currency}
               disabled={isSaving}
             />
           </div>

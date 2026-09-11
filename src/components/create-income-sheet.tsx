@@ -245,6 +245,7 @@ export function CreateIncomeSheet({
             id="income-amount"
             value={amount}
             onChange={setAmount}
+            currency={resolvedCurrency}
             disabled={isLoading}
             className={cn(
               'h-14 rounded-2xl text-2xl font-semibold',

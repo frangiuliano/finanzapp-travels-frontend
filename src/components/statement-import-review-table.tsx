@@ -213,24 +213,20 @@ function StatementImportLineRow({
         </div>
       </TableCell>
       <TableCell className="py-3 align-top">
-        <div className="flex items-baseline justify-end gap-1">
-          <MoneyInput
-            className={cn(
-              'h-8 w-full text-right font-medium tabular-nums',
-              GHOST_FIELD_CLASS,
-            )}
-            value={formatMoneyInputFromNumber(amount)}
-            onChange={(value) => {
-              const parsed = parseMoneyInput(value);
-              if (parsed !== null) {
-                onOverrideChange(line.tempId, { amount: parsed });
-              }
-            }}
-          />
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {line.currency}
-          </span>
-        </div>
+        <MoneyInput
+          className={cn(
+            'h-8 w-full text-right font-medium tabular-nums',
+            GHOST_FIELD_CLASS,
+          )}
+          currency={line.currency}
+          value={formatMoneyInputFromNumber(amount)}
+          onChange={(value) => {
+            const parsed = parseMoneyInput(value);
+            if (parsed !== null) {
+              onOverrideChange(line.tempId, { amount: parsed });
+            }
+          }}
+        />
       </TableCell>
       <TableCell className="w-10 py-3 text-center align-top">
         <Select

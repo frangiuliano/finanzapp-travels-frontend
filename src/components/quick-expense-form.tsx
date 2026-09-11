@@ -1021,6 +1021,7 @@ export function QuickExpenseForm({
           placeholder="0,00"
           value={amount}
           onChange={setAmount}
+          currency={expenseCurrency}
           className={cn(
             'h-14 rounded-2xl text-2xl font-semibold',
             errors.amount && 'border-destructive',
@@ -1776,8 +1777,9 @@ export function QuickExpenseForm({
                                       value,
                                     )
                                   }
+                                  currency={expenseCurrency}
                                   disabled={!enabled}
-                                  className="h-8 w-24 rounded-lg"
+                                  className="h-8 w-32 rounded-lg"
                                 />
                               </li>
                             );

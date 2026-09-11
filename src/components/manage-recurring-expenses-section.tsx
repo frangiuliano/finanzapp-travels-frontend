@@ -260,6 +260,7 @@ export function ManageRecurringExpensesSection({
               onChange={(value) =>
                 setFormData((prev) => ({ ...prev, amount: value }))
               }
+              currency={currency}
               disabled={isSaving}
             />
           </div>

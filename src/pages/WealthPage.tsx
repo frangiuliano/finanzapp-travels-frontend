@@ -1408,6 +1408,7 @@ export default function WealthPage() {
                 label="Saldo actual"
                 value={amount}
                 onChange={setAmount}
+                currency={currency}
               />
             </>
           ) : null}
@@ -1434,6 +1435,7 @@ export default function WealthPage() {
                 label="Nuevo saldo"
                 value={amount}
                 onChange={setAmount}
+                currency={selectedHolding?.currency}
               />
               <Field label="Nota (opcional)">
                 <Input
@@ -1474,6 +1476,7 @@ export default function WealthPage() {
                 label="Monto objetivo"
                 value={amount}
                 onChange={setAmount}
+                currency={currency}
               />
               <Field label="Fecha límite (opcional)">
                 <Input
@@ -1486,6 +1489,7 @@ export default function WealthPage() {
                 label="Aporte mensual planificado (opcional)"
                 value={monthlyAmount}
                 onChange={setMonthlyAmount}
+                currency={currency}
               />
               <Field label="Prioridad">
                 <Input
@@ -1658,6 +1662,9 @@ export default function WealthPage() {
                 label="Precio de compra por unidad"
                 value={averageCost}
                 onChange={setAverageCost}
+                currency={
+                  instruments.find((i) => i._id === instrumentId)?.currency
+                }
               />
               <p className="text-xs text-muted-foreground">
                 El costo promedio se calcula automáticamente con cada compra. El
@@ -1676,6 +1683,7 @@ export default function WealthPage() {
                 label="Precio actual por nominal"
                 value={unitPrice}
                 onChange={setUnitPrice}
+                currency={selectedPosition.instrumentId.currency}
               />
               {selectedPosition.instrumentId.provider === 'twelve_data' ? (
                 <Button
@@ -1737,6 +1745,7 @@ export default function WealthPage() {
                 label="Precio por nominal"
                 value={unitPrice}
                 onChange={setUnitPrice}
+                currency={selectedPosition.instrumentId.currency}
               />
               {tradeType === 'buy' ? (
                 <p className="text-xs text-muted-foreground">
@@ -1790,6 +1799,9 @@ export default function WealthPage() {
                 label="Precio por unidad"
                 value={unitPrice}
                 onChange={setUnitPrice}
+                currency={
+                  instruments.find((i) => i._id === instrumentId)?.currency
+                }
               />
               <p className="text-xs text-muted-foreground">
                 La cantidad, el costo promedio y el efectivo se recalcularán
@@ -1847,6 +1859,7 @@ export default function WealthPage() {
                 label="Importe"
                 value={amount}
                 onChange={setAmount}
+                currency={selectedGoal?.currency}
               />
               <Field label="Nota (opcional)">
                 <Input
@@ -1894,14 +1907,16 @@ function AmountField({
   label,
   value,
   onChange,
+  currency,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  currency?: string;
 }) {
   return (
     <Field label={label}>
-      <MoneyInput value={value} onChange={onChange} />
+      <MoneyInput value={value} onChange={onChange} currency={currency} />
     </Field>
   );
 }

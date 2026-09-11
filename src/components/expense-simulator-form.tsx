@@ -100,6 +100,7 @@ export function ExpenseSimulatorForm({
             id="sim-amount"
             value={totalAmount}
             onChange={setTotalAmount}
+            currency={board.baseCurrency}
             className="rounded-xl"
           />
         </div>
