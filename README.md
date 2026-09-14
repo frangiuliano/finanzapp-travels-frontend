@@ -18,10 +18,14 @@ La app corre en `http://localhost:5173` y proxea `/api` al backend.
 
 ### Variables de entorno
 
-| Variable              | Descripción                                                      |
-| --------------------- | ---------------------------------------------------------------- |
-| `VITE_API_URL`        | URL base de la API (opcional; por defecto usa el proxy `/api`)   |
-| `VITE_USE_HTTPS=true` | Habilita HTTPS en dev (necesario para probar PWA con `basicSsl`) |
+| Variable                | Descripción                                                      |
+| ----------------------- | ---------------------------------------------------------------- |
+| `VITE_API_URL`          | URL base de la API (opcional; por defecto usa el proxy `/api`)   |
+| `VITE_USE_HTTPS=true`   | Habilita HTTPS en dev (necesario para probar PWA con `basicSsl`) |
+| `VITE_IOS_SHORTCUT_URL` | Enlace iCloud del Atajo oficial para instalarlo desde Cuenta     |
+
+La configuración funcional y el contrato del Atajo de iPhone están documentados
+en [`docs/ATAJOS_IPHONE.md`](docs/ATAJOS_IPHONE.md).
 
 ## PWA — instalación y pruebas
 
