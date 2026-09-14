@@ -7,6 +7,7 @@ import {
   Settings2,
   SettingsIcon,
   PiggyBank,
+  Target,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { NavMain } from '@/components/nav-main';
@@ -58,6 +59,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
 
   const navSecondary = [
     { title: 'Patrimonio', url: '/wealth', icon: PiggyBank },
+    { title: 'Objetivos', url: '/goals', icon: Target },
     { title: 'Viajes', url: '/travel', icon: Plane },
     {
       title: 'Configuración del tablero',
