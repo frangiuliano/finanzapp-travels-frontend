@@ -6,6 +6,7 @@ import { BarChart3 } from 'lucide-react';
 import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
 import { BoardForecastSection } from '@/components/board-forecast-section';
 import { ConsolidatedReportSection } from '@/components/consolidated-report-section';
+import { MonthlyInsightsSection } from '@/components/monthly-insights-section';
 import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { ReportsBreakdownChart } from '@/components/reports-breakdown-chart';
 import { YearMonthSelector } from '@/components/year-month-selector';
@@ -149,6 +150,8 @@ export default function ReportsPage() {
       </div>
 
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+
+      <MonthlyInsightsSection boardId={activeBoard._id} yearMonth={yearMonth} />
 
       <Tabs value={activeView} onValueChange={handleViewChange}>
         <TabsList className="grid w-full grid-cols-2 rounded-xl">

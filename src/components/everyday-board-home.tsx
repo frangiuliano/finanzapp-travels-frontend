@@ -29,10 +29,12 @@ import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
 import { incomesService } from '@/services/incomesService';
+import { insightsService } from '@/services/insightsService';
 import type { Board } from '@/types/board';
 import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
 import { getExpenseCategoryLabel, type Expense } from '@/types/expense';
 import type { MonthlyForecast } from '@/types/forecast';
+import { STATUS_INSIGHT_TYPES, type Insight } from '@/types/insight';
 import { IncomeStatus, type Income } from '@/types/income';
 import {
   formatCurrency,
@@ -58,6 +60,7 @@ export function EverydayBoardHome({
   const { categories } = useBoardCategories(board._id);
 
   const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
+  const [topInsight, setTopInsight] = useState<Insight | null>(null);
   const [budgetProgress, setBudgetProgress] = useState<
     BoardMonthBudgetProgress[]
   >([]);
@@ -86,29 +89,44 @@ export function EverydayBoardHome({
     const load = async () => {
       setIsLoading(true);
       try {
-        const [forecastResult, progressResult, incomesResult, expensesResult] =
-          await Promise.all([
-            forecastService
-              .getMonthlyForecast(board._id, yearMonth)
-              .then(({ forecast: f }) => f)
-              .catch(() => null),
-            boardMonthBudgetsService
-              .getProgress(board._id, yearMonth)
-              .then(({ progress }) => progress)
-              .catch(() => []),
-            incomesService
-              .getIncomes(board._id)
-              .then(({ incomes }) => incomes)
-              .catch(() => []),
-            expensesService
-              .listExpensesByMonth(board._id, yearMonth)
-              .then(({ expenses }) => expenses)
-              .catch(() => []),
-          ]);
+        const [
+          forecastResult,
+          insightsResult,
+          progressResult,
+          incomesResult,
+          expensesResult,
+        ] = await Promise.all([
+          forecastService
+            .getMonthlyForecast(board._id, yearMonth)
+            .then(({ forecast: f }) => f)
+            .catch(() => null),
+          insightsService
+            .getMonthlyInsights(board._id, yearMonth)
+            .then(({ insights }) => insights)
+            .catch(() => null),
+          boardMonthBudgetsService
+            .getProgress(board._id, yearMonth)
+            .then(({ progress }) => progress)
+            .catch(() => []),
+          incomesService
+            .getIncomes(board._id)
+            .then(({ incomes }) => incomes)
+            .catch(() => []),
+          expensesService
+            .listExpensesByMonth(board._id, yearMonth)
+            .then(({ expenses }) => expenses)
+            .catch(() => []),
+        ]);
 
         if (stale) return;
 
         setForecast(forecastResult);
+        const [firstInsight] = insightsResult?.insights ?? [];
+        setTopInsight(
+          firstInsight && !STATUS_INSIGHT_TYPES.has(firstInsight.type)
+            ? firstInsight
+            : null,
+        );
         setBudgetProgress(progressResult);
         setMonthIncomes(
           incomesResult
@@ -270,7 +288,7 @@ export function EverydayBoardHome({
           <Skeleton className="h-32 rounded-xl" />
         </div>
       ) : forecast ? (
-        <MonthlyPlanningCards forecast={forecast} />
+        <MonthlyPlanningCards forecast={forecast} topInsight={topInsight} />
       ) : (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">

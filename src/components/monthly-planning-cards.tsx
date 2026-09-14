@@ -7,15 +7,22 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { StatStrip, type StatStripItem } from '@/components/stat-strip';
+import { InsightRow } from '@/components/insight-row';
 import type { MonthlyForecast } from '@/types/forecast';
+import type { Insight } from '@/types/insight';
 import { formatCurrency, formatYearMonth } from '@/lib/utils';
 import { mergeCurrencyBreakdowns } from '@/lib/currency-breakdown';
 
 interface MonthlyPlanningCardsProps {
   forecast: MonthlyForecast;
+  /** Only Home passes this — Reports already shows the full insights section elsewhere. */
+  topInsight?: Insight | null;
 }
 
-export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
+export function MonthlyPlanningCards({
+  forecast,
+  topInsight,
+}: MonthlyPlanningCardsProps) {
   const { currency, yearMonth, isFutureMonth, actual, planned } = forecast;
   const monthLabel = formatYearMonth(yearMonth);
 
@@ -88,8 +95,15 @@ export function MonthlyPlanningCards({ forecast }: MonthlyPlanningCardsProps) {
               {formatCurrency(remaining, currency)}
             </CardTitle>
           </CardHeader>
-          <CardFooter className="justify-center text-center text-sm text-muted-foreground">
-            Ingresos − {expenseHint.toLowerCase()}
+          <CardFooter className="flex-col gap-3">
+            <p className="w-full text-center text-sm text-muted-foreground">
+              Ingresos − {expenseHint.toLowerCase()}
+            </p>
+            {topInsight && (
+              <div className="w-full border-t pt-3">
+                <InsightRow insight={topInsight} compact />
+              </div>
+            )}
           </CardFooter>
         </Card>
       </div>
