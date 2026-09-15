@@ -83,9 +83,16 @@ como token de sesión web.
   "paymentMethodId": "...",
   "currency": "ARS",
   "expenseDate": "2026-09-14T19:00:00-03:00",
+  "paymentYearMonth": "2026-09",
   "clientRequestId": "UUID-V4"
 }
 ```
 
 `clientRequestId` debe conservarse al reintentar una misma carga para evitar
 duplicados.
+
+`expenseDate` y `paymentYearMonth` son opcionales. Si se omiten, el servidor
+usa la fecha/hora actual y deriva el mes de pago de esa fecha. Si el Atajo los
+envía, `paymentYearMonth` debe tener formato `AAAA-MM` y puede ser distinto al
+mes de `expenseDate` (por ejemplo, un gasto de fin de mes que impacta en el
+ciclo del mes siguiente).
