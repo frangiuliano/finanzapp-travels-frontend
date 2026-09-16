@@ -162,6 +162,33 @@ export interface GoalProgressMonth {
   met: boolean;
 }
 
+export interface GoalPrioritySummaryGoal {
+  id: string;
+  name: string;
+  icon?: string;
+  currency: string;
+  targetAmount: number;
+  priority: number;
+}
+
+/**
+ * For the single highest-priority active goal: how much of its flat monthly
+ * requirement is still needed in `yearMonth`, after crediting every prior
+ * month's actual projected remaining (uncapped) against the cumulative
+ * requirement so far. Display-only — never reduces disponible and never
+ * feeds back into Restante proyectado.
+ */
+export interface GoalPrioritySummary {
+  goal: GoalPrioritySummaryGoal | null;
+  yearMonth: string;
+  computable?: boolean;
+  requiredMonthlyContribution?: number | null;
+  neededThisMonth?: number | null;
+  /** How much of yearMonth's own Restante proyectado counts toward this goal, capped at requiredMonthlyContribution. */
+  thisMonthContribution?: number | null;
+  isFullyCovered?: boolean;
+}
+
 export type GoalProgressResponse =
   | {
       hasEnoughData: false;
