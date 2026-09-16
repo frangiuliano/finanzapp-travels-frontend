@@ -2,6 +2,7 @@ import api from './api';
 import type {
   CreateGoalInput,
   GoalPreviewResponse,
+  GoalPrioritySummary,
   GoalProgressResponse,
   GoalsListResponse,
   GoalWithResult,
@@ -13,6 +14,17 @@ import type {
 export const goalsService = {
   async list(boardId: string): Promise<GoalsListResponse> {
     return (await api.get('/goals', { params: { boardId } })).data;
+  },
+
+  async getPrioritySummary(
+    boardId: string,
+    yearMonth?: string,
+  ): Promise<GoalPrioritySummary> {
+    return (
+      await api.get('/goals/priority-summary', {
+        params: { boardId, yearMonth },
+      })
+    ).data;
   },
 
   async get(boardId: string, goalId: string): Promise<GoalWithResult> {

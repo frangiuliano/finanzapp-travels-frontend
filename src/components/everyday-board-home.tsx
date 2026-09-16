@@ -3,9 +3,11 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Pencil,
+  Target,
   Trash2,
   Wallet,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { BoardForecastSection } from '@/components/board-forecast-section';
@@ -28,6 +30,7 @@ import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
 import { forecastService } from '@/services/forecastService';
+import { goalsService } from '@/services/goalsService';
 import { incomesService } from '@/services/incomesService';
 import { insightsService } from '@/services/insightsService';
 import type { Board } from '@/types/board';
@@ -39,6 +42,7 @@ import { IncomeStatus, type Income } from '@/types/income';
 import {
   formatCurrency,
   formatDate,
+  formatYearMonth,
   getDefaultViewYearMonth,
   isDateInYearMonth,
 } from '@/lib/utils';
@@ -416,6 +420,8 @@ export function EverydayBoardHome({
         </CardContent>
       </Card>
 
+      <GoalPriorityWidget boardId={board._id} yearMonth={yearMonth} />
+
       {!isLoading && forecast ? (
         <BoardForecastSection
           incomes={forecast.planned.incomes}
@@ -479,5 +485,88 @@ export function EverydayBoardHome({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Compact, read-only teaser for the highest-priority active goal. Shows two
+ * numbers side by side, both for the viewed month specifically:
+ * - "Aportás este mes": how much of that month's own Restante proyectado is
+ *   being counted toward the goal (capped at the flat requirement below).
+ * - "Deberías aportar": the flat monthly requirement to reach the goal on
+ *   time — the same figure shown as "Aporte mensual" on the /goals card.
+ *
+ * Pure display — never touches Restante proyectado, disponible, or goal
+ * data. Hidden once the viewed month is past the goal's own projected
+ * completion (see GoalsService.getPrioritySummary) — nothing left to plan.
+ */
+function GoalPriorityWidget({
+  boardId,
+  yearMonth,
+}: {
+  boardId: string;
+  yearMonth: string;
+}) {
+  const query = useQuery({
+    queryKey: ['goals-priority-summary', boardId, yearMonth],
+    queryFn: () => goalsService.getPrioritySummary(boardId, yearMonth),
+    enabled: !boardId.startsWith('mock-'),
+  });
+
+  if (query.isLoading) return <Skeleton className="h-[104px] rounded-xl" />;
+  if (query.isError) return null;
+
+  const data = query.data;
+  if (!data?.goal || !data.computable) return null;
+  const {
+    goal,
+    neededThisMonth,
+    thisMonthContribution,
+    requiredMonthlyContribution,
+    isFullyCovered,
+  } = data;
+  if (neededThisMonth === null || neededThisMonth === undefined) return null;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 py-4">
+        <Link
+          to="/goals"
+          className="flex min-w-0 items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg"
+            aria-hidden="true"
+          >
+            {goal.icon || <Target className="size-4 text-primary" />}
+          </span>
+          <span className="min-w-0">
+            <strong className="block truncate text-sm">{goal.name}</strong>
+            <span className="block truncate text-xs text-muted-foreground">
+              {formatYearMonth(yearMonth)}
+              {isFullyCovered ? ' · Al día' : ''}
+            </span>
+          </span>
+        </Link>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-muted/60 p-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              Aportás este mes
+            </p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums">
+              {formatCurrency(thisMonthContribution ?? 0, goal.currency)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-muted/60 p-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              Deberías aportar
+            </p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums">
+              {formatCurrency(requiredMonthlyContribution ?? 0, goal.currency)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

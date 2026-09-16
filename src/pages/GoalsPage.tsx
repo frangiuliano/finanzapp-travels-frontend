@@ -479,8 +479,22 @@ function GoalCard({
             )}
           />
           <Metric
+            label="Avance individual"
+            value={progressPercentLabel(
+              result.currentComputableValueIndividual,
+              goal.targetAmount,
+            )}
+          />
+          <Metric
             label="Capital conjunto"
             value={money(result.currentComputableValueJoint, goal.currency)}
+          />
+          <Metric
+            label="Avance conjunto"
+            value={progressPercentLabel(
+              result.currentComputableValueJoint,
+              goal.targetAmount,
+            )}
           />
           <Metric
             label="Falta (conjunto)"
@@ -493,6 +507,12 @@ function GoalCard({
               goal.currency,
             )}
           />
+          {goal.targetDate ? (
+            <Metric
+              label="Fecha objetivo"
+              value={formatYearMonth(goal.targetDate.slice(0, 7))}
+            />
+          ) : null}
           <Metric
             label="Fecha estimada"
             value={formatYearMonth(result.estimatedCompletionYearMonthJoint)}
@@ -502,6 +522,14 @@ function GoalCard({
             value={String(selections.length)}
           />
         </div>
+        {goal.targetDate && result.estimatedCompletionYearMonthJoint ? (
+          <p className="text-xs text-muted-foreground">
+            {estimatedVsTargetNote(
+              result.estimatedCompletionYearMonthJoint,
+              goal.targetDate.slice(0, 7),
+            )}
+          </p>
+        ) : null}
 
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1163,6 +1191,17 @@ function nullableMoney(value: number | null, currency: string) {
   return value === null ? 'No computable' : money(value, currency);
 }
 
+/**
+ * Percent of the target reached by a given capital figure. Individual and
+ * joint are always shown side by side (never a single bar) so a shared
+ * holding never reads as "100% reached" twice at once.
+ */
+function progressPercentLabel(current: number, target: number) {
+  if (target <= 0) return '—';
+  const percent = Math.min(100, Math.max(0, (current / target) * 100));
+  return `${percent.toFixed(0)}%`;
+}
+
 function monthlyCapacityDifference(
   capacity: number | null,
   required: number | null,
@@ -1183,6 +1222,26 @@ function formatYearMonth(value: string | null) {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+/**
+ * "Fecha estimada" and "Fecha objetivo" are different concepts on purpose:
+ * the target date is what you set, the estimate is the planner's own
+ * projection at your current pace — which can land earlier (a strong month
+ * let you get ahead) as easily as later (a weak one put you behind). Shown
+ * side by side without this note, an earlier estimate reads as a bug.
+ */
+function estimatedVsTargetNote(
+  estimatedYearMonth: string,
+  targetYearMonth: string,
+) {
+  if (estimatedYearMonth < targetYearMonth) {
+    return 'Vas adelantado: a este ritmo, lo alcanzarías antes de tu fecha objetivo.';
+  }
+  if (estimatedYearMonth > targetYearMonth) {
+    return 'Vas atrasado respecto a tu fecha objetivo con el ritmo actual.';
+  }
+  return 'Vas exactamente al ritmo de tu fecha objetivo.';
 }
 
 function statusLabel(status: Goal['status']) {

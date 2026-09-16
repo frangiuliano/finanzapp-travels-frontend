@@ -191,6 +191,11 @@ describe('GoalsPage', () => {
         'Todavía no tenemos suficientes mediciones para evaluar el avance mensual.',
       ),
     ).toBeInTheDocument();
+
+    // 400.000 / 1.000.000 individual, 250.000 / 1.000.000 conjunto — nunca
+    // un único porcentaje que mezcle ambos.
+    expect(screen.getByText('40%')).toBeInTheDocument();
+    expect(screen.getByText('25%')).toBeInTheDocument();
   });
 
   it('permite seleccionar tenencias en el formulario', async () => {
