@@ -19,7 +19,6 @@ import {
   SUPPORTED_CURRENCIES,
   type SupportedCurrency,
 } from '@/constants/currencies';
-import { notifyIncomesChanged } from '@/lib/income-events';
 import { triggerSuccessHaptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 
@@ -170,7 +169,6 @@ export function CreateIncomeSheet({
         toast.success('Ingreso recurrente configurado');
       }
 
-      notifyIncomesChanged();
       triggerSuccessHaptic();
       onSuccess?.();
       onOpenChange(false);

@@ -127,6 +127,10 @@ export default function GoalsPage() {
 
   const refreshGoals = async () => {
     await queryClient.invalidateQueries({
+      queryKey: ['home'],
+      refetchType: 'none',
+    });
+    await queryClient.invalidateQueries({
       queryKey: ['goals', everydayBoard?._id],
     });
   };

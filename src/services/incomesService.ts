@@ -1,4 +1,5 @@
 import api from './api';
+import { notifyIncomesChanged } from '@/lib/income-events';
 import type {
   CreateIncomeDto,
   Income,
@@ -7,10 +8,19 @@ import type {
 } from '@/types/income';
 
 export const incomesService = {
+  async getRecent(
+    boardId: string,
+    yearMonth: string,
+  ): Promise<{ incomes: Income[] }> {
+    return (
+      await api.get('/incomes/recent', { params: { boardId, yearMonth } })
+    ).data;
+  },
   async createIncome(
     data: CreateIncomeDto,
   ): Promise<{ message: string; income: Income }> {
     const response = await api.post('/incomes', data);
+    notifyIncomesChanged();
     return response.data;
   },
 
@@ -34,22 +44,26 @@ export const incomesService = {
     data: UpdateIncomeDto,
   ): Promise<{ message: string; income: Income }> {
     const response = await api.patch(`/incomes/${id}`, data);
+    notifyIncomesChanged();
     return response.data;
   },
 
   async deleteIncome(id: string): Promise<void> {
     await api.delete(`/incomes/${id}`);
+    notifyIncomesChanged();
   },
 
   async confirmIncome(
     id: string,
   ): Promise<{ message: string; income: Income }> {
     const response = await api.post(`/incomes/${id}/confirm`);
+    notifyIncomesChanged();
     return response.data;
   },
 
   async skipIncome(id: string): Promise<{ message: string }> {
     const response = await api.post(`/incomes/${id}/skip`);
+    notifyIncomesChanged();
     return response.data;
   },
 };
