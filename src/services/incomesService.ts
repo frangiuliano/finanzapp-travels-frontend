@@ -53,14 +53,6 @@ export const incomesService = {
     notifyIncomesChanged();
   },
 
-  async confirmIncome(
-    id: string,
-  ): Promise<{ message: string; income: Income }> {
-    const response = await api.post(`/incomes/${id}/confirm`);
-    notifyIncomesChanged();
-    return response.data;
-  },
-
   async skipIncome(id: string): Promise<{ message: string }> {
     const response = await api.post(`/incomes/${id}/skip`);
     notifyIncomesChanged();

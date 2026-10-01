@@ -439,8 +439,6 @@ export function ExpensesExplorerSection({
         : []),
       ...(movementType !== 'expense'
         ? incomes.map((income) => {
-            const statusLabel =
-              income.status === 'pending' ? 'Pendiente' : 'Cobrado';
             return {
               id: income._id,
               type: 'income' as const,
@@ -450,8 +448,10 @@ export function ExpensesExplorerSection({
               secondaryLabel: null,
               categoryLabel: 'Ingreso',
               paymentMethodLabel: '—',
-              statusLabel,
-              meta: `${income.recurringIncomeId ? 'Ingreso recurrente' : 'Ingreso puntual'} · ${statusLabel}`,
+              statusLabel: '',
+              meta: income.recurringIncomeId
+                ? 'Ingreso recurrente'
+                : 'Ingreso puntual',
               amount: income.amount,
               currency: income.currency,
               income,
@@ -738,7 +738,9 @@ export function ExpensesExplorerSection({
             <SelectItem value="label">Comercio</SelectItem>
             <SelectItem value="categoryLabel">Categoría</SelectItem>
             <SelectItem value="paymentMethodLabel">Medio de pago</SelectItem>
-            <SelectItem value="statusLabel">Estado</SelectItem>
+            {movementType !== 'income' ? (
+              <SelectItem value="statusLabel">Estado</SelectItem>
+            ) : null}
             <SelectItem value="amount">Monto</SelectItem>
           </SelectContent>
         </Select>
@@ -1012,9 +1014,11 @@ export function ExpensesExplorerSection({
                       <TableHead className="hidden md:table-cell">
                         {renderSortButton('paymentMethodLabel', 'Medio')}
                       </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        {renderSortButton('statusLabel', 'Estado')}
-                      </TableHead>
+                      {movementType !== 'income' ? (
+                        <TableHead className="hidden lg:table-cell">
+                          {renderSortButton('statusLabel', 'Estado')}
+                        </TableHead>
+                      ) : null}
                       <TableHead className="text-right">
                         {renderSortButton('amount', 'Monto', 'end')}
                       </TableHead>
@@ -1063,11 +1067,13 @@ export function ExpensesExplorerSection({
                         <TableCell className="hidden text-muted-foreground md:table-cell">
                           {movement.paymentMethodLabel}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="flex flex-wrap items-center gap-1">
-                            {movement.statusLabel}
-                          </div>
-                        </TableCell>
+                        {movementType !== 'income' ? (
+                          <TableCell className="hidden lg:table-cell">
+                            <div className="flex flex-wrap items-center gap-1">
+                              {movement.statusLabel}
+                            </div>
+                          </TableCell>
+                        ) : null}
                         <TableCell className="text-right font-semibold tabular-nums">
                           <span className="sr-only">
                             {movement.type === 'income' ? 'Entrada' : 'Salida'}
