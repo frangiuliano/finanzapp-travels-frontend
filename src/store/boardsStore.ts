@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Board } from '@/types/board';
 
 const LAST_ACTIVE_BOARD_KEY = 'lastActiveBoardId';
+const BOARDS_CACHE_KEY = 'finanzapp-boards-cache';
 
 export type BootstrapStatus = 'pending' | 'loading' | 'ready' | 'error';
 
@@ -33,16 +34,46 @@ export const getLastActiveBoardIdFromStorage = (): string | null => {
   return localStorage.getItem(LAST_ACTIVE_BOARD_KEY);
 };
 
+/**
+ * Boards are lightweight metadata (name, currency, type) — no financial
+ * transaction data — so caching the last known list lets a cold, offline
+ * app load fall back to it instead of hard-blocking on the network fetch.
+ */
+const saveBoardsCache = (boards: Board[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(BOARDS_CACHE_KEY, JSON.stringify(boards));
+  } catch {
+    // localStorage unavailable (private mode, quota) — this cache is a
+    // convenience for offline continuity, not a requirement.
+  }
+};
+
+export const getBoardsCacheFromStorage = (): Board[] | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(BOARDS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Board[]) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const useBoardsStore = create<BoardsState>((set) => ({
   boards: [],
   currentBoard: null,
   isLoading: true,
   bootstrapStatus: 'pending',
-  setBoards: (boards) => set({ boards }),
+  setBoards: (boards) => {
+    saveBoardsCache(boards);
+    set({ boards });
+  },
   addBoard: (board) =>
-    set((state) => ({
-      boards: [board, ...state.boards],
-    })),
+    set((state) => {
+      const boards = [board, ...state.boards];
+      saveBoardsCache(boards);
+      return { boards };
+    }),
   updateBoard: (updatedBoard) =>
     set((state) => {
       const boards = state.boards.map((board) =>
@@ -52,6 +83,7 @@ export const useBoardsStore = create<BoardsState>((set) => ({
         state.currentBoard?._id === updatedBoard._id
           ? updatedBoard
           : state.currentBoard;
+      saveBoardsCache(boards);
       return { boards, currentBoard };
     }),
   removeBoard: (boardId) =>
@@ -62,6 +94,7 @@ export const useBoardsStore = create<BoardsState>((set) => ({
       if (!currentBoard) {
         saveLastActiveBoardId(null);
       }
+      saveBoardsCache(boards);
       return { boards, currentBoard };
     }),
   setCurrentBoard: (board) => {

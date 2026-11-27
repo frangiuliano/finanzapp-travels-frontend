@@ -1,3 +1,5 @@
+import type { CurrencyBreakdownEntry } from '@/types/currency-breakdown';
+
 export interface ForecastLineItem {
   id: string;
   label: string;
@@ -10,21 +12,21 @@ export interface ForecastLineItem {
     installmentNumber?: number;
     totalInstallments?: number;
     daysOfMonth?: number[];
+    paymentMethodId?: string;
   };
 }
-
-export type HomeMonthView = 'calendar' | 'cash_impact';
 
 export interface MonthlyForecast {
   boardId: string;
   yearMonth: string;
   currency: string;
-  attributionMode?: HomeMonthView;
   isFutureMonth: boolean;
   actual: {
     totalIncomes: number;
     totalExpenses: number;
     remaining: number;
+    incomesByCurrency: CurrencyBreakdownEntry[];
+    expensesByCurrency: CurrencyBreakdownEntry[];
   };
   planned: {
     incomes: ForecastLineItem[];
@@ -33,5 +35,7 @@ export interface MonthlyForecast {
     totalIncomes: number;
     totalOutflows: number;
     projectedRemaining: number;
+    incomesByCurrency: CurrencyBreakdownEntry[];
+    outflowsByCurrency: CurrencyBreakdownEntry[];
   };
 }

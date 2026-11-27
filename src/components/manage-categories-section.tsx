@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Archive, Pencil, Plus } from 'lucide-react';
+import { Archive, CircleOff, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CategoryColorPicker } from '@/components/category-color-picker';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { CATEGORY_ICON_OPTIONS } from '@/constants/category-icons';
 import {
   DEFAULT_CATEGORY_COLOR,
   isValidCategoryColor,
@@ -39,6 +41,8 @@ export function ManageCategoriesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Category | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [formData, setFormData] = useState<CategoryFormState>(createEmptyForm);
 
   const fetchCategories = useCallback(async () => {
@@ -120,23 +124,19 @@ export function ManageCategoriesSection({
   };
 
   const handleArchive = async (category: Category) => {
-    if (
-      !confirm(
-        `¿Archivar la categoría "${category.name}"? Los gastos existentes no se borran.`,
-      )
-    ) {
-      return;
-    }
-
+    setIsArchiving(true);
     try {
       await categoriesService.archive(category._id);
       toast.success('Categoría archivada');
+      setArchiveTarget(null);
       await fetchCategories();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
         axiosError.response?.data?.message || 'Error al archivar la categoría',
       );
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -159,8 +159,8 @@ export function ManageCategoriesSection({
         <p className="text-sm text-muted-foreground">Cargando categorías…</p>
       ) : categories.length === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-          No hay categorías activas. Creá la primera o revisá que el tablero
-          tenga el seed del backend.
+          Todavía no hay categorías. Creá la primera para empezar a clasificar
+          tus gastos.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -202,7 +202,7 @@ export function ManageCategoriesSection({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => handleArchive(category)}
+                  onClick={() => setArchiveTarget(category)}
                   aria-label={`Archivar ${category.name}`}
                 >
                   <Archive className="size-4 text-muted-foreground" />
@@ -233,16 +233,53 @@ export function ManageCategoriesSection({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="category-icon">Icono (opcional)</Label>
-            <Input
-              id="category-icon"
-              value={formData.icon}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, icon: event.target.value }))
-              }
-              placeholder="utensils"
-              disabled={isSaving}
-            />
+            <Label>Icono (opcional)</Label>
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-4"
+              role="group"
+              aria-label="Elegir icono de la categoría"
+            >
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, icon: '' }))}
+                disabled={isSaving}
+                aria-pressed={!formData.icon}
+                className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary disabled:pointer-events-none disabled:opacity-50"
+              >
+                <CircleOff className="size-5" aria-hidden />
+                Sin icono
+              </button>
+              {CATEGORY_ICON_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        icon: option.value,
+                      }))
+                    }
+                    disabled={isSaving}
+                    aria-pressed={formData.icon === option.value}
+                    className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <Icon className="size-5" aria-hidden />
+                    <span className="max-w-full truncate">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {formData.icon &&
+            !CATEGORY_ICON_OPTIONS.some(
+              (option) => option.value === formData.icon,
+            ) ? (
+              <p className="text-xs text-muted-foreground">
+                Esta categoría usa un icono anterior. Se conservará mientras no
+                elijas otro.
+              </p>
+            ) : null}
           </div>
           <CategoryColorPicker
             value={formData.color}
@@ -273,6 +310,26 @@ export function ManageCategoriesSection({
           </div>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null);
+        }}
+        title={
+          archiveTarget
+            ? `Archivar “${archiveTarget.name}”`
+            : 'Archivar categoría'
+        }
+        description="La categoría dejará de aparecer al registrar nuevos gastos. Los movimientos existentes conservarán su categoría y no se borrarán."
+        confirmLabel="Archivar categoría"
+        confirmIcon={<Archive className="size-4" aria-hidden />}
+        pendingLabel="Archivando…"
+        isPending={isArchiving}
+        onConfirm={() => {
+          if (archiveTarget) return handleArchive(archiveTarget);
+        }}
+      />
     </div>
   );
 }

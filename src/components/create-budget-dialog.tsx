@@ -181,6 +181,7 @@ export function CreateBudgetDialog({
             id="amount"
             value={amount}
             onChange={setAmount}
+            currency={currency}
             disabled={isLoading}
           />
           {errors.amount && (

@@ -1,7 +1,6 @@
 import api from './api';
 import type {
   FinancialInstrument,
-  GoalStatus,
   HoldingType,
   InstrumentType,
   WealthOverview,
@@ -47,57 +46,6 @@ export const wealthService = {
   },
   async archiveHolding(boardId: string, id: string) {
     await api.delete(`/wealth/holdings/${id}`, { params: { boardId } });
-  },
-  async createGoal(
-    boardId: string,
-    data: {
-      name: string;
-      targetAmount: number;
-      currency: string;
-      targetDate?: string;
-      plannedMonthlyContribution?: number;
-      priority?: number;
-      icon?: string;
-    },
-  ) {
-    return (await api.post('/wealth/goals', data, { params: { boardId } }))
-      .data;
-  },
-  async updateGoal(
-    boardId: string,
-    id: string,
-    data: {
-      name?: string;
-      targetAmount?: number;
-      targetDate?: string;
-      plannedMonthlyContribution?: number;
-      priority?: number;
-      icon?: string;
-      status?: GoalStatus;
-    },
-  ) {
-    return (
-      await api.patch(`/wealth/goals/${id}`, data, { params: { boardId } })
-    ).data;
-  },
-  async archiveGoal(boardId: string, id: string) {
-    await api.delete(`/wealth/goals/${id}`, { params: { boardId } });
-  },
-  async contribute(
-    boardId: string,
-    goalId: string,
-    data: {
-      holdingId: string;
-      kind: 'contribution' | 'withdrawal';
-      amount: number;
-      note?: string;
-    },
-  ): Promise<WealthOverview> {
-    return (
-      await api.post(`/wealth/goals/${goalId}/contributions`, data, {
-        params: { boardId },
-      })
-    ).data;
   },
   async getInstruments(
     search = '',

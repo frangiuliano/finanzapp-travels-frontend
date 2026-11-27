@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
+import { isDefiniteAuthFailure } from '@/lib/network';
+import { clearOfflineIdentity } from '@/lib/offlineIdentity';
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
@@ -82,7 +84,14 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        if (!isDefiniteAuthFailure(refreshError)) {
+          // Couldn't confirm the session is actually invalid (network
+          // blip, server hiccup) — don't force a logout for that, just
+          // let the original request's failure propagate.
+          return Promise.reject(refreshError);
+        }
         useAuthStore.getState().clearAuth();
+        clearOfflineIdentity();
         if (window.location.pathname !== '/login') {
           const currentPath = `${window.location.pathname}${window.location.search}`;
           window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;

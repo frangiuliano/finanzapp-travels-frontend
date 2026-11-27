@@ -7,6 +7,12 @@ import {
 } from '@/lib/payment-method-events';
 import { paymentMethodsService } from '@/services/paymentMethodsService';
 import { PaymentMethod } from '@/types/payment-method';
+import {
+  getBoardScopedCache,
+  saveBoardScopedCache,
+} from '@/lib/board-scoped-cache';
+
+const CACHE_NAMESPACE = 'payment-methods';
 
 export function useAvailablePaymentMethods(
   boardId: string | undefined,
@@ -26,6 +32,8 @@ export function useAvailablePaymentMethods(
         const { paymentMethods: availableMethods } =
           await paymentMethodsService.getAvailableForBoard(targetBoardId);
         const methods = availableMethods.filter((method) => method.isActive);
+        saveBoardScopedCache(CACHE_NAMESPACE, targetBoardId, methods);
+
         const currentIsUnavailable = Boolean(
           currentPaymentMethod &&
           !methods.some((method) => method._id === currentPaymentMethod._id),
@@ -42,6 +50,17 @@ export function useAvailablePaymentMethods(
           );
         }
       } catch (error) {
+        const cached = getBoardScopedCache<PaymentMethod[]>(
+          CACHE_NAMESPACE,
+          targetBoardId,
+        );
+        if (cached && cached.length > 0) {
+          if (!cancelled()) {
+            setPaymentMethods(cached);
+            setUnavailableCurrentPaymentMethodId(undefined);
+          }
+          return;
+        }
         if (!cancelled()) {
           const axiosError = error as AxiosError<{ message?: string }>;
           toast.error(

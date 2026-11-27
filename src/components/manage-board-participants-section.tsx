@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { InviteParticipantDialog } from '@/components/invite-participant-dialog';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import { participantsService } from '@/services/participantsService';
 import { ParticipantRole } from '@/services/tripsService';
 import type { Board } from '@/types/board';
@@ -59,7 +60,15 @@ export function ManageBoardParticipantsSection({
   }, [loadParticipants]);
 
   const removeParticipant = async (participant: Participant) => {
-    if (!confirm('¿Eliminar a esta persona del tablero?')) return;
+    const { name } = participantDetails(participant);
+    if (
+      !(await requestConfirmation({
+        title: '¿Quitar participante?',
+        description: `${name} perderá el acceso a este tablero. Los movimientos ya registrados se conservarán.`,
+        confirmLabel: 'Quitar participante',
+      }))
+    )
+      return;
 
     setRemovingId(participant._id);
     try {

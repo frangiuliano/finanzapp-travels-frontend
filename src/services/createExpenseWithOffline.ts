@@ -70,20 +70,16 @@ export async function createExpenseWithOffline(
 
 export interface OfflineSyncResult {
   synced: number;
-  purged: number;
 }
 
 export async function processOfflineExpenseQueue(): Promise<OfflineSyncResult> {
   const userId = useAuthStore.getState().user?.id;
   if (!userId) {
-    return { synced: 0, purged: 0 };
+    return { synced: 0 };
   }
 
-  const purgedEntries = await offlineExpenseQueue.purgeStaleEntries(userId);
-  const purged = purgedEntries.length;
-
   if (!navigator.onLine) {
-    return { synced: 0, purged };
+    return { synced: 0 };
   }
 
   const entries = await offlineExpenseQueue.getAllForUser(userId);
@@ -117,5 +113,37 @@ export async function processOfflineExpenseQueue(): Promise<OfflineSyncResult> {
     }
   }
 
-  return { synced, purged };
+  return { synced };
+}
+
+export async function retryOfflineExpense(
+  clientRequestId: string,
+): Promise<void> {
+  if (!navigator.onLine) {
+    throw new Error('No hay conexión para reintentar el gasto');
+  }
+
+  const userId = getCurrentUserId();
+  const entry = await offlineExpenseQueue.get(clientRequestId);
+  if (!entry || entry.userId !== userId) {
+    throw new Error('El gasto pendiente ya no existe');
+  }
+
+  try {
+    await expensesService.createExpense(entry.payload, entry.clientRequestId);
+    await offlineExpenseQueue.remove(entry.clientRequestId);
+  } catch (error) {
+    const message =
+      error instanceof AxiosError
+        ? error.response?.data?.message || error.message
+        : error instanceof Error
+          ? error.message
+          : 'Error al sincronizar';
+    await offlineExpenseQueue.markFailed(
+      entry.clientRequestId,
+      message,
+      entry.retryCount + 1,
+    );
+    throw error;
+  }
 }

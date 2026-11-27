@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { EXPENSES_CHANGED_EVENT } from '@/lib/expense-events';
 import { EmptyBoardState } from '@/components/empty-board-state';
 import { EverydayBoardHome } from '@/components/everyday-board-home';
@@ -13,104 +14,74 @@ import { useBoardsStore } from '@/store/boardsStore';
 import { Budget } from '@/types/budget';
 import { Expense } from '@/types/expense';
 
+const EMPTY_BUDGETS: Budget[] = [];
+const EMPTY_EXPENSES: Expense[] = [];
+
 export default function DashboardPage() {
   const boards = useBoardsStore((state) => state.boards);
   const currentBoard = useBoardsStore((state) => state.currentBoard);
   const isLoadingBoards = useBoardsStore((state) => state.isLoading);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [totalBudgetedExpenses, setTotalBudgetedExpenses] = useState(0);
-  const [totalUnbudgetedExpenses, setTotalUnbudgetedExpenses] = useState(0);
-  const [budgetsStatus, setBudgetsStatus] = useState<
-    'loading' | 'success' | 'error'
-  >('loading');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const activeBoard = currentBoard || boards[0];
   const isEverydayBoard = activeBoard?.type === 'everyday';
 
+  const canFetchTripData =
+    !!activeBoard && !activeBoard._id.startsWith('mock-') && !isEverydayBoard;
+
+  const budgetsQuery = useQuery({
+    queryKey: ['budgets', activeBoard?._id, refreshTrigger],
+    queryFn: () => budgetsService.getAllBudgetsByTrip(activeBoard!._id),
+    enabled: canFetchTripData,
+  });
+
+  const expensesQuery = useQuery({
+    queryKey: ['expenses', activeBoard?._id, refreshTrigger],
+    queryFn: () => expensesService.getExpenses(activeBoard!._id),
+    enabled: canFetchTripData,
+  });
+
   useEffect(() => {
-    if (
-      !activeBoard ||
-      activeBoard._id.startsWith('mock-') ||
-      isEverydayBoard
-    ) {
-      return;
+    if (budgetsQuery.error) {
+      console.error('Error al cargar presupuestos:', budgetsQuery.error);
     }
+  }, [budgetsQuery.error]);
 
-    let stale = false;
+  useEffect(() => {
+    if (expensesQuery.error) {
+      console.error('Error al cargar gastos:', expensesQuery.error);
+    }
+  }, [expensesQuery.error]);
 
-    const fetchData = async () => {
-      setBudgetsStatus('loading');
-      setBudgets([]);
-      setExpenses([]);
-      setTotalExpenses(0);
-      setTotalBudgetedExpenses(0);
-      setTotalUnbudgetedExpenses(0);
+  const budgets: Budget[] = budgetsQuery.data?.budgets ?? EMPTY_BUDGETS;
+  const budgetsStatus: 'loading' | 'success' | 'error' = !canFetchTripData
+    ? 'loading'
+    : budgetsQuery.isError
+      ? 'error'
+      : budgetsQuery.isSuccess
+        ? 'success'
+        : 'loading';
 
-      try {
-        const [budgetsResult, expensesResult] = await Promise.allSettled([
-          budgetsService.getAllBudgetsByTrip(activeBoard._id),
-          expensesService.getExpenses(activeBoard._id),
-        ]);
+  const expenses: Expense[] = expensesQuery.data?.expenses ?? EMPTY_EXPENSES;
 
-        if (stale) return;
-
-        if (budgetsResult.status === 'fulfilled') {
-          setBudgets(budgetsResult.value.budgets);
-          setBudgetsStatus('success');
-        } else {
-          console.error('Error al cargar presupuestos:', budgetsResult.reason);
-          setBudgets([]);
-          setBudgetsStatus('error');
-        }
-
-        const loadedExpenses =
-          expensesResult.status === 'fulfilled'
-            ? expensesResult.value.expenses
-            : [];
-
-        if (expensesResult.status === 'rejected') {
-          console.error('Error al cargar gastos:', expensesResult.reason);
-        }
-
-        setExpenses(loadedExpenses);
-
-        const total = loadedExpenses.reduce(
-          (sum, expense) => sum + expense.amount,
-          0,
-        );
-        setTotalExpenses(total);
-
-        const totalWithBudget = loadedExpenses
-          .filter((expense) => expense.budgetId)
-          .reduce((sum, expense) => sum + expense.amount, 0);
-        setTotalBudgetedExpenses(totalWithBudget);
-
-        const totalWithoutBudget = loadedExpenses
-          .filter((expense) => !expense.budgetId)
-          .reduce((sum, expense) => sum + expense.amount, 0);
-        setTotalUnbudgetedExpenses(totalWithoutBudget);
-      } catch (error) {
-        if (!stale) {
-          console.error('Error al cargar datos:', error);
-          setBudgets([]);
-          setBudgetsStatus('error');
-          setExpenses([]);
-          setTotalExpenses(0);
-          setTotalBudgetedExpenses(0);
-          setTotalUnbudgetedExpenses(0);
-        }
-      }
-    };
-
-    void fetchData();
-
-    return () => {
-      stale = true;
-    };
-  }, [activeBoard, refreshTrigger, isEverydayBoard]);
+  const totalExpenses = useMemo(
+    () => expenses.reduce((sum, expense) => sum + expense.amount, 0),
+    [expenses],
+  );
+  const totalBudgetedExpenses = useMemo(
+    () =>
+      expenses
+        .filter((expense) => expense.budgetId)
+        .reduce((sum, expense) => sum + expense.amount, 0),
+    [expenses],
+  );
+  const totalUnbudgetedExpenses = useMemo(
+    () =>
+      expenses
+        .filter((expense) => !expense.budgetId)
+        .reduce((sum, expense) => sum + expense.amount, 0),
+    [expenses],
+  );
 
   useEffect(() => {
     const onExpensesChanged = () => setRefreshTrigger((prev) => prev + 1);
@@ -137,7 +108,7 @@ export default function DashboardPage() {
     <div className="w-full flex-1 space-y-4 px-4 py-6 lg:px-6">
       <div>
         <div className="mb-4 sm:mb-6">
-          <h2 className="font-display text-xl sm:text-2xl font-bold">
+          <h2 className="font-display text-2xl font-bold">
             {activeBoard.name}
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground">
@@ -192,6 +163,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div>
             <RecentExpensesTable
+              isShared={activeBoard.isShared}
               tripId={activeBoard._id}
               boardCurrency={activeBoard.baseCurrency}
               refreshTrigger={refreshTrigger}

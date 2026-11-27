@@ -3,6 +3,7 @@ import { removeBoardAndTrip } from '@/lib/board-trip-sync';
 import { boardTypeLabel, type Board } from '@/types/board';
 import { AxiosError } from 'axios';
 import { toast } from 'sonner';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 function getLeaveBoardConfirmMessage(board: Board): string {
   const typeLabel = boardTypeLabel(board.type).toLowerCase();
@@ -11,7 +12,14 @@ function getLeaveBoardConfirmMessage(board: Board): string {
 }
 
 export async function leaveBoardWithConfirm(board: Board): Promise<boolean> {
-  if (!confirm(getLeaveBoardConfirmMessage(board))) {
+  if (
+    !(await requestConfirmation({
+      title: '¿Abandonar tablero?',
+      description: getLeaveBoardConfirmMessage(board),
+      confirmLabel: 'Abandonar tablero',
+      action: 'leave',
+    }))
+  ) {
     return false;
   }
 

@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
 import { BoardMonthSummaryCards } from '@/components/board-month-summary-cards';
+import { BoardForecastSection } from '@/components/board-forecast-section';
 import { ConsolidatedReportSection } from '@/components/consolidated-report-section';
-import { CreditCycleReportSection } from '@/components/credit-cycle-report-section';
+import { MonthlyInsightsSection } from '@/components/monthly-insights-section';
+import { MonthlyPlanningCards } from '@/components/monthly-planning-cards';
 import { ReportsBreakdownChart } from '@/components/reports-breakdown-chart';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
@@ -18,10 +21,12 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { reportsService } from '@/services/reportsService';
+import { forecastService } from '@/services/forecastService';
 import { useBoardsStore } from '@/store/boardsStore';
 import type { BoardCalendarReport } from '@/types/report';
+import type { MonthlyForecast } from '@/types/forecast';
 import { PAYMENT_METHOD_KIND_LABELS } from '@/types/payment-method';
-import { getCurrentYearMonth } from '@/lib/utils';
+import { getDefaultViewYearMonth } from '@/lib/utils';
 
 type ReportsView = 'calendar' | 'consolidated';
 
@@ -33,12 +38,7 @@ export default function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView: ReportsView =
     searchParams.get('view') === 'consolidated' ? 'consolidated' : 'calendar';
-  const [yearMonth, setYearMonth] = useState(getCurrentYearMonth);
-
-  const [calendarReport, setCalendarReport] =
-    useState<BoardCalendarReport | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [yearMonth, setYearMonth] = useState(getDefaultViewYearMonth);
   const expensesChangedRefresh = useExpensesChangedRefresh();
 
   const handleViewChange = (value: string) => {
@@ -50,47 +50,38 @@ export default function ReportsPage() {
     }
   };
 
-  useEffect(() => {
-    if (!activeBoard || activeBoard._id.startsWith('mock-')) {
-      setCalendarReport(null);
-      return;
-    }
+  const canFetchReport =
+    !!activeBoard &&
+    !activeBoard._id.startsWith('mock-') &&
+    activeView === 'calendar';
 
-    if (activeView !== 'calendar') {
-      return;
-    }
+  const reportQuery = useQuery({
+    queryKey: [
+      'board-calendar-report',
+      activeBoard?._id,
+      yearMonth,
+      expensesChangedRefresh,
+    ],
+    queryFn: () =>
+      reportsService.getBoardCalendarReport(activeBoard!._id, yearMonth),
+    enabled: canFetchReport,
+  });
 
-    let stale = false;
+  const forecastQuery = useQuery({
+    queryKey: ['forecast', activeBoard?._id, yearMonth, expensesChangedRefresh],
+    queryFn: () =>
+      forecastService.getMonthlyForecast(activeBoard!._id, yearMonth),
+    enabled: canFetchReport,
+  });
 
-    const load = async () => {
-      setIsLoading(true);
-      setLoadError(null);
-      try {
-        const { report } = await reportsService.getBoardCalendarReport(
-          activeBoard._id,
-          yearMonth,
-        );
-        if (!stale) {
-          setCalendarReport(report);
-        }
-      } catch {
-        if (!stale) {
-          setLoadError('No se pudo cargar el reporte del mes.');
-          setCalendarReport(null);
-        }
-      } finally {
-        if (!stale) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      stale = true;
-    };
-  }, [activeBoard, yearMonth, activeView, expensesChangedRefresh]);
+  const isLoading = reportQuery.isLoading || forecastQuery.isLoading;
+  const calendarReport: BoardCalendarReport | null =
+    reportQuery.data?.report ?? null;
+  const forecast: MonthlyForecast | null = forecastQuery.data?.forecast ?? null;
+  const loadError =
+    reportQuery.isError || forecastQuery.isError
+      ? 'No se pudo cargar el reporte del mes.'
+      : null;
 
   const categoryItems = useMemo(
     () =>
@@ -99,6 +90,7 @@ export default function ReportsPage() {
         label: item.categoryName,
         total: item.total,
         count: item.count,
+        otherCurrencyTotals: item.otherCurrencyTotals,
       })),
     [calendarReport?.byCategory],
   );
@@ -112,6 +104,7 @@ export default function ReportsPage() {
           : item.paymentMethodName,
         total: item.total,
         count: item.count,
+        otherCurrencyTotals: item.otherCurrencyTotals,
       })),
     [calendarReport?.byPaymentMethod],
   );
@@ -125,7 +118,7 @@ export default function ReportsPage() {
         <h2 className="font-display text-2xl font-bold">Reportes</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Creá tu primer tablero para ver reportes mensuales, categorías y
-          ciclos de tarjeta.
+          compromisos del mes.
         </p>
         <Button asChild className="rounded-xl">
           <Link to="/onboarding">Crear tablero</Link>
@@ -152,12 +145,13 @@ export default function ReportsPage() {
           Reportes
         </h1>
         <p className="text-sm text-muted-foreground">
-          Tablero activo:{' '}
-          <span className="font-medium">{activeBoard.name}</span>
+          Viendo: <span className="font-medium">{activeBoard.name}</span>
         </p>
       </div>
 
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
+
+      <MonthlyInsightsSection boardId={activeBoard._id} yearMonth={yearMonth} />
 
       <Tabs value={activeView} onValueChange={handleViewChange}>
         <TabsList className="grid w-full grid-cols-2 rounded-xl">
@@ -172,12 +166,9 @@ export default function ReportsPage() {
         <TabsContent value="calendar" className="mt-6 space-y-6">
           {isLoading ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Skeleton className="h-32 rounded-xl" />
-                <Skeleton className="h-32 rounded-xl" />
-                <Skeleton className="h-32 rounded-xl" />
-              </div>
               <Skeleton className="h-64 rounded-xl" />
+              <Skeleton className="h-64 rounded-xl" />
+              <Skeleton className="h-24 rounded-xl" />
             </div>
           ) : loadError ? (
             <Card>
@@ -185,13 +176,33 @@ export default function ReportsPage() {
                 {loadError}
               </CardContent>
             </Card>
-          ) : calendarReport ? (
+          ) : calendarReport && forecast ? (
             <>
-              <BoardMonthSummaryCards
-                summary={calendarReport}
-                yearMonth={yearMonth}
-              />
+              {forecast.actual.totalIncomes === 0 &&
+                forecast.actual.totalExpenses === 0 &&
+                forecast.planned.totalIncomes === 0 &&
+                forecast.planned.totalOutflows === 0 && (
+                  <Card className="border-dashed">
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        Sin movimientos ni compromisos
+                      </CardTitle>
+                      <CardDescription>
+                        No hay movimientos confirmados ni gastos proyectados
+                        para este mes de pago.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
 
+              <MonthlyPlanningCards forecast={forecast} />
+
+              <BoardForecastSection
+                incomes={forecast.planned.incomes}
+                fixedExpenses={forecast.planned.fixedExpenses}
+                installments={forecast.planned.installments}
+                isFutureMonth={forecast.isFutureMonth}
+              />
               {calendarReport.totalIncomes === 0 &&
                 calendarReport.totalExpenses === 0 && (
                   <Card className="border-dashed">
@@ -208,7 +219,7 @@ export default function ReportsPage() {
 
               <ReportsBreakdownChart
                 title="Por categoría"
-                description="Gastos del mes calendario agrupados por categoría."
+                description="Gastos del mes de pago agrupados por categoría."
                 items={categoryItems}
                 currency={calendarReport.currency}
                 emptyMessage="Sin gastos categorizados este mes."
@@ -216,13 +227,16 @@ export default function ReportsPage() {
 
               <ReportsBreakdownChart
                 title="Por medio de pago"
-                description="Gastos del mes calendario por tarjeta, débito o efectivo."
+                description="Gastos del mes de pago por tarjeta, débito o efectivo."
                 items={paymentMethodItems}
                 currency={calendarReport.currency}
                 emptyMessage="Sin gastos con medio de pago este mes."
               />
 
-              <CreditCycleReportSection boardId={activeBoard._id} />
+              <BoardMonthSummaryCards
+                summary={calendarReport}
+                yearMonth={yearMonth}
+              />
             </>
           ) : null}
         </TabsContent>
