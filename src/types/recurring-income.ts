@@ -5,6 +5,7 @@ export interface RecurringIncome {
   currency: string;
   description?: string;
   daysOfMonth: number[];
+  excludedYearMonths: string[];
   isActive: boolean;
   createdAt: string;
 }
@@ -16,6 +17,7 @@ export interface CreateRecurringIncomeDto {
   currency?: string;
   description?: string;
   daysOfMonth: number[];
+  excludedYearMonths?: string[];
 }
 
 export interface UpdateRecurringIncomeDto {
@@ -24,6 +26,7 @@ export interface UpdateRecurringIncomeDto {
   currency?: string;
   description?: string;
   daysOfMonth?: number[];
+  excludedYearMonths?: string[];
   isActive?: boolean;
   amountChangeScope?: 'this_month' | 'from_month';
   amountChangeYearMonth?: string;

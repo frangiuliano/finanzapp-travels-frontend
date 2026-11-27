@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { EXPENSES_CHANGED_EVENT } from '@/lib/expense-events';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import {
-  Plus,
   Pencil,
   Trash2,
   ChevronLeftIcon,
@@ -53,6 +53,7 @@ import { expensesService } from '@/services/expensesService';
 import { toast } from 'sonner';
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import { formatDate } from '@/lib/utils';
+import { triggerDestructiveHaptic } from '@/lib/haptics';
 
 interface TripExpensesSectionProps {
   board: Board;
@@ -113,7 +114,7 @@ export function TripExpensesSection({
   }, []);
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: currency,
     }).format(amount);
@@ -132,11 +133,6 @@ export function TripExpensesSection({
     return 'Usuario';
   };
 
-  const handleCreateExpense = () => {
-    setSelectedExpense(null);
-    setIsExpenseDialogOpen(true);
-  };
-
   const handleEditExpense = (expense: Expense) => {
     setSelectedExpense(expense);
     setIsExpenseDialogOpen(true);
@@ -144,9 +140,11 @@ export function TripExpensesSection({
 
   const handleDeleteExpense = async (expense: Expense) => {
     if (
-      !confirm(
-        `¿Estás seguro de que deseas eliminar el gasto "${expense.description}"?`,
-      )
+      !(await requestConfirmation({
+        title: '¿Eliminar gasto?',
+        description: `Se eliminará “${expense.description}” y se actualizarán los totales del viaje. Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar gasto',
+      }))
     ) {
       return;
     }
@@ -154,6 +152,7 @@ export function TripExpensesSection({
     try {
       await expensesService.deleteExpense(expense._id);
       toast.success('Gasto eliminado exitosamente');
+      triggerDestructiveHaptic();
       setRefreshTrigger((prev) => prev + 1);
       onExpensesChange?.();
     } catch (error) {
@@ -322,6 +321,7 @@ export function TripExpensesSection({
     state: {
       sorting,
       pagination,
+      columnVisibility: { paidBy: board.isShared },
     },
     getRowId: (row) => row._id,
     onSortingChange: setSorting,
@@ -335,25 +335,13 @@ export function TripExpensesSection({
     <>
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Gastos del viaje</CardTitle>
-              <CardDescription>
-                {expenses.length > 0
-                  ? `${expenses.length} gasto${expenses.length !== 1 ? 's' : ''} • Total: ${formatCurrency(totalExpenses, DEFAULT_CURRENCY)}`
-                  : `Gastos registrados para ${board.name}`}
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCreateExpense}
-              className="w-full sm:w-auto"
-              disabled={participants.length === 0}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Registrar Gasto
-            </Button>
+          <div>
+            <CardTitle>Gastos del viaje</CardTitle>
+            <CardDescription>
+              {expenses.length > 0
+                ? `${expenses.length} gasto${expenses.length !== 1 ? 's' : ''} • Total: ${formatCurrency(totalExpenses, DEFAULT_CURRENCY)}`
+                : `Gastos registrados para ${board.name}`}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -373,21 +361,100 @@ export function TripExpensesSection({
           ) : expenses.length === 0 ? (
             <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
-                No hay gastos registrados para este viaje
+                No hay gastos registrados. Usá el botón + para crear el primer
+                movimiento del viaje.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCreateExpense}
-                className="mt-4"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Registrar tu primer gasto
-              </Button>
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="space-y-3 md:hidden">
+                {expenses.map((expense) => {
+                  const paymentLabel =
+                    expense.paymentMethod === PaymentMethod.CASH
+                      ? 'Efectivo'
+                      : expense.card?.name || 'Tarjeta';
+
+                  return (
+                    <article
+                      key={expense._id}
+                      className="rounded-xl border bg-card p-4 shadow-xs"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-medium">
+                            {expense.description}
+                          </h3>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {formatDate(
+                              expense.expenseDate || expense.createdAt,
+                            )}{' '}
+                            · {expense.budget?.name || 'Sin presupuesto'}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <strong className="block tabular-nums">
+                            {formatCurrency(
+                              expense.amount,
+                              expense.currency || DEFAULT_CURRENCY,
+                            )}
+                          </strong>
+                          <Badge
+                            variant={
+                              expense.status === ExpenseStatus.PAID
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className="mt-1"
+                          >
+                            {expense.status === ExpenseStatus.PAID
+                              ? 'Pagado'
+                              : 'Pendiente'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs">
+                        {board.isShared && (
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Pagado por
+                            </dt>
+                            <dd className="mt-0.5 truncate font-medium">
+                              {getParticipantName(expense.paidByParticipant)}
+                            </dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt className="text-muted-foreground">Medio</dt>
+                          <dd className="mt-0.5 truncate font-medium">
+                            {paymentLabel}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="mt-2 flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-11"
+                          onClick={() => handleEditExpense(expense)}
+                          aria-label={`Editar ${expense.description}`}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-11"
+                          onClick={() => void handleDeleteExpense(expense)}
+                          aria-label={`Eliminar ${expense.description}`}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
                   <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -432,7 +499,7 @@ export function TripExpensesSection({
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between px-4 pt-4">
+              <div className="hidden items-center justify-between px-4 pt-4 md:flex">
                 <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
                   {table.getFilteredRowModel().rows.length} gasto(s) en total
                 </div>

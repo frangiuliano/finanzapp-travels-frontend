@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { boardsService } from '@/services/boardsService';
 import { addBoardToStores, removeBoardAndTrip } from '@/lib/board-trip-sync';
 import type { Board } from '@/types/board';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 export const BOARDS_ARCHIVE_CHANGED_EVENT = 'finanzapp:boards-archive-changed';
 
@@ -11,7 +12,12 @@ export async function archiveBoardWithConfirm(board: Board): Promise<boolean> {
     return false;
   }
   if (
-    !confirm(`¿Archivar “${board.name}”? Sus gastos y datos se conservarán.`)
+    !(await requestConfirmation({
+      title: '¿Archivar tablero?',
+      description: `“${board.name}” dejará de aparecer entre tus tableros activos. Sus gastos y datos se conservarán.`,
+      confirmLabel: 'Archivar tablero',
+      action: 'archive',
+    }))
   ) {
     return false;
   }

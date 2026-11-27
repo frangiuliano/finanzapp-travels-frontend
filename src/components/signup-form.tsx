@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { authService } from '@/services/authService';
 import axios from 'axios';
@@ -139,48 +140,65 @@ export function SignupForm({
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Crear una cuenta</CardTitle>
-          <CardDescription>
-            Ingresa tu información para crear tu cuenta
-          </CardDescription>
+        <CardHeader className="p-4 sm:p-5">
+          <CardTitle>
+            <h1 className="text-2xl">Crear una cuenta</h1>
+          </CardTitle>
+          <CardDescription>Completá tus datos para empezar.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
           <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
               {error && (
-                <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                <div
+                  role="alert"
+                  className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
+                >
                   {error}
                 </div>
               )}
-              <div className="grid gap-2">
-                <Label htmlFor="firstName">Nombre(s)</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  placeholder="Nombre"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+              <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+                <div className="grid min-w-0 gap-2">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    autoComplete="given-name"
+                    className="h-11"
+                    type="text"
+                    placeholder="Nombre"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="grid min-w-0 gap-2">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    autoComplete="family-name"
+                    className="h-11"
+                    type="text"
+                    placeholder="Apellido"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="lastName">Apellido(s)</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Apellido"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="username">Nombre de Usuario</Label>
+                <Label htmlFor="username">Nombre de usuario</Label>
                 <Input
                   id="username"
+                  name="username"
+                  autoComplete="username"
+                  className="h-11"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-describedby="username-hint"
                   type="text"
                   placeholder="nombre_usuario"
                   value={username}
@@ -188,14 +206,19 @@ export function SignupForm({
                   required
                   disabled={isLoading}
                 />
-                <p className="text-sm text-muted-foreground">
-                  De 3 a 30 caracteres. Solo letras, números y guiones bajos.
+                <p id="username-hint" className="text-sm text-muted-foreground">
+                  3–30 caracteres: letras, números o guion bajo.
                 </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
+                  autoComplete="email"
+                  className="h-11"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   type="email"
                   placeholder="m@example.com"
                   value={email}
@@ -203,51 +226,51 @@ export function SignupForm({
                   required
                   disabled={isLoading}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Usaremos esto para contactarte. No compartiremos tu email con
-                  nadie más.
-                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">Contraseña</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
+                  name="password"
+                  autoComplete="new-password"
+                  aria-describedby="password-hint"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Debe tener al menos 8 caracteres y contener al menos una
-                  mayúscula, una minúscula y un número.
+                <p id="password-hint" className="text-sm text-muted-foreground">
+                  Mínimo 8 caracteres, con mayúscula, minúscula y número.
                 </p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="confirm-password">Confirmar Contraseña</Label>
-                <Input
+                <Label htmlFor="confirm-password">Confirmar contraseña</Label>
+                <PasswordInput
                   id="confirm-password"
-                  type="password"
+                  name="confirm-password"
+                  autoComplete="new-password"
+                  visibilityLabel="confirmación de contraseña"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={isLoading}
                 />
-                <p className="text-sm text-muted-foreground">
-                  Por favor, confirma tu contraseña.
-                </p>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
+              <Button
+                type="submit"
+                className="h-11 w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              ¿Ya tienes una cuenta?{' '}
+              ¿Ya tenés una cuenta?{' '}
               <Link
                 to="/login"
                 className="underline underline-offset-4 hover:text-primary"
               >
-                Inicia sesión
+                Iniciá sesión
               </Link>
             </div>
           </form>

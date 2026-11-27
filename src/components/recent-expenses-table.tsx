@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Column,
   ColumnDef,
@@ -66,11 +67,6 @@ import { Expense, ExpenseStatus, PaymentMethod } from '@/types/expense';
 import { CardType } from '@/types/card';
 import { expensesService } from '@/services/expensesService';
 import { ExpenseAmountDisplay } from '@/components/expense-amount-display';
-import {
-  expenseBelongsToYearMonth,
-  type HomeMonthView,
-} from '@/lib/expense-month-attribution';
-import type { PaymentMethod as BoardPaymentMethod } from '@/types/payment-method';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -81,7 +77,7 @@ const getColumnHeaderText = (column: Column<Expense, unknown>): string => {
     return header;
   }
   const headerMap: Record<string, string> = {
-    description: 'Descripción',
+    description: 'Comercio',
     budget: 'Presupuesto',
     paidBy: 'Pagado por',
     paymentMethod: 'Método de pago',
@@ -103,12 +99,24 @@ const createColumns = (
   const baseColumns: ColumnDef<Expense>[] = [
     {
       accessorKey: 'description',
-      header: 'Descripción',
+      header: 'Comercio',
       cell: ({ row }) => {
         const expense = row.original;
+        const primaryLabel = expense.merchantName || expense.description;
+        const secondaryLabel =
+          expense.merchantName &&
+          expense.description &&
+          expense.merchantName !== expense.description
+            ? expense.description
+            : null;
         return (
           <div className="min-w-0 font-medium">
-            <div>{expense.description}</div>
+            <div>{primaryLabel}</div>
+            {secondaryLabel ? (
+              <div className="text-xs font-normal text-muted-foreground">
+                {secondaryLabel}
+              </div>
+            ) : null}
             {expense.sourceBoardId && expense.sourceBoardId !== tripId ? (
               <Badge
                 variant="outline"
@@ -299,12 +307,11 @@ const createColumns = (
 };
 
 interface RecentExpensesTableProps {
+  isShared?: boolean;
   tripId: string;
   boardCurrency?: string;
   showBoardCurrency?: boolean;
   yearMonth?: string;
-  monthView?: HomeMonthView;
-  paymentMethodMap?: Map<string, BoardPaymentMethod>;
   onEdit?: (expense: Expense) => void;
   onDelete?: (expenseId: string) => void;
   refreshTrigger?: number;
@@ -313,12 +320,11 @@ interface RecentExpensesTableProps {
 }
 
 export function RecentExpensesTable({
+  isShared = true,
   tripId,
   boardCurrency = DEFAULT_CURRENCY,
   showBoardCurrency = true,
   yearMonth,
-  monthView = 'cash_impact',
-  paymentMethodMap,
   onEdit,
   onDelete,
   refreshTrigger,
@@ -342,8 +348,6 @@ export function RecentExpensesTable({
     );
   }, [showBoardCurrencyLocal]);
 
-  const [data, setData] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
   const [rowSelection, setRowSelection] = useState({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -355,48 +359,37 @@ export function RecentExpensesTable({
     pageSize: 5,
   });
 
+  const expensesQuery = useQuery({
+    queryKey: ['expenses', tripId, refreshTrigger],
+    queryFn: () => expensesService.getExpenses(tripId),
+    enabled: !!tripId,
+  });
+
+  const loading = expensesQuery.isLoading;
+
   useEffect(() => {
-    const fetchExpenses = async () => {
-      if (!tripId) {
-        setLoading(false);
-        return;
-      }
+    if (expensesQuery.isError) {
+      console.error('Error al cargar gastos recientes:', expensesQuery.error);
+      toast.error('Error al cargar los gastos');
+    }
+  }, [expensesQuery.isError, expensesQuery.error]);
 
-      try {
-        setLoading(true);
-        const response = await expensesService.getExpenses(tripId);
-        const expenses = response.expenses.sort(
-          (a, b) =>
-            new Date(b.expenseDate || b.createdAt).getTime() -
-            new Date(a.expenseDate || a.createdAt).getTime(),
-        );
-        setData(expenses);
-      } catch (error) {
-        console.error('Error al cargar gastos recientes:', error);
-        toast.error('Error al cargar los gastos');
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpenses();
-  }, [tripId, refreshTrigger]);
+  const data = useMemo(() => {
+    const expenses = expensesQuery.data?.expenses ?? [];
+    return [...expenses].sort(
+      (a, b) =>
+        new Date(b.expenseDate || b.createdAt).getTime() -
+        new Date(a.expenseDate || a.createdAt).getTime(),
+    );
+  }, [expensesQuery.data]);
 
   const filteredData = useMemo(() => {
-    if (!yearMonth || !paymentMethodMap) {
+    if (!yearMonth) {
       return data;
     }
 
-    return data.filter((expense) =>
-      expenseBelongsToYearMonth(
-        expense,
-        yearMonth,
-        monthView,
-        paymentMethodMap,
-      ),
-    );
-  }, [data, yearMonth, monthView, paymentMethodMap]);
+    return data.filter((expense) => expense.paymentYearMonth === yearMonth);
+  }, [data, yearMonth]);
 
   const columns = useMemo(
     () =>
@@ -423,7 +416,10 @@ export function RecentExpensesTable({
     columns,
     state: {
       sorting,
-      columnVisibility,
+      columnVisibility: {
+        ...columnVisibility,
+        ...(!isShared ? { paidBy: false } : {}),
+      },
       rowSelection,
       columnFilters,
       pagination,
@@ -453,9 +449,7 @@ export function RecentExpensesTable({
             </CardTitle>
             <CardDescription>
               {yearMonth
-                ? monthView === 'cash_impact'
-                  ? `Gastos que impactan en ${yearMonth} (incluye tarjeta por ciclo de cierre)`
-                  : `Gastos con fecha de compra en ${yearMonth}`
+                ? `Gastos con mes de pago ${yearMonth}`
                 : 'Gastos recientes ordenados por fecha de creación'}
             </CardDescription>
           </div>
@@ -494,6 +488,7 @@ export function RecentExpensesTable({
                   .filter(
                     (column) =>
                       typeof column.accessorFn !== 'undefined' &&
+                      (isShared || column.id !== 'paidBy') &&
                       column.getCanHide(),
                   )
                   .map((column) => {

@@ -15,11 +15,20 @@ export interface ExpenseListFilters {
   status?: ExpenseStatus;
   categoryId?: string;
   paymentMethodId?: string;
+  paymentYearMonth?: string;
   from?: string;
   to?: string;
 }
 
 export const expensesService = {
+  async getRecent(
+    boardId: string,
+    yearMonth: string,
+  ): Promise<{ expenses: Expense[] }> {
+    return (
+      await api.get('/expenses/recent', { params: { boardId, yearMonth } })
+    ).data;
+  },
   async createExpense(
     data: CreateExpenseDto,
     clientRequestId?: string,
@@ -58,11 +67,25 @@ export const expensesService = {
     if (filters.paymentMethodId) {
       params.set('paymentMethodId', filters.paymentMethodId);
     }
+    if (filters.paymentYearMonth) {
+      params.set('paymentYearMonth', filters.paymentYearMonth);
+    }
     if (filters.from) params.set('from', filters.from);
     if (filters.to) params.set('to', filters.to);
 
     const response = await api.get(`/expenses?${params.toString()}`);
     return response.data;
+  },
+
+  async listExpensesByMonth(
+    boardId: string,
+    yearMonth: string,
+    filters: ExpenseListFilters = {},
+  ): Promise<{ expenses: Expense[] }> {
+    return this.listExpenses(boardId, {
+      ...filters,
+      paymentYearMonth: yearMonth,
+    });
   },
 
   async getExpenseById(id: string): Promise<{ expense: Expense }> {

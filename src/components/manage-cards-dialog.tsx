@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { AxiosError } from 'axios';
 import { Trash2, Plus, Pencil } from 'lucide-react';
 import { UpdateCardDto } from '@/types/card';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 interface ManageCardsDialogProps {
   open: boolean;
@@ -164,7 +165,16 @@ export function ManageCardsDialog({
   };
 
   const handleDelete = async (cardId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta tarjeta?')) {
+    const card = cards.find((candidate) => candidate._id === cardId);
+    if (
+      !(await requestConfirmation({
+        title: '¿Eliminar tarjeta?',
+        description: card
+          ? `Se eliminará “${card.name}”. Esta acción no se puede deshacer.`
+          : 'La tarjeta se eliminará de forma permanente. Esta acción no se puede deshacer.',
+        confirmLabel: 'Eliminar tarjeta',
+      }))
+    ) {
       return;
     }
 
