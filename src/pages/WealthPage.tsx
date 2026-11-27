@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import {
-  ArrowDownToLine,
   ChevronDown,
   Landmark,
-  Pause,
   Pencil,
   PiggyBank,
-  Play,
   Plus,
   RefreshCw,
-  Target,
   Trash2,
   TrendingUp,
   WalletCards,
@@ -30,7 +27,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoneyInput } from '@/components/ui/money-input';
-import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -49,7 +45,6 @@ import type {
   FinancialInstrument,
   Holding,
   HoldingType,
-  SavingsGoal,
   WealthOverview,
   InvestmentPosition,
   InvestmentTransaction,
@@ -60,12 +55,10 @@ type DialogMode =
   | 'holding'
   | 'edit_holding'
   | 'balance'
-  | 'goal'
   | 'position'
   | 'price'
   | 'trade'
   | 'edit_transaction'
-  | 'contribution'
   | null;
 
 const HOLDING_LABELS: Record<HoldingType, string> = {
@@ -92,27 +85,6 @@ const HOLDING_GROUP_LABELS: Record<HoldingType, string> = {
   other: 'Otros',
 };
 
-const PACE_LABELS = {
-  on_track: 'Al día',
-  behind: 'Atrasado',
-  no_plan: 'Sin ritmo',
-  completed: 'Cumplido',
-};
-
-const GOAL_ICONS = [
-  '🎯',
-  '✈️',
-  '🏠',
-  '🚗',
-  '🛟',
-  '🎓',
-  '💻',
-  '💍',
-  '🎁',
-  '🏖️',
-  '💰',
-];
-
 const INSTRUMENT_LABELS: Record<InstrumentType, string> = {
   stock: 'Acción',
   etf: 'ETF',
@@ -131,13 +103,6 @@ function money(amount: number, currency: string) {
   }).format(amount);
 }
 
-function monthLabel(value: string) {
-  return new Intl.DateTimeFormat('es-AR', {
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(value));
-}
-
 export default function WealthPage() {
   const boards = useBoardsStore((state) => state.boards);
   const wealthBoard = boards.find((board) => board.type === 'everyday') ?? null;
@@ -146,20 +111,11 @@ export default function WealthPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
-  const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null);
   const [name, setName] = useState('');
   const [institution, setInstitution] = useState('');
   const [holdingType, setHoldingType] = useState<HoldingType>('bank_account');
   const [currency, setCurrency] = useState('ARS');
   const [amount, setAmount] = useState('');
-  const [targetDate, setTargetDate] = useState('');
-  const [monthlyAmount, setMonthlyAmount] = useState('');
-  const [priority, setPriority] = useState('5');
-  const [icon, setIcon] = useState('🎯');
-  const [holdingId, setHoldingId] = useState('');
-  const [contributionKind, setContributionKind] = useState<
-    'contribution' | 'withdrawal'
-  >('contribution');
   const [note, setNote] = useState('');
   const [instruments, setInstruments] = useState<FinancialInstrument[]>([]);
   const [instrumentId, setInstrumentId] = useState('');
@@ -199,12 +155,6 @@ export default function WealthPage() {
     setHoldingType('bank_account');
     setCurrency('ARS');
     setAmount('');
-    setTargetDate('');
-    setMonthlyAmount('');
-    setPriority('5');
-    setIcon('🎯');
-    setHoldingId('');
-    setContributionKind('contribution');
     setNote('');
     setInstrumentId('');
     setInstrumentSearch('');
@@ -220,29 +170,12 @@ export default function WealthPage() {
     setSelectedPosition(null);
     setSelectedTransaction(null);
     setSelectedHolding(null);
-    setSelectedGoal(null);
   };
 
   const closeDialog = () => {
     setDialogMode(null);
     resetForm();
   };
-
-  const eligibleHoldings = useMemo(
-    () =>
-      (overview?.holdings ?? []).filter(
-        (holding) =>
-          holding.currency === selectedGoal?.currency &&
-          (contributionKind === 'contribution' ||
-            Boolean(
-              selectedGoal?.allocations.some(
-                (allocation) =>
-                  allocation.holdingId === holding._id && allocation.amount > 0,
-              ),
-            )),
-      ),
-    [contributionKind, overview?.holdings, selectedGoal],
-  );
 
   const holdingsByCurrencyAndType = useMemo(
     () =>
@@ -320,17 +253,6 @@ export default function WealthPage() {
     setInstitution(holding.institution || '');
     setHoldingType(holding.type);
     setDialogMode('edit_holding');
-  };
-
-  const openContribution = (goal: SavingsGoal) => {
-    resetForm();
-    setSelectedGoal(goal);
-    const first = (overview?.holdings ?? []).find(
-      (holding) =>
-        holding.currency === goal.currency && holding.availableBalance > 0,
-    );
-    setHoldingId(first?._id ?? '');
-    setDialogMode('contribution');
   };
 
   const openPosition = async (holding: Holding) => {
@@ -444,36 +366,6 @@ export default function WealthPage() {
           },
         );
         toast.success('Saldo actualizado');
-      } else if (dialogMode === 'goal') {
-        if (!name.trim() || parsedAmount === null || parsedAmount <= 0) {
-          throw new Error('Completá el nombre y el monto objetivo');
-        }
-        await wealthService.createGoal(wealthBoard!._id, {
-          name: name.trim(),
-          targetAmount: parsedAmount,
-          currency,
-          targetDate: targetDate || undefined,
-          plannedMonthlyContribution:
-            parseMoneyInput(monthlyAmount) ?? undefined,
-          priority: Math.min(10, Math.max(1, Number(priority) || 5)),
-          icon: icon.trim() || undefined,
-        });
-        toast.success('Objetivo creado');
-      } else if (dialogMode === 'contribution' && selectedGoal) {
-        if (!holdingId || parsedAmount === null || parsedAmount <= 0) {
-          throw new Error('Elegí una tenencia e ingresá un importe');
-        }
-        await wealthService.contribute(wealthBoard!._id, selectedGoal._id, {
-          holdingId,
-          kind: contributionKind,
-          amount: parsedAmount,
-          note: note.trim() || undefined,
-        });
-        toast.success(
-          contributionKind === 'contribution'
-            ? 'Aporte registrado'
-            : 'Dinero liberado',
-        );
       } else if (dialogMode === 'position' && selectedHolding) {
         const parsedQuantity = Number(quantity.replace(',', '.'));
         const parsedPrice = parseMoneyInput(averageCost);
@@ -591,17 +483,6 @@ export default function WealthPage() {
     }
   };
 
-  const toggleGoal = async (goal: SavingsGoal) => {
-    try {
-      await wealthService.updateGoal(wealthBoard!._id, goal._id, {
-        status: goal.status === 'paused' ? 'active' : 'paused',
-      });
-      await load();
-    } catch {
-      toast.error('No se pudo actualizar el objetivo');
-    }
-  };
-
   const archiveHolding = async (holding: Holding) => {
     if (
       !(await requestConfirmation({
@@ -621,29 +502,6 @@ export default function WealthPage() {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
         axiosError.response?.data?.message || 'No se pudo eliminar la tenencia',
-      );
-    }
-  };
-
-  const archiveGoal = async (goal: SavingsGoal) => {
-    if (
-      !(await requestConfirmation({
-        title: '¿Eliminar objetivo?',
-        description: `“${goal.name}” dejará de aparecer entre tus objetivos activos. Su historial se conservará.`,
-        confirmLabel: 'Eliminar objetivo',
-        action: 'archive',
-      }))
-    ) {
-      return;
-    }
-    try {
-      await wealthService.archiveGoal(wealthBoard!._id, goal._id);
-      toast.success('Objetivo eliminado');
-      await load();
-    } catch (error) {
-      const axiosError = error as AxiosError<{ message?: string }>;
-      toast.error(
-        axiosError.response?.data?.message || 'No se pudo eliminar el objetivo',
       );
     }
   };
@@ -723,32 +581,35 @@ export default function WealthPage() {
               <div>
                 <dt className="font-medium">Asignado</dt>
                 <dd className="text-muted-foreground">
-                  Dinero reservado para tus objetivos de ahorro. Sigue siendo
-                  parte de tu saldo, no es un gasto.
+                  Dinero reservado dentro de la tenencia. Sigue siendo parte de
+                  tu saldo, no es un gasto.
                 </dd>
               </div>
               <div>
                 <dt className="font-medium">Libre</dt>
                 <dd className="text-muted-foreground">
-                  La parte de tu saldo que todavía no reservaste para un
-                  objetivo.
+                  La parte de tu saldo que no está reservada.
                 </dd>
               </div>
             </dl>
             <p className="border-t pt-3 text-muted-foreground">
               Patrimonio muestra tus ahorros e inversiones. Estos saldos no se
               suman al “Restante proyectado” de Inicio, que se calcula con los
-              ingresos y gastos del mes.
+              ingresos y gastos del mes. Para analizar si podés alcanzar una
+              meta con estas tenencias, usá{' '}
+              <Link to="/goals" className="underline underline-offset-2">
+                Objetivos
+              </Link>
+              .
             </p>
           </div>
         </details>
       </div>
 
       <Tabs defaultValue="holdings">
-        <TabsList className="grid w-full grid-cols-4 rounded-xl">
+        <TabsList className="grid w-full grid-cols-3 rounded-xl">
           <TabsTrigger value="holdings">Tenencias</TabsTrigger>
           <TabsTrigger value="investments">Inversiones</TabsTrigger>
-          <TabsTrigger value="goals">Objetivos</TabsTrigger>
           <TabsTrigger value="activity">Actividad</TabsTrigger>
         </TabsList>
 
@@ -1130,158 +991,6 @@ export default function WealthPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="goals" className="mt-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-lg font-semibold">Objetivos</h2>
-              <p className="text-xs text-muted-foreground">
-                Cada aporte reserva dinero real de una tenencia.
-              </p>
-            </div>
-            <Button size="sm" onClick={() => setDialogMode('goal')}>
-              <Plus className="mr-1 size-4" /> Crear
-            </Button>
-          </div>
-          {overview?.goals.length ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {overview.goals.map((goal) => (
-                <Card
-                  key={goal._id}
-                  className={goal.status === 'paused' ? 'opacity-70' : ''}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex gap-2">
-                        <span className="text-xl">{goal.icon || '🎯'}</span>
-                        <div>
-                          <CardTitle className="text-base">
-                            {goal.name}
-                          </CardTitle>
-                          <CardDescription>
-                            Prioridad {goal.priority}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <Badge
-                        variant={
-                          goal.paceStatus === 'behind'
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                      >
-                        {PACE_LABELS[goal.paceStatus]}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="mb-2 flex justify-between text-sm">
-                        <strong>
-                          {money(goal.allocatedAmount, goal.currency)}
-                        </strong>
-                        <span className="text-muted-foreground">
-                          de {money(goal.targetAmount, goal.currency)}
-                        </span>
-                      </div>
-                      <Progress
-                        value={goal.progressPercent}
-                        className="h-2.5"
-                      />
-                      <p className="mt-1 text-right text-xs font-medium">
-                        {goal.progressPercent.toFixed(1)}%
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <Metric
-                        label="Falta"
-                        value={money(goal.remainingAmount, goal.currency)}
-                      />
-                      <Metric
-                        label="Necesario por mes"
-                        value={
-                          goal.requiredMonthlyContribution === null
-                            ? 'Sin fecha límite'
-                            : money(
-                                goal.requiredMonthlyContribution,
-                                goal.currency,
-                              )
-                        }
-                      />
-                      <Metric
-                        label="Ritmo mensual"
-                        value={money(
-                          goal.actualMonthlyContribution,
-                          goal.currency,
-                        )}
-                      />
-                      <Metric
-                        label="Fecha estimada"
-                        value={
-                          goal.estimatedCompletionDate
-                            ? monthLabel(goal.estimatedCompletionDate)
-                            : 'Sin datos'
-                        }
-                      />
-                    </div>
-                    {goal.allocations.length > 0 ? (
-                      <div className="text-xs text-muted-foreground">
-                        {goal.allocations.map((allocation) => {
-                          const holding = overview.holdings.find(
-                            (item) => item._id === allocation.holdingId,
-                          );
-                          return (
-                            <p key={allocation._id}>
-                              {holding?.name || 'Tenencia'}:{' '}
-                              {money(allocation.amount, goal.currency)}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                    <div className="flex gap-2">
-                      <Button
-                        className="flex-1"
-                        size="sm"
-                        onClick={() => openContribution(goal)}
-                        disabled={goal.status === 'paused'}
-                      >
-                        <ArrowDownToLine className="mr-1 size-4" /> Aportar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => void toggleGoal(goal)}
-                        title={goal.status === 'paused' ? 'Reanudar' : 'Pausar'}
-                      >
-                        {goal.status === 'paused' ? (
-                          <Play className="size-4" />
-                        ) : (
-                          <Pause className="size-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => void archiveGoal(goal)}
-                        title="Eliminar objetivo"
-                        aria-label={`Eliminar ${goal.name}`}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={Target}
-              title="Convertí tus ahorros en planes"
-              text="Creá varios objetivos y asignales dinero sin duplicarlo."
-            />
-          )}
-        </TabsContent>
-
         <TabsContent value="activity" className="mt-5">
           <Card>
             <CardHeader>
@@ -1296,9 +1005,6 @@ export default function WealthPage() {
                   const holding = overview.holdings.find(
                     (item) => item._id === event.holdingId,
                   );
-                  const eventGoal = overview.goals.find(
-                    (item) => item._id === event.goalId,
-                  );
                   return (
                     <div
                       key={event._id}
@@ -1307,9 +1013,9 @@ export default function WealthPage() {
                       <div>
                         <p className="font-medium">
                           {event.kind === 'contribution'
-                            ? `Aporte a ${eventGoal?.name || 'objetivo'}`
+                            ? 'Aporte a objetivo (histórico)'
                             : event.kind === 'withdrawal'
-                              ? `Retiro de ${eventGoal?.name || 'objetivo'}`
+                              ? 'Retiro de objetivo (histórico)'
                               : event.kind === 'initial_balance'
                                 ? 'Saldo inicial'
                                 : 'Actualización de saldo'}
@@ -1349,23 +1055,15 @@ export default function WealthPage() {
               ? 'Editar tenencia'
               : dialogMode === 'balance'
                 ? 'Actualizar saldo'
-                : dialogMode === 'goal'
-                  ? 'Nuevo objetivo'
-                  : dialogMode === 'position'
-                    ? 'Agregar posición'
-                    : dialogMode === 'price'
-                      ? 'Actualizar precio'
-                      : dialogMode === 'trade'
-                        ? 'Registrar operación'
-                        : dialogMode === 'edit_transaction'
-                          ? 'Corregir operación'
-                          : 'Registrar aporte'
+                : dialogMode === 'position'
+                  ? 'Agregar posición'
+                  : dialogMode === 'price'
+                    ? 'Actualizar precio'
+                    : dialogMode === 'trade'
+                      ? 'Registrar operación'
+                      : 'Corregir operación'
         }
-        description={
-          dialogMode === 'contribution'
-            ? 'El aporte reserva dinero disponible; no modifica el saldo total.'
-            : 'Completá los datos para mantener tu patrimonio actualizado.'
-        }
+        description="Completá los datos para mantener tu patrimonio actualizado."
       >
         <div className="space-y-4">
           {dialogMode === 'holding' ? (
@@ -1443,70 +1141,6 @@ export default function WealthPage() {
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Ej: Actualización mensual"
                 />
-              </Field>
-            </>
-          ) : null}
-          {dialogMode === 'goal' ? (
-            <>
-              <div className="grid grid-cols-[72px_1fr] gap-3">
-                <Field label="Ícono">
-                  <Select value={icon} onValueChange={setIcon}>
-                    <SelectTrigger aria-label="Ícono del objetivo">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GOAL_ICONS.map((goalIcon) => (
-                        <SelectItem key={goalIcon} value={goalIcon}>
-                          <span className="text-lg">{goalIcon}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Nombre">
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej: Viaje a Japón"
-                  />
-                </Field>
-              </div>
-              <CurrencyField value={currency} onChange={setCurrency} />
-              <AmountField
-                label="Monto objetivo"
-                value={amount}
-                onChange={setAmount}
-                currency={currency}
-              />
-              <Field label="Fecha límite (opcional)">
-                <Input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                />
-              </Field>
-              <AmountField
-                label="Aporte mensual planificado (opcional)"
-                value={monthlyAmount}
-                onChange={setMonthlyAmount}
-                currency={currency}
-              />
-              <Field label="Prioridad">
-                <Input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  onBlur={() =>
-                    setPriority(
-                      String(Math.min(10, Math.max(1, Number(priority) || 5))),
-                    )
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Del 1 al 10: 1 es la prioridad más alta y 10 la más baja.
-                </p>
               </Field>
             </>
           ) : null}
@@ -1809,67 +1443,6 @@ export default function WealthPage() {
               </p>
             </>
           ) : null}
-          {dialogMode === 'contribution' ? (
-            <>
-              <Field label="Acción">
-                <Select
-                  value={contributionKind}
-                  onValueChange={(value) => {
-                    setContributionKind(value as 'contribution' | 'withdrawal');
-                    setHoldingId('');
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="contribution">
-                      Aportar al objetivo
-                    </SelectItem>
-                    <SelectItem value="withdrawal">
-                      Retirar y liberar dinero
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Desde qué tenencia">
-                <Select value={holdingId} onValueChange={setHoldingId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccioná una tenencia" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleHoldings.map((holding) => (
-                      <SelectItem key={holding._id} value={holding._id}>
-                        {holding.name} ·{' '}
-                        {contributionKind === 'contribution'
-                          ? `libre ${money(holding.availableBalance, holding.currency)}`
-                          : `asignado ${money(
-                              selectedGoal?.allocations.find(
-                                (allocation) =>
-                                  allocation.holdingId === holding._id,
-                              )?.amount ?? 0,
-                              holding.currency,
-                            )}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <AmountField
-                label="Importe"
-                value={amount}
-                onChange={setAmount}
-                currency={selectedGoal?.currency}
-              />
-              <Field label="Nota (opcional)">
-                <Input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Ej: Aporte de agosto"
-                />
-              </Field>
-            </>
-          ) : null}
           <div className="flex gap-2 pt-2">
             <Button
               className="flex-1"
@@ -1943,15 +1516,6 @@ function CurrencyField({
         </SelectContent>
       </Select>
     </Field>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-muted/50 p-2">
-      <p className="text-muted-foreground">{label}</p>
-      <p className="mt-1 font-medium">{value}</p>
-    </div>
   );
 }
 

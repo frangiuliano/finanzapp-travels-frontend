@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ThemeSettings } from '@/components/theme-settings';
+import { ShortcutIntegrationSettings } from '@/components/shortcut-integration-settings';
 import {
   Card,
   CardContent,
@@ -315,6 +316,10 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Separator />
+
+      <ShortcutIntegrationSettings />
 
       <Separator />
 

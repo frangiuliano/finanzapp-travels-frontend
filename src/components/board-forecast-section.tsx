@@ -25,7 +25,6 @@ interface BoardForecastSectionProps {
 
 function statusLabel(status?: ForecastLineItem['status']) {
   if (status === 'pending') return 'Próximo';
-  if (status === 'confirmed') return 'Cobrado';
   if (status === 'paid') return 'Pagado';
   return null;
 }
@@ -42,16 +41,6 @@ function ForecastList({
   onRefresh?: () => void;
 }) {
   if (items.length === 0) return null;
-
-  const handleConfirmIncome = async (id: string) => {
-    try {
-      await incomesService.confirmIncome(id);
-      toast.success('Ingreso marcado como cobrado');
-      onRefresh?.();
-    } catch {
-      toast.error('No se pudo confirmar el ingreso');
-    }
-  };
 
   const handleSkipIncome = async (id: string) => {
     try {
@@ -115,22 +104,13 @@ function ForecastList({
                 </span>
                 {item.status === 'pending' &&
                 item.kind === 'recurring-income' ? (
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void handleConfirmIncome(item.id)}
-                    >
-                      Cobrado
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void handleSkipIncome(item.id)}
-                    >
-                      Omitir
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleSkipIncome(item.id)}
+                  >
+                    Omitir
+                  </Button>
                 ) : null}
                 {item.status === 'pending' &&
                 item.kind === 'recurring-expense' ? (

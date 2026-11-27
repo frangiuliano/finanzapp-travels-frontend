@@ -17,6 +17,7 @@ import {
   Settings2,
   UserRound,
   PiggyBank,
+  Target,
 } from 'lucide-react';
 import { glassTabBar } from '@/lib/glass';
 import { cn } from '@/lib/utils';
@@ -269,7 +270,13 @@ export function BottomNav({ minimized = false }: BottomNavProps) {
                 to: '/wealth',
                 icon: PiggyBank,
                 title: 'Patrimonio',
-                text: 'Ahorros, tenencias y objetivos.',
+                text: 'Ahorros, tenencias e inversiones.',
+              },
+              {
+                to: '/goals',
+                icon: Target,
+                title: 'Objetivos',
+                text: 'Metas y planificación de ahorro.',
               },
               {
                 to: '/travel',

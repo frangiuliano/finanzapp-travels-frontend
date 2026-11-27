@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Pencil,
+  Target,
   Trash2,
   Wallet,
 } from 'lucide-react';
@@ -25,25 +26,24 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
-import { boardMonthBudgetsService } from '@/services/boardMonthBudgetsService';
 import { expensesService } from '@/services/expensesService';
-import { forecastService } from '@/services/forecastService';
 import { incomesService } from '@/services/incomesService';
-import { insightsService } from '@/services/insightsService';
 import type { Board } from '@/types/board';
-import type { BoardMonthBudgetProgress } from '@/types/board-month-budget';
 import { getExpenseCategoryLabel, type Expense } from '@/types/expense';
-import type { MonthlyForecast } from '@/types/forecast';
-import { STATUS_INSIGHT_TYPES, type Insight } from '@/types/insight';
-import { IncomeStatus, type Income } from '@/types/income';
+import { STATUS_INSIGHT_TYPES } from '@/types/insight';
+import type { Income } from '@/types/income';
 import {
   formatCurrency,
   formatDate,
+  formatYearMonth,
   getDefaultViewYearMonth,
-  isDateInYearMonth,
 } from '@/lib/utils';
 import { triggerDestructiveHaptic } from '@/lib/haptics';
 import { useIncomesChangedRefresh } from '@/hooks/useIncomesChangedRefresh';
+import { useEverydayHomeData } from '@/hooks/useEverydayHomeData';
+
+const EMPTY_INCOMES: Income[] = [];
+const EMPTY_EXPENSES: Expense[] = [];
 
 interface EverydayBoardHomeProps {
   board: Board;
@@ -59,14 +59,6 @@ export function EverydayBoardHome({
   const [yearMonth, setYearMonth] = useState(getDefaultViewYearMonth());
   const { categories } = useBoardCategories(board._id);
 
-  const [forecast, setForecast] = useState<MonthlyForecast | null>(null);
-  const [topInsight, setTopInsight] = useState<Insight | null>(null);
-  const [budgetProgress, setBudgetProgress] = useState<
-    BoardMonthBudgetProgress[]
-  >([]);
-  const [monthIncomes, setMonthIncomes] = useState<Income[]>([]);
-  const [monthExpenses, setMonthExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isIncomeSheetOpen, setIsIncomeSheetOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
@@ -79,89 +71,24 @@ export function EverydayBoardHome({
   const [isDeleting, setIsDeleting] = useState(false);
   const incomesChangedRefresh = useIncomesChangedRefresh();
 
-  useEffect(() => {
-    if (board._id.startsWith('mock-')) {
-      return;
-    }
-
-    let stale = false;
-
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const [
-          forecastResult,
-          insightsResult,
-          progressResult,
-          incomesResult,
-          expensesResult,
-        ] = await Promise.all([
-          forecastService
-            .getMonthlyForecast(board._id, yearMonth)
-            .then(({ forecast: f }) => f)
-            .catch(() => null),
-          insightsService
-            .getMonthlyInsights(board._id, yearMonth)
-            .then(({ insights }) => insights)
-            .catch(() => null),
-          boardMonthBudgetsService
-            .getProgress(board._id, yearMonth)
-            .then(({ progress }) => progress)
-            .catch(() => []),
-          incomesService
-            .getIncomes(board._id)
-            .then(({ incomes }) => incomes)
-            .catch(() => []),
-          expensesService
-            .listExpensesByMonth(board._id, yearMonth)
-            .then(({ expenses }) => expenses)
-            .catch(() => []),
-        ]);
-
-        if (stale) return;
-
-        setForecast(forecastResult);
-        const [firstInsight] = insightsResult?.insights ?? [];
-        setTopInsight(
-          firstInsight && !STATUS_INSIGHT_TYPES.has(firstInsight.type)
-            ? firstInsight
-            : null,
-        );
-        setBudgetProgress(progressResult);
-        setMonthIncomes(
-          incomesResult
-            .filter(
-              (income) =>
-                isDateInYearMonth(income.incomeDate, yearMonth) &&
-                (income.status ?? IncomeStatus.CONFIRMED) ===
-                  IncomeStatus.CONFIRMED,
-            )
-            .sort(
-              (a, b) =>
-                new Date(b.incomeDate).getTime() -
-                new Date(a.incomeDate).getTime(),
-            ),
-        );
-        setMonthExpenses(
-          expensesResult.sort(
-            (a, b) =>
-              new Date(b.expenseDate || b.createdAt).getTime() -
-              new Date(a.expenseDate || a.createdAt).getTime(),
-          ),
-        );
-      } finally {
-        if (!stale) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      stale = true;
-    };
-  }, [board._id, yearMonth, refreshTrigger, incomesChangedRefresh]);
+  const queries = useEverydayHomeData(
+    board._id,
+    yearMonth,
+    refreshTrigger,
+    incomesChangedRefresh,
+  );
+  const forecast = queries.forecast.data?.forecast;
+  const firstInsight = queries.insights.data?.insights.insights[0];
+  const topInsight =
+    firstInsight && !STATUS_INSIGHT_TYPES.has(firstInsight.type)
+      ? firstInsight
+      : null;
+  const budgetProgress = queries.budgets.data?.progress ?? [];
+  const monthIncomes = queries.incomes.data?.incomes ?? EMPTY_INCOMES;
+  const monthExpenses = queries.expenses.data?.expenses ?? EMPTY_EXPENSES;
+  const isLoading = queries.forecast.isPending;
+  const movementsLoading =
+    queries.incomes.isPending || queries.expenses.isPending;
 
   const recentMovements = useMemo(
     () =>
@@ -236,9 +163,14 @@ export function EverydayBoardHome({
     }
   };
 
-  const handleEditExpense = (expense: Expense) => {
-    setSelectedExpense(expense);
-    setIsExpenseDialogOpen(true);
+  const handleEditExpense = async (expense: Expense) => {
+    try {
+      const result = await expensesService.getExpenseById(expense._id);
+      setSelectedExpense(result.expense);
+      setIsExpenseDialogOpen(true);
+    } catch {
+      toast.error('No se pudo cargar el gasto para editar');
+    }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
@@ -305,12 +237,17 @@ export function EverydayBoardHome({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {movementsLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
             </div>
+          ) : queries.incomes.isError || queries.expenses.isError ? (
+            <p className="py-4 text-sm text-muted-foreground">
+              No se pudieron cargar los últimos movimientos. Reintentá en unos
+              segundos.
+            </p>
           ) : recentMovements.length === 0 ? (
             <div className="flex flex-col items-center py-8 text-center">
               <Wallet className="mb-3 size-9 text-muted-foreground" />
@@ -416,6 +353,8 @@ export function EverydayBoardHome({
         </CardContent>
       </Card>
 
+      <GoalPriorityWidget query={queries.goal} yearMonth={yearMonth} />
+
       {!isLoading && forecast ? (
         <BoardForecastSection
           incomes={forecast.planned.incomes}
@@ -426,7 +365,7 @@ export function EverydayBoardHome({
         />
       ) : null}
 
-      {!isLoading && (
+      {!queries.budgets.isPending && (
         <MonthBudgetsProgress
           progress={budgetProgress}
           categories={categories}
@@ -479,5 +418,82 @@ export function EverydayBoardHome({
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Compact, read-only teaser for the highest-priority active goal. Shows two
+ * numbers side by side, both for the viewed month specifically:
+ * - "Aportás este mes": how much of that month's own Restante proyectado is
+ *   being counted toward the goal (capped at the flat requirement below).
+ * - "Deberías aportar": the flat monthly requirement to reach the goal on
+ *   time — the same figure shown as "Aporte mensual" on the /goals card.
+ *
+ * Pure display — never touches Restante proyectado, disponible, or goal
+ * data. Hidden once the viewed month is past the goal's own projected
+ * completion (see GoalsService.getPrioritySummary) — nothing left to plan.
+ */
+function GoalPriorityWidget({
+  query,
+  yearMonth,
+}: {
+  query: ReturnType<typeof useEverydayHomeData>['goal'];
+  yearMonth: string;
+}) {
+  if (query.isLoading) return <Skeleton className="h-[104px] rounded-xl" />;
+  if (query.isError) return null;
+
+  const data = query.data;
+  if (!data?.goal || !data.computable) return null;
+  const {
+    goal,
+    neededThisMonth,
+    thisMonthContribution,
+    requiredMonthlyContribution,
+    isFullyCovered,
+  } = data;
+  if (neededThisMonth === null || neededThisMonth === undefined) return null;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 py-4">
+        <Link
+          to="/goals"
+          className="flex min-w-0 items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg"
+            aria-hidden="true"
+          >
+            {goal.icon || <Target className="size-4 text-primary" />}
+          </span>
+          <span className="min-w-0">
+            <strong className="block truncate text-sm">{goal.name}</strong>
+            <span className="block truncate text-xs text-muted-foreground">
+              {formatYearMonth(yearMonth)}
+              {isFullyCovered ? ' · Al día' : ''}
+            </span>
+          </span>
+        </Link>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-muted/60 p-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              Aportás este mes
+            </p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums">
+              {formatCurrency(thisMonthContribution ?? 0, goal.currency)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-muted/60 p-2.5">
+            <p className="text-[11px] text-muted-foreground">
+              Deberías aportar
+            </p>
+            <p className="mt-0.5 text-sm font-semibold tabular-nums">
+              {formatCurrency(requiredMonthlyContribution ?? 0, goal.currency)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

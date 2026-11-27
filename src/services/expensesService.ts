@@ -21,6 +21,14 @@ export interface ExpenseListFilters {
 }
 
 export const expensesService = {
+  async getRecent(
+    boardId: string,
+    yearMonth: string,
+  ): Promise<{ expenses: Expense[] }> {
+    return (
+      await api.get('/expenses/recent', { params: { boardId, yearMonth } })
+    ).data;
+  },
   async createExpense(
     data: CreateExpenseDto,
     clientRequestId?: string,
