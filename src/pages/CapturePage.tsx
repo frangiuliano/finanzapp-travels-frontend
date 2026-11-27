@@ -1,7 +1,4 @@
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { ExpenseSimulatorInitialValues } from '@/components/expense-simulator-form';
-import { InstallmentSimulatorDialog } from '@/components/installment-simulator-dialog';
 import { Button } from '@/components/ui/button';
 import { EmptyBoardState } from '@/components/empty-board-state';
 import { QuickExpenseForm } from '@/components/quick-expense-form';
@@ -14,9 +11,6 @@ export default function CapturePage() {
   const boards = useBoardsStore((state) => state.boards);
   const isLoadingBoards = useBoardsStore((state) => state.isLoading);
   const activeBoard = currentBoard || boards[0] || null;
-  const [simulatorOpen, setSimulatorOpen] = useState(false);
-  const [simulatorInitialValues, setSimulatorInitialValues] =
-    useState<ExpenseSimulatorInitialValues>();
 
   const handleSuccess = () => {
     navigate('/home');
@@ -57,37 +51,20 @@ export default function CapturePage() {
         <h2 className="font-display text-xl font-bold sm:text-2xl">
           Nuevo gasto
         </h2>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Tablero activo:{' '}
+        <p className="text-sm text-muted-foreground">
+          Viendo:{' '}
           <span className="text-foreground font-medium">
             {activeBoard.name}
           </span>
-          {activeBoard.type === 'everyday' ? (
-            <>
-              {' '}
-              · Gasto puntual, recurrente o en cuotas con tarjeta de crédito.
-            </>
-          ) : null}
         </p>
+        {activeBoard.type === 'everyday' ? (
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Gasto puntual, recurrente o en cuotas con tarjeta de crédito.
+          </p>
+        ) : null}
       </div>
 
-      <QuickExpenseForm
-        board={activeBoard}
-        onSuccess={handleSuccess}
-        onOpenSimulator={(values) => {
-          setSimulatorInitialValues(values);
-          setSimulatorOpen(true);
-        }}
-      />
-
-      {activeBoard.type === 'everyday' ? (
-        <InstallmentSimulatorDialog
-          open={simulatorOpen}
-          onOpenChange={setSimulatorOpen}
-          board={activeBoard}
-          initialValues={simulatorInitialValues}
-        />
-      ) : null}
+      <QuickExpenseForm board={activeBoard} onSuccess={handleSuccess} />
     </div>
   );
 }

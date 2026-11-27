@@ -19,6 +19,7 @@ import {
 } from '@/services/offlineExpenseQueue';
 import { retryOfflineExpense } from '@/services/createExpenseWithOffline';
 import { useAuthStore } from '@/store/authStore';
+import { requestConfirmation } from '@/lib/confirmation-events';
 
 interface OfflineExpenseQueueDialogProps {
   open: boolean;
@@ -104,7 +105,12 @@ export function OfflineExpenseQueueDialog({
 
   const discard = async (entry: QueuedExpenseEntry) => {
     if (
-      !confirm(`¿Descartar el gasto pendiente “${entry.payload.description}”?`)
+      !(await requestConfirmation({
+        title: '¿Descartar gasto pendiente?',
+        description: `“${entry.payload.description || entry.payload.merchantName}” todavía no fue sincronizado y se perderá de forma permanente.`,
+        confirmLabel: 'Descartar gasto',
+        action: 'discard',
+      }))
     ) {
       return;
     }
@@ -117,7 +123,7 @@ export function OfflineExpenseQueueDialog({
     setEditing({
       clientRequestId: entry.clientRequestId,
       amount: String(entry.payload.amount),
-      description: entry.payload.description,
+      description: entry.payload.description ?? '',
       merchantName: entry.payload.merchantName ?? '',
       expenseDate: entry.payload.expenseDate?.slice(0, 10) ?? '',
     });
@@ -133,16 +139,16 @@ export function OfflineExpenseQueueDialog({
     if (
       !Number.isFinite(amount) ||
       amount <= 0 ||
-      !editing.description.trim()
+      !editing.merchantName.trim()
     ) {
-      toast.error('Ingresá un monto válido y una descripción');
+      toast.error('Ingresá un monto válido y un comercio');
       return;
     }
     await offlineExpenseQueue.updatePayload(entry.clientRequestId, {
       ...entry.payload,
       amount: entry.payload.splits?.length ? entry.payload.amount : amount,
-      description: editing.description.trim(),
-      merchantName: editing.merchantName.trim() || undefined,
+      description: editing.description.trim() || undefined,
+      merchantName: editing.merchantName.trim(),
       expenseDate: editing.expenseDate
         ? new Date(`${editing.expenseDate}T12:00:00`).toISOString()
         : undefined,
@@ -192,7 +198,7 @@ export function OfflineExpenseQueueDialog({
                       <Label
                         htmlFor={`offline-description-${entry.clientRequestId}`}
                       >
-                        Descripción
+                        Descripción (opcional)
                       </Label>
                       <Input
                         id={`offline-description-${entry.clientRequestId}`}
@@ -275,7 +281,8 @@ export function OfflineExpenseQueueDialog({
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-medium">
-                          {entry.payload.description}
+                          {entry.payload.description ||
+                            entry.payload.merchantName}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {entry.payload.amount} {entry.payload.currency ?? ''}{' '}

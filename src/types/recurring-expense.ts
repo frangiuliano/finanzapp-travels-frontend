@@ -1,3 +1,5 @@
+export type RecurringEscalationType = 'percent' | 'fixed';
+
 export interface RecurringExpense {
   _id: string;
   label: string;
@@ -7,7 +9,11 @@ export interface RecurringExpense {
   dayOfMonth: number;
   categoryId?: string;
   paymentMethodId?: string;
+  excludedYearMonths: string[];
   isActive: boolean;
+  escalationType?: RecurringEscalationType;
+  escalationValue?: number;
+  escalationFrequencyMonths?: number;
   createdAt: string;
 }
 
@@ -20,6 +26,11 @@ export interface CreateRecurringExpenseDto {
   dayOfMonth: number;
   categoryId?: string;
   paymentMethodId?: string;
+  excludedYearMonths?: string[];
+  escalationType?: RecurringEscalationType;
+  escalationValue?: number;
+  escalationFrequencyMonths?: number;
+  anchorYearMonth?: string;
 }
 
 export interface UpdateRecurringExpenseDto {
@@ -30,8 +41,13 @@ export interface UpdateRecurringExpenseDto {
   dayOfMonth?: number;
   categoryId?: string;
   paymentMethodId?: string;
+  excludedYearMonths?: string[];
   isActive?: boolean;
   amountChangeScope?: 'this_month' | 'from_month';
   amountChangeYearMonth?: string;
   cancelFromYearMonth?: string;
+  escalationType?: RecurringEscalationType;
+  escalationValue?: number;
+  escalationFrequencyMonths?: number;
+  disableEscalation?: boolean;
 }

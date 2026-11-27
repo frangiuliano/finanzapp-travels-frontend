@@ -37,7 +37,7 @@ const sheetVariants = cva(
       side: {
         top: 'inset-x-0 top-0 rounded-b-2xl data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
         bottom:
-          'inset-x-3 bottom-[var(--mobile-nav-total)] rounded-2xl data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom md:inset-x-0 md:bottom-0 md:rounded-t-2xl md:rounded-b-none',
+          'inset-x-3 bottom-[var(--mobile-nav-total)] rounded-2xl [padding-bottom:max(1.5rem,env(safe-area-inset-bottom,0px))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom md:inset-x-0 md:bottom-0 md:rounded-t-2xl md:rounded-b-none',
         left: 'inset-y-0 left-0 h-full w-3/4 rounded-r-2xl data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm',
         right:
           'inset-y-0 right-0 h-full w-3/4 rounded-l-2xl data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm',
@@ -65,9 +65,9 @@ const SheetContent = React.forwardRef<
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+      <SheetPrimitive.Close className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-md opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
         <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">Cerrar</span>
       </SheetPrimitive.Close>
       {children}
     </SheetPrimitive.Content>

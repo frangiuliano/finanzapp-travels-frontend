@@ -2,7 +2,6 @@ import { TabAnimatedOutlet } from '@/components/tab-animated-outlet';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import { BottomNav } from '@/components/bottom-nav';
-import { PWAInstallPrompt } from '@/components/pwa-install-prompt';
 import { BoardsBootstrapError } from '@/components/boards-bootstrap-error';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { useClearStuckOverlayLocks } from '@/hooks/useClearStuckOverlayLocks';
@@ -16,6 +15,7 @@ import { useBoardsStore } from '@/store/boardsStore';
 import { useAuthStore } from '@/store/authStore';
 import { CreateMovementSheet } from '@/components/create-movement-sheet';
 import { OfflineExpenseQueueDialog } from '@/components/offline-expense-queue-dialog';
+import { ConfirmationDialogHost } from '@/components/confirmation-dialog-host';
 import { useState } from 'react';
 
 export function AppShellLayout() {
@@ -46,7 +46,6 @@ export function AppShellLayout() {
             <TabAnimatedOutlet />
           )}
         </div>
-        <PWAInstallPrompt />
         <BottomNav minimized={navMinimized} />
         <CreateMovementSheet />
         <OfflineExpenseQueueDialog
@@ -54,6 +53,7 @@ export function AppShellLayout() {
           onOpenChange={setOfflineQueueOpen}
           onRetryAll={syncNow}
         />
+        <ConfirmationDialogHost />
       </SidebarInset>
     </SidebarProvider>
   );

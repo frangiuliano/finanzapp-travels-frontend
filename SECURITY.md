@@ -9,7 +9,7 @@ Proyecto personal de un solo mantenedor. Si encontrás algo, avisale directament
 ## Dónde viven los secretos (y dónde no deben vivir)
 
 - Todo lo que empieza con `VITE_` termina en el bundle público que corre en el navegador de cualquiera. **Nunca** pongas ahí una API key con permisos reales — hoy sólo hay `VITE_API_URL` (una ruta relativa) y flags de feature, y así debe seguir.
-- `.env` real nunca versionado. `.env.qa.local` (credencial de QA) tampoco debería vivir como archivo dentro de la carpeta del proyecto — moverlo a un gestor de secretos local es una tarea pendiente (ver `HANDOFF_SEGURIDAD_2026-08-28.md` en la raíz del workspace).
+- `.env` real nunca versionado. Las credenciales locales de QA viven en el Llavero de macOS, bajo la cuenta `codex-local-testing` y los servicios `finanzapp-qa-login-email` / `finanzapp-qa-login-password`; nunca volver a copiarlas a un archivo dentro del proyecto ni mostrarlas en logs.
 - El token de sesión (`accessToken`) vive **sólo en memoria** (`authStore.ts`) — nunca en `localStorage`/`sessionStorage`. Es la defensa principal contra robo de sesión vía XSS. No lo persistas "para comodidad" sin pensar el trade-off de seguridad primero.
 
 ## Checklist de mantenimiento recurrente
@@ -38,4 +38,4 @@ Proyecto personal de un solo mantenedor. Si encontrás algo, avisale directament
 
 - Access token en memoria, nunca persistido: implica que cada carga de la app necesita red para restablecer la sesión. El trade-off de seguridad es intencional; la continuidad offline se resuelve con un identity snapshot no sensible aparte (ver `src/lib/offlineIdentity.ts` si ya existe, o el punto correspondiente en el handoff si todavía no se implementó).
 - CSP estricta en `vercel.json`: sin `unsafe-inline`/`unsafe-eval`, `frame-ancestors: none`, HSTS. No aflojarla para "que ande" un script de terceros sin evaluar una alternativa primero.
-- `zod` está instalado pero sin adoptar en formularios — es una decisión pendiente, no una omisión silenciosa; ver el handoff antes de asumir cuál es el estado.
+- `zod` no se usa y fue retirado como dependencia directa. Si se adopta en el futuro, hacerlo para esquemas concretos y recordar que la validación autoritativa sigue estando en el backend.

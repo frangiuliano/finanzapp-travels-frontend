@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { RecurringMonthsChecklist } from '@/components/recurring-months-checklist';
 import { formatDaysOfMonth } from '@/lib/format-days-of-month';
 import { recurringIncomesService } from '@/services/recurringIncomesService';
 import type { RecurringIncome } from '@/types/recurring-income';
@@ -33,6 +35,7 @@ interface FormState {
   daysOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
   amountChangeYearMonth: string;
+  excludedYearMonths: string[];
 }
 
 const emptyForm: FormState = {
@@ -41,6 +44,7 @@ const emptyForm: FormState = {
   daysOfMonth: [1],
   amountChangeScope: 'from_month',
   amountChangeYearMonth: getCurrentYearMonth(),
+  excludedYearMonths: [],
 };
 
 export function ManageRecurringIncomesSection({
@@ -52,6 +56,10 @@ export function ManageRecurringIncomesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RecurringIncome | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RecurringIncome | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<FormState>(emptyForm);
 
   const fetchItems = useCallback(async () => {
@@ -76,12 +84,6 @@ export function ManageRecurringIncomesSection({
     void fetchItems();
   }, [fetchItems]);
 
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormData(emptyForm);
-    setSheetOpen(true);
-  };
-
   const openEdit = (item: RecurringIncome) => {
     setEditingItem(item);
     setFormData({
@@ -90,11 +92,13 @@ export function ManageRecurringIncomesSection({
       daysOfMonth: item.daysOfMonth,
       amountChangeScope: 'from_month',
       amountChangeYearMonth: getCurrentYearMonth(),
+      excludedYearMonths: item.excludedYearMonths ?? [],
     });
     setSheetOpen(true);
   };
 
   const handleSubmit = async () => {
+    if (!editingItem) return;
     if (!formData.label.trim()) {
       toast.error('El concepto es obligatorio');
       return;
@@ -108,7 +112,7 @@ export function ManageRecurringIncomesSection({
       toast.error('Seleccioná al menos un día del mes');
       return;
     }
-    if (editingItem && !formData.amountChangeYearMonth) {
+    if (!formData.amountChangeYearMonth) {
       toast.error('Seleccioná el mes en que comienza el cambio');
       return;
     }
@@ -120,21 +124,13 @@ export function ManageRecurringIncomesSection({
         amount,
         currency,
         daysOfMonth: formData.daysOfMonth,
-        ...(editingItem
-          ? {
-              amountChangeScope: formData.amountChangeScope,
-              amountChangeYearMonth: formData.amountChangeYearMonth,
-            }
-          : {}),
+        amountChangeScope: formData.amountChangeScope,
+        amountChangeYearMonth: formData.amountChangeYearMonth,
+        excludedYearMonths: formData.excludedYearMonths,
       };
 
-      if (editingItem) {
-        await recurringIncomesService.update(editingItem._id, payload);
-        toast.success('Ingreso recurrente actualizado');
-      } else {
-        await recurringIncomesService.create({ boardId, ...payload });
-        toast.success('Ingreso recurrente creado');
-      }
+      await recurringIncomesService.update(editingItem._id, payload);
+      toast.success('Ingreso recurrente actualizado');
 
       setSheetOpen(false);
       await fetchItems();
@@ -150,11 +146,11 @@ export function ManageRecurringIncomesSection({
   };
 
   const handleDelete = async (item: RecurringIncome) => {
-    if (!confirm(`¿Eliminar el ingreso recurrente "${item.label}"?`)) return;
-
+    setIsDeleting(true);
     try {
       await recurringIncomesService.delete(item._id);
       toast.success('Ingreso recurrente eliminado');
+      setDeleteTarget(null);
       await fetchItems();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
@@ -162,26 +158,25 @@ export function ManageRecurringIncomesSection({
         axiosError.response?.data?.message ||
           'Error al eliminar ingreso recurrente',
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Sueldo y otros ingresos que se repiten cada mes en días fijos.
-        </p>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Sueldo y otros ingresos que se repiten cada mes en días fijos. Se cargan
+        desde el modal de ingreso, en la pestaña "Recurrente"; acá podés
+        editarlos o eliminarlos.
+      </p>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No hay ingresos recurrentes configurados.
+          Todavía no cargaste ingresos recurrentes. Cargalos desde el botón + →
+          Ingreso → Recurrente.
         </p>
       ) : (
         <ul className="divide-y rounded-xl border">
@@ -213,7 +208,8 @@ export function ManageRecurringIncomesSection({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void handleDelete(item)}
+                  onClick={() => setDeleteTarget(item)}
+                  aria-label={`Eliminar ${item.label}`}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -226,9 +222,7 @@ export function ManageRecurringIncomesSection({
       <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={
-          editingItem ? 'Editar ingreso recurrente' : 'Nuevo ingreso recurrente'
-        }
+        title="Editar ingreso recurrente"
         description="Se generan movimientos programados para los próximos 12 meses."
       >
         <div className="space-y-4">
@@ -249,6 +243,7 @@ export function ManageRecurringIncomesSection({
               onChange={(value) =>
                 setFormData((prev) => ({ ...prev, amount: value }))
               }
+              currency={currency}
               disabled={isSaving}
             />
           </div>
@@ -263,54 +258,59 @@ export function ManageRecurringIncomesSection({
               disabled={isSaving}
             />
           </div>
-          {editingItem ? (
-            <div className="space-y-4 rounded-xl border p-3">
-              <div className="space-y-2">
-                <Label htmlFor="income-change-month">Aplicar en</Label>
-                <Input
-                  id="income-change-month"
-                  type="month"
-                  min={getCurrentYearMonth()}
-                  value={formData.amountChangeYearMonth}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      amountChangeYearMonth: event.target.value,
-                    }))
-                  }
-                  disabled={isSaving}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Podés programar hoy un cambio de sueldo para un mes futuro.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label>Alcance del cambio</Label>
-                <Select
-                  value={formData.amountChangeScope}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      amountChangeScope: value as 'this_month' | 'from_month',
-                    }))
-                  }
-                  disabled={isSaving}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="from_month">
-                      Desde el mes elegido
-                    </SelectItem>
-                    <SelectItem value="this_month">
-                      Solo el mes elegido
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-4 rounded-xl border p-3">
+            <div className="space-y-2">
+              <Label htmlFor="income-change-month">Aplicar en</Label>
+              <Input
+                id="income-change-month"
+                type="month"
+                min={getCurrentYearMonth()}
+                value={formData.amountChangeYearMonth}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    amountChangeYearMonth: event.target.value,
+                  }))
+                }
+                disabled={isSaving}
+              />
+              <p className="text-xs text-muted-foreground">
+                Podés programar hoy un cambio de sueldo para un mes futuro.
+              </p>
             </div>
-          ) : null}
+            <div className="space-y-2">
+              <Label>Alcance del cambio</Label>
+              <Select
+                value={formData.amountChangeScope}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    amountChangeScope: value as 'this_month' | 'from_month',
+                  }))
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="from_month">
+                    Desde el mes elegido
+                  </SelectItem>
+                  <SelectItem value="this_month">
+                    Solo el mes elegido
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <RecurringMonthsChecklist
+            excludedYearMonths={formData.excludedYearMonths}
+            onChange={(excludedYearMonths) =>
+              setFormData((prev) => ({ ...prev, excludedYearMonths }))
+            }
+            disabled={isSaving}
+          />
           <Button
             className="w-full"
             onClick={() => void handleSubmit()}
@@ -320,6 +320,24 @@ export function ManageRecurringIncomesSection({
           </Button>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar ingreso recurrente'
+        }
+        description="Se eliminará la regla recurrente y sus ocurrencias pendientes. Los ingresos que ya confirmaste se conservarán. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar recurrencia"
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget) return handleDelete(deleteTarget);
+        }}
+      />
     </div>
   );
 }

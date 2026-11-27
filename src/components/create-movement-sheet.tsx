@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Calculator } from 'lucide-react';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
-import type { ExpenseSimulatorInitialValues } from '@/components/expense-simulator-form';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { FormDialog } from '@/components/form-dialog';
 import { InstallmentSimulatorDialog } from '@/components/installment-simulator-dialog';
@@ -17,11 +16,6 @@ export function CreateMovementSheet() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
-  const [simulatorSource, setSimulatorSource] = useState<'chooser' | 'expense'>(
-    'chooser',
-  );
-  const [simulatorInitialValues, setSimulatorInitialValues] =
-    useState<ExpenseSimulatorInitialValues>();
 
   useEffect(() => {
     const open = () => setChooserOpen(true);
@@ -80,8 +74,6 @@ export function CreateMovementSheet() {
               className="justify-start rounded-xl text-muted-foreground"
               onClick={() => {
                 setChooserOpen(false);
-                setSimulatorSource('chooser');
-                setSimulatorInitialValues(undefined);
                 setSimulatorOpen(true);
               }}
             >
@@ -94,11 +86,6 @@ export function CreateMovementSheet() {
         open={expenseOpen}
         onOpenChange={setExpenseOpen}
         board={board}
-        onOpenSimulator={(values) => {
-          setSimulatorSource('expense');
-          setSimulatorInitialValues(values);
-          setSimulatorOpen(true);
-        }}
       />
       <CreateIncomeSheet
         open={incomeOpen}
@@ -110,17 +97,12 @@ export function CreateMovementSheet() {
         open={simulatorOpen}
         onOpenChange={(open) => {
           setSimulatorOpen(open);
-          if (!open && simulatorSource === 'chooser') {
+          if (!open) {
             setChooserOpen(true);
           }
         }}
         board={board}
-        initialValues={simulatorInitialValues}
-        backLabel={
-          simulatorSource === 'expense'
-            ? 'Volver a nuevo gasto'
-            : 'Volver a nuevo movimiento'
-        }
+        backLabel="Volver a nuevo movimiento"
       />
     </>
   );

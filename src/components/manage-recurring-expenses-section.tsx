@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CURRENCY_OPTIONS } from '@/constants/currencies';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
+import { RecurringEscalationFields } from '@/components/recurring-escalation-fields';
+import { RecurringMonthsChecklist } from '@/components/recurring-months-checklist';
+import {
+  buildRecurringEscalationPayload,
+  defaultRecurringEscalationState,
+  recurringEscalationStateFromExpense,
+  validateRecurringEscalation,
+  type RecurringEscalationFormState,
+} from '@/lib/recurring-escalation';
 import { recurringExpensesService } from '@/services/recurringExpensesService';
 import type { RecurringExpense } from '@/types/recurring-expense';
 import { formatCurrency, getCurrentYearMonth } from '@/lib/utils';
@@ -29,15 +40,21 @@ interface ManageRecurringExpensesSectionProps {
 interface FormState {
   label: string;
   amount: string;
+  currency: string;
   dayOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
+  escalation: RecurringEscalationFormState;
+  excludedYearMonths: string[];
 }
 
 const emptyForm: FormState = {
   label: '',
   amount: '',
+  currency: '',
   dayOfMonth: [1],
   amountChangeScope: 'from_month',
+  escalation: defaultRecurringEscalationState,
+  excludedYearMonths: [],
 };
 
 export function ManageRecurringExpensesSection({
@@ -49,6 +66,10 @@ export function ManageRecurringExpensesSection({
   const [isSaving, setIsSaving] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<RecurringExpense | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RecurringExpense | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<FormState>(emptyForm);
 
   const fetchItems = useCallback(async () => {
@@ -72,24 +93,22 @@ export function ManageRecurringExpensesSection({
     void fetchItems();
   }, [fetchItems]);
 
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormData(emptyForm);
-    setSheetOpen(true);
-  };
-
   const openEdit = (item: RecurringExpense) => {
     setEditingItem(item);
     setFormData({
       label: item.label,
       amount: formatMoneyInputFromNumber(item.amount),
+      currency: item.currency || currency,
       dayOfMonth: [item.dayOfMonth],
       amountChangeScope: 'from_month',
+      escalation: recurringEscalationStateFromExpense(item),
+      excludedYearMonths: item.excludedYearMonths ?? [],
     });
     setSheetOpen(true);
   };
 
   const handleSubmit = async () => {
+    if (!editingItem) return;
     if (!formData.label.trim()) {
       toast.error('El concepto es obligatorio');
       return;
@@ -103,29 +122,29 @@ export function ManageRecurringExpensesSection({
       toast.error('Seleccioná el día del mes');
       return;
     }
+    const escalationError = validateRecurringEscalation(formData.escalation);
+    if (escalationError) {
+      toast.error(escalationError);
+      return;
+    }
 
     setIsSaving(true);
     try {
       const payload = {
         label: formData.label.trim(),
         amount,
-        currency,
+        currency: formData.currency,
         dayOfMonth: formData.dayOfMonth[0],
-        ...(editingItem
-          ? {
-              amountChangeScope: formData.amountChangeScope,
-              amountChangeYearMonth: getCurrentYearMonth(),
-            }
-          : {}),
+        amountChangeScope: formData.amountChangeScope,
+        amountChangeYearMonth: getCurrentYearMonth(),
+        excludedYearMonths: formData.excludedYearMonths,
+        ...(formData.escalation.enabled
+          ? buildRecurringEscalationPayload(formData.escalation)
+          : { disableEscalation: true }),
       };
 
-      if (editingItem) {
-        await recurringExpensesService.update(editingItem._id, payload);
-        toast.success('Gasto fijo actualizado');
-      } else {
-        await recurringExpensesService.create({ boardId, ...payload });
-        toast.success('Gasto fijo creado');
-      }
+      await recurringExpensesService.update(editingItem._id, payload);
+      toast.success('Gasto fijo actualizado');
 
       setSheetOpen(false);
       await fetchItems();
@@ -140,38 +159,36 @@ export function ManageRecurringExpensesSection({
   };
 
   const handleDelete = async (item: RecurringExpense) => {
-    if (!confirm(`¿Eliminar el gasto fijo "${item.label}"?`)) return;
-
+    setIsDeleting(true);
     try {
       await recurringExpensesService.delete(item._id);
       toast.success('Gasto fijo eliminado');
+      setDeleteTarget(null);
       await fetchItems();
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
         axiosError.response?.data?.message || 'Error al eliminar gasto fijo',
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Alquiler, servicios y otros compromisos mensuales para proyectar meses
-          futuros.
-        </p>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Alquiler, servicios y otros compromisos mensuales para proyectar meses
+        futuros. Se cargan desde el formulario de gasto marcando “¿Es
+        recurrente?”; acá podés editarlos o eliminarlos.
+      </p>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando…</p>
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No hay gastos fijos configurados.
+          Todavía no cargaste gastos fijos. Cargalos desde el botón + → Gasto y
+          marcá “¿Es recurrente?”.
         </p>
       ) : (
         <ul className="divide-y rounded-xl border">
@@ -190,6 +207,15 @@ export function ManageRecurringExpensesSection({
                 <p className="text-xs text-muted-foreground">
                   Día {item.dayOfMonth} ·{' '}
                   {formatCurrency(item.amount, item.currency)}
+                  {item.escalationType &&
+                  item.escalationValue &&
+                  item.escalationFrequencyMonths
+                    ? ` · +${
+                        item.escalationType === 'percent'
+                          ? `${item.escalationValue}%`
+                          : formatCurrency(item.escalationValue, item.currency)
+                      } cada ${item.escalationFrequencyMonths} ${item.escalationFrequencyMonths === 1 ? 'mes' : 'meses'}`
+                    : ''}
                 </p>
               </div>
               <div className="flex shrink-0 gap-1">
@@ -203,7 +229,8 @@ export function ManageRecurringExpensesSection({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => void handleDelete(item)}
+                  onClick={() => setDeleteTarget(item)}
+                  aria-label={`Eliminar ${item.label}`}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -216,7 +243,7 @@ export function ManageRecurringExpensesSection({
       <ResponsiveFormDialog
         open={sheetOpen}
         onOpenChange={setSheetOpen}
-        title={editingItem ? 'Editar gasto fijo' : 'Nuevo gasto fijo'}
+        title="Editar gasto fijo"
         description="Se generan gastos programados para los próximos 12 meses."
       >
         <div className="space-y-4">
@@ -231,14 +258,35 @@ export function ManageRecurringExpensesSection({
             />
           </div>
           <div className="space-y-2">
-            <Label>Monto ({currency})</Label>
-            <MoneyInput
-              value={formData.amount}
-              onChange={(value) =>
-                setFormData((prev) => ({ ...prev, amount: value }))
-              }
-              disabled={isSaving}
-            />
+            <Label>Monto</Label>
+            <div className="flex gap-2">
+              <Select
+                value={formData.currency}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, currency: value }))
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger className="w-28 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <MoneyInput
+                value={formData.amount}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, amount: value }))
+                }
+                currency={formData.currency}
+                disabled={isSaving}
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Día del mes</Label>
@@ -251,29 +299,46 @@ export function ManageRecurringExpensesSection({
               disabled={isSaving}
             />
           </div>
-          {editingItem ? (
-            <div className="space-y-2">
-              <Label>Cambio de monto</Label>
-              <Select
-                value={formData.amountChangeScope}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    amountChangeScope: value as 'this_month' | 'from_month',
-                  }))
-                }
-                disabled={isSaving}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="from_month">Desde este mes</SelectItem>
-                  <SelectItem value="this_month">Solo este mes</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
+          <div className="space-y-2">
+            <Label>Cambio de monto</Label>
+            <Select
+              value={formData.amountChangeScope}
+              onValueChange={(value) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  amountChangeScope: value as 'this_month' | 'from_month',
+                }))
+              }
+              disabled={isSaving}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="from_month">Desde este mes</SelectItem>
+                <SelectItem value="this_month">Solo este mes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <RecurringEscalationFields
+            value={formData.escalation}
+            onChange={(escalation) =>
+              setFormData((prev) => ({ ...prev, escalation }))
+            }
+            disabled={isSaving}
+            currency={formData.currency}
+            idPrefix="recurring-edit-escalation"
+          />
+
+          <RecurringMonthsChecklist
+            excludedYearMonths={formData.excludedYearMonths}
+            onChange={(excludedYearMonths) =>
+              setFormData((prev) => ({ ...prev, excludedYearMonths }))
+            }
+            disabled={isSaving}
+          />
+
           <Button
             className="w-full"
             onClick={() => void handleSubmit()}
@@ -283,6 +348,24 @@ export function ManageRecurringExpensesSection({
           </Button>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar gasto fijo'
+        }
+        description="Se eliminará la regla recurrente y sus gastos pendientes. Los gastos que ya figuran como pagados se conservarán. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar recurrencia"
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget) return handleDelete(deleteTarget);
+        }}
+      />
     </div>
   );
 }

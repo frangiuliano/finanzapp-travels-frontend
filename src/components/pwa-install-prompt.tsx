@@ -1,8 +1,6 @@
 import { Download, Share, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
-import { glassCard } from '@/lib/glass';
-import { cn } from '@/lib/utils';
 
 export function PWAInstallPrompt() {
   const { dismiss, install, showIosHint, showPrompt } = usePwaInstall();
@@ -12,11 +10,11 @@ export function PWAInstallPrompt() {
   return (
     <div
       aria-live="polite"
-      className="fixed inset-x-0 bottom-[calc(var(--mobile-nav-total)+0.5rem)] z-50 mx-auto max-w-lg px-3 md:bottom-4 md:right-4 md:left-auto md:max-w-sm md:px-0"
+      className="mx-4 mt-4 shrink-0 rounded-xl border border-primary/20 bg-card text-card-foreground lg:mx-6"
       role="region"
       aria-label="Instalar aplicación"
     >
-      <div className={cn(glassCard, 'p-4')}>
+      <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
             <p className="font-display text-sm font-semibold">
@@ -29,8 +27,8 @@ export function PWAInstallPrompt() {
                   aria-hidden
                   className="inline size-3.5 align-text-bottom"
                 />{' '}
-                Compartir y elegí <strong>Agregar a inicio</strong> para abrir
-                la app como en Android.
+                Compartir y elegí <strong>Agregar a inicio</strong> para acceder
+                a la app desde tu pantalla de inicio.
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
@@ -51,7 +49,10 @@ export function PWAInstallPrompt() {
         </div>
 
         {!showIosHint && (
-          <Button className="mt-3 w-full" onClick={() => void install()}>
+          <Button
+            className="mt-3 min-h-11 w-full sm:w-auto"
+            onClick={() => void install()}
+          >
             <Download className="size-4" />
             Instalar
           </Button>

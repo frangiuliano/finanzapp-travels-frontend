@@ -19,14 +19,12 @@ interface BoardForecastSectionProps {
   incomes: ForecastLineItem[];
   fixedExpenses: ForecastLineItem[];
   installments: ForecastLineItem[];
-  currency: string;
   isFutureMonth: boolean;
   onRefresh?: () => void;
 }
 
 function statusLabel(status?: ForecastLineItem['status']) {
-  if (status === 'pending') return 'Pendiente';
-  if (status === 'confirmed') return 'Cobrado';
+  if (status === 'pending') return 'Próximo';
   if (status === 'paid') return 'Pagado';
   return null;
 }
@@ -34,37 +32,15 @@ function statusLabel(status?: ForecastLineItem['status']) {
 function ForecastList({
   title,
   items,
-  currency,
   amountClassName,
   onRefresh,
 }: {
   title: string;
   items: ForecastLineItem[];
-  currency: string;
   amountClassName?: string;
   onRefresh?: () => void;
 }) {
   if (items.length === 0) return null;
-
-  const handleConfirmIncome = async (id: string) => {
-    try {
-      await incomesService.confirmIncome(id);
-      toast.success('Ingreso marcado como cobrado');
-      onRefresh?.();
-    } catch {
-      toast.error('No se pudo confirmar el ingreso');
-    }
-  };
-
-  const handleSettleExpense = async (id: string) => {
-    try {
-      await expensesService.settleExpense(id);
-      toast.success('Gasto marcado como pagado');
-      onRefresh?.();
-    } catch {
-      toast.error('No se pudo marcar el gasto como pagado');
-    }
-  };
 
   const handleSkipIncome = async (id: string) => {
     try {
@@ -124,37 +100,21 @@ function ForecastList({
                 <span
                   className={`text-sm font-medium tabular-nums ${amountClassName ?? ''}`}
                 >
-                  {formatCurrency(item.amount, currency)}
+                  {formatCurrency(item.amount, item.currency)}
                 </span>
                 {item.status === 'pending' &&
                 item.kind === 'recurring-income' ? (
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void handleConfirmIncome(item.id)}
-                    >
-                      Cobrado
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void handleSkipIncome(item.id)}
-                    >
-                      Omitir
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleSkipIncome(item.id)}
+                  >
+                    Omitir
+                  </Button>
                 ) : null}
                 {item.status === 'pending' &&
                 item.kind === 'recurring-expense' ? (
                   <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void handleSettleExpense(item.id)}
-                    >
-                      Pagado
-                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -177,7 +137,6 @@ export function BoardForecastSection({
   incomes,
   fixedExpenses,
   installments,
-  currency,
   isFutureMonth,
   onRefresh,
 }: BoardForecastSectionProps) {
@@ -211,28 +170,25 @@ export function BoardForecastSection({
         <CardDescription>
           {isFutureMonth
             ? 'Movimientos programados para este mes.'
-            : 'Ingresos y gastos recurrentes materializados. Confirmalos cuando ocurran.'}
+            : 'Ingresos y gastos recurrentes del mes.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <ForecastList
           title="Ingresos recurrentes"
           items={incomes}
-          currency={currency}
           amountClassName="text-emerald-700 dark:text-emerald-400"
           onRefresh={onRefresh}
         />
         <ForecastList
           title="Gastos fijos"
           items={fixedExpenses}
-          currency={currency}
           amountClassName="text-rose-700 dark:text-rose-400"
           onRefresh={onRefresh}
         />
         <ForecastList
           title="Cuotas de tarjeta"
           items={installments}
-          currency={currency}
           amountClassName="text-rose-700 dark:text-rose-400"
           onRefresh={onRefresh}
         />
