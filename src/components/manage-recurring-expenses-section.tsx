@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CURRENCY_OPTIONS } from '@/constants/currencies';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { DayOfMonthPicker } from '@/components/day-of-month-picker';
@@ -39,6 +40,7 @@ interface ManageRecurringExpensesSectionProps {
 interface FormState {
   label: string;
   amount: string;
+  currency: string;
   dayOfMonth: number[];
   amountChangeScope: 'this_month' | 'from_month';
   escalation: RecurringEscalationFormState;
@@ -48,6 +50,7 @@ interface FormState {
 const emptyForm: FormState = {
   label: '',
   amount: '',
+  currency: '',
   dayOfMonth: [1],
   amountChangeScope: 'from_month',
   escalation: defaultRecurringEscalationState,
@@ -95,6 +98,7 @@ export function ManageRecurringExpensesSection({
     setFormData({
       label: item.label,
       amount: formatMoneyInputFromNumber(item.amount),
+      currency: item.currency || currency,
       dayOfMonth: [item.dayOfMonth],
       amountChangeScope: 'from_month',
       escalation: recurringEscalationStateFromExpense(item),
@@ -129,7 +133,7 @@ export function ManageRecurringExpensesSection({
       const payload = {
         label: formData.label.trim(),
         amount,
-        currency,
+        currency: formData.currency,
         dayOfMonth: formData.dayOfMonth[0],
         amountChangeScope: formData.amountChangeScope,
         amountChangeYearMonth: getCurrentYearMonth(),
@@ -254,15 +258,35 @@ export function ManageRecurringExpensesSection({
             />
           </div>
           <div className="space-y-2">
-            <Label>Monto ({currency})</Label>
-            <MoneyInput
-              value={formData.amount}
-              onChange={(value) =>
-                setFormData((prev) => ({ ...prev, amount: value }))
-              }
-              currency={currency}
-              disabled={isSaving}
-            />
+            <Label>Monto</Label>
+            <div className="flex gap-2">
+              <Select
+                value={formData.currency}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, currency: value }))
+                }
+                disabled={isSaving}
+              >
+                <SelectTrigger className="w-28 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <MoneyInput
+                value={formData.amount}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, amount: value }))
+                }
+                currency={formData.currency}
+                disabled={isSaving}
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Día del mes</Label>
@@ -303,7 +327,7 @@ export function ManageRecurringExpensesSection({
               setFormData((prev) => ({ ...prev, escalation }))
             }
             disabled={isSaving}
-            currency={currency}
+            currency={formData.currency}
             idPrefix="recurring-edit-escalation"
           />
 
