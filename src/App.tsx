@@ -21,9 +21,10 @@ import ReportsPage from '@/pages/ReportsPage';
 import ExpensesPage from '@/pages/ExpensesPage';
 import OnboardingPage from '@/pages/OnboardingPage';
 import BoardSettingsPage from '@/pages/BoardSettingsPage';
-import BillingPeriodConfirmPage from '@/pages/BillingPeriodConfirmPage';
+import StatementImportPage from '@/pages/StatementImportPage';
 import SimulateExpensePage from '@/pages/SimulateExpensePage';
 import WealthPage from '@/pages/WealthPage';
+import GoalsPage from '@/pages/GoalsPage';
 import ConfirmEmailChangePage from '@/pages/ConfirmEmailChangePage';
 import { Toaster } from '@/components/ui/sonner';
 import { PWAUpdatePrompt } from '@/components/pwa-update-prompt';
@@ -158,12 +159,10 @@ function AppRoutes() {
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/travel" element={<TravelPage />} />
         <Route path="/wealth" element={<WealthPage />} />
+        <Route path="/goals" element={<GoalsPage />} />
         <Route path="/boards" element={<Navigate to="/travel" replace />} />
         <Route path="/boards/settings" element={<BoardSettingsPage />} />
-        <Route
-          path="/billing-periods/confirm"
-          element={<BillingPeriodConfirmPage />}
-        />
+        <Route path="/statement-imports" element={<StatementImportPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/account" element={<SettingsPage />} />
       </Route>

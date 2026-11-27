@@ -1,21 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useExpensesChangedRefresh } from '@/hooks/useExpensesChangedRefresh';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
+  Eye,
   Pencil,
   Trash2,
   WalletIcon,
   ArrowDownLeft,
   ArrowUpRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  SearchIcon,
   SlidersHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { HomeMonthViewToggle } from '@/components/home-month-view-toggle';
+import { StatStrip } from '@/components/stat-strip';
+import { Badge } from '@/components/ui/badge';
 import { ExpenseFormDialog } from '@/components/expense-form-dialog';
 import { CreateIncomeSheet } from '@/components/create-income-sheet';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
+import { requestConfirmation } from '@/lib/confirmation-events';
 import { YearMonthSelector } from '@/components/year-month-selector';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +34,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -45,17 +55,11 @@ import {
 import { useAvailablePaymentMethods } from '@/hooks/useAvailablePaymentMethods';
 import { useBoardCategories } from '@/hooks/useBoardCategories';
 import { useIncomesChangedRefresh } from '@/hooks/useIncomesChangedRefresh';
-import { getExpenseAmountInBoardCurrency } from '@/lib/expense-currency';
-import {
-  expenseBelongsToYearMonth,
-  readHomeMonthView,
-  writeHomeMonthView,
-  type HomeMonthView,
-} from '@/lib/expense-month-attribution';
-import { getExpenseQueryDateRange } from '@/lib/expense-query-range';
 import { expensesService } from '@/services/expensesService';
 import { incomesService } from '@/services/incomesService';
+import { forecastService } from '@/services/forecastService';
 import type { Income } from '@/types/income';
+import type { ForecastLineItem } from '@/types/forecast';
 import { isDateInYearMonth } from '@/lib/utils';
 import { openMovementCreator } from '@/lib/movement-events';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -77,15 +81,15 @@ import {
   cn,
   formatCurrency,
   formatDate,
-  getCurrentYearMonth,
+  getDefaultViewYearMonth,
 } from '@/lib/utils';
+import { triggerDestructiveHaptic } from '@/lib/haptics';
 
 const ALL_FILTER = 'all';
 
 interface ExpensesExplorerSectionProps {
   board: Board;
   initialYearMonth?: string;
-  initialMonthView?: HomeMonthView;
   initialPaymentMethodId?: string;
 }
 
@@ -108,49 +112,121 @@ function resolvePaymentMethodLabel(
   return 'Sin medio';
 }
 
+const DIACRITICS_PATTERN = new RegExp('[\\u0300-\\u036f]', 'g');
+
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().normalize('NFD').replace(DIACRITICS_PATTERN, '');
+}
+
+/**
+ * Refunds are stored as a negative expense amount so totals net out
+ * automatically; for display we need the sign and magnitude split back out.
+ */
+function getMovementAmountDisplay(movement: {
+  type: 'expense' | 'income' | 'installment';
+  amount: number;
+}): { sign: '+' | '−'; amount: number } {
+  if (movement.type === 'income') {
+    return { sign: '+', amount: movement.amount };
+  }
+  if (movement.amount < 0) {
+    return { sign: '+', amount: Math.abs(movement.amount) };
+  }
+  return { sign: '−', amount: movement.amount };
+}
+
+type SortDirection = 'asc' | 'desc';
+type MovementSortField =
+  | 'createdAt'
+  | 'date'
+  | 'label'
+  | 'categoryLabel'
+  | 'paymentMethodLabel'
+  | 'statusLabel'
+  | 'amount';
+
+type SortableMovement = {
+  date: string;
+  createdAt: string;
+  label: string;
+  categoryLabel: string;
+  paymentMethodLabel: string;
+  statusLabel: string;
+  type: 'expense' | 'income' | 'installment';
+  amount: number;
+};
+
+function compareMovements(
+  a: SortableMovement,
+  b: SortableMovement,
+  field: MovementSortField,
+  direction: SortDirection,
+): number {
+  const dir = direction === 'asc' ? 1 : -1;
+  switch (field) {
+    case 'amount':
+      return (
+        dir *
+        (getMovementAmountDisplay(a).amount -
+          getMovementAmountDisplay(b).amount)
+      );
+    case 'date':
+      return dir * (new Date(a.date).getTime() - new Date(b.date).getTime());
+    case 'createdAt':
+      return (
+        dir *
+        (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      );
+    default:
+      return dir * a[field].localeCompare(b[field], 'es');
+  }
+}
+
 export function ExpensesExplorerSection({
   board,
   initialYearMonth,
-  initialMonthView,
   initialPaymentMethodId,
 }: ExpensesExplorerSectionProps) {
   const [yearMonth, setYearMonth] = useState(
-    initialYearMonth ?? getCurrentYearMonth(),
-  );
-  const [monthView, setMonthView] = useState<HomeMonthView>(
-    initialMonthView ?? readHomeMonthView(),
+    initialYearMonth ?? getDefaultViewYearMonth(),
   );
   const [paymentMethodId, setPaymentMethodId] = useState(
     initialPaymentMethodId ?? ALL_FILTER,
   );
   const [categoryId, setCategoryId] = useState(ALL_FILTER);
   const [status, setStatus] = useState(ALL_FILTER);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<MovementSortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [projectedInstallments, setProjectedInstallments] = useState<
+    ForecastLineItem[]
+  >([]);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [movementType, setMovementType] = useState<
     'all' | 'expense' | 'income'
   >('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isIncomeLoading, setIsIncomeLoading] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const [detail, setDetail] = useState<{
-    type: 'expense' | 'income';
+    type: 'expense' | 'income' | 'installment';
     id: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'expense' | 'income';
+    id: string;
+    label: string;
+    isRecurringOccurrence?: boolean;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const expensesChangedRefresh = useExpensesChangedRefresh();
   const incomesChangedRefresh = useIncomesChangedRefresh();
 
   const { paymentMethods } = useAvailablePaymentMethods(board._id);
   const { categories } = useBoardCategories(board._id);
-
-  const paymentMethodMap = useMemo(
-    () => new Map(paymentMethods.map((method) => [method._id, method])),
-    [paymentMethods],
-  );
 
   const paymentMethodNameById = useMemo(
     () => new Map(paymentMethods.map((method) => [method._id, method.name])),
@@ -158,151 +234,302 @@ export function ExpensesExplorerSection({
   );
 
   useEffect(() => {
-    writeHomeMonthView(monthView);
-  }, [monthView]);
-
-  useEffect(() => {
     setPageIndex(0);
-  }, [yearMonth, monthView, paymentMethodId, categoryId, status, movementType]);
-
-  useEffect(() => {
-    if (board._id.startsWith('mock-')) {
-      setExpenses([]);
-      setIsLoading(false);
-      return;
-    }
-
-    let stale = false;
-
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
-        const { expenses: items } = await expensesService.listExpenses(
-          board._id,
-          {
-            from,
-            to,
-            paymentMethodId:
-              paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
-            categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
-            status:
-              status === ALL_FILTER ? undefined : (status as ExpenseStatus),
-          },
-        );
-
-        if (stale) return;
-
-        const filtered = items
-          .filter((expense) =>
-            expenseBelongsToYearMonth(
-              expense,
-              yearMonth,
-              monthView,
-              paymentMethodMap,
-            ),
-          )
-          .sort(
-            (a, b) =>
-              new Date(b.expenseDate || b.createdAt).getTime() -
-              new Date(a.expenseDate || a.createdAt).getTime(),
-          );
-
-        setExpenses(filtered);
-      } catch {
-        if (!stale) {
-          toast.error('No se pudieron cargar los gastos');
-          setExpenses([]);
-        }
-      } finally {
-        if (!stale) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      stale = true;
-    };
   }, [
-    board._id,
     yearMonth,
-    monthView,
     paymentMethodId,
     categoryId,
     status,
-    paymentMethodMap,
-    expensesChangedRefresh,
+    movementType,
+    searchQuery,
   ]);
 
+  const isMockBoard = board._id.startsWith('mock-');
+
+  const expensesQuery = useQuery({
+    queryKey: [
+      'expenses',
+      board._id,
+      yearMonth,
+      paymentMethodId,
+      categoryId,
+      status,
+      expensesChangedRefresh,
+    ],
+    queryFn: () =>
+      expensesService.listExpensesByMonth(board._id, yearMonth, {
+        paymentMethodId:
+          paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
+        categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
+        status:
+          status === ALL_FILTER || status === 'projected'
+            ? undefined
+            : (status as ExpenseStatus),
+      }),
+    enabled: !isMockBoard,
+  });
+  const isLoading = expensesQuery.isLoading;
+
   useEffect(() => {
-    let stale = false;
-    setIsIncomeLoading(true);
-    void incomesService
-      .getIncomes(board._id)
-      .then(({ incomes: items }) => {
-        if (!stale)
-          setIncomes(
-            items.filter((item) =>
-              isDateInYearMonth(item.incomeDate, yearMonth),
-            ),
-          );
-      })
-      .catch(() => {
-        if (!stale) setIncomes([]);
-      })
-      .finally(() => {
-        if (!stale) setIsIncomeLoading(false);
-      });
-    return () => {
-      stale = true;
-    };
-  }, [board._id, yearMonth, incomesChangedRefresh]);
+    if (isMockBoard) {
+      setExpenses([]);
+      return;
+    }
+    if (expensesQuery.data) {
+      const filtered = (
+        status === 'projected' ? [] : expensesQuery.data.expenses
+      ).sort(
+        (a, b) =>
+          new Date(b.expenseDate || b.createdAt).getTime() -
+          new Date(a.expenseDate || a.createdAt).getTime(),
+      );
+      setExpenses(filtered);
+    }
+  }, [isMockBoard, status, expensesQuery.data]);
+
+  useEffect(() => {
+    if (expensesQuery.isError) {
+      toast.error('No se pudieron cargar los gastos');
+      setExpenses([]);
+    }
+  }, [expensesQuery.isError]);
+
+  const forecastQuery = useQuery({
+    queryKey: ['forecast', board._id, yearMonth, expensesChangedRefresh],
+    queryFn: () => forecastService.getMonthlyForecast(board._id, yearMonth),
+    enabled: !isMockBoard,
+  });
+  const isInstallmentsLoading = forecastQuery.isLoading;
+
+  useEffect(() => {
+    if (isMockBoard) {
+      setProjectedInstallments([]);
+      return;
+    }
+    if (forecastQuery.data) {
+      setProjectedInstallments(
+        forecastQuery.data.forecast.planned.installments,
+      );
+    }
+  }, [isMockBoard, forecastQuery.data]);
+
+  useEffect(() => {
+    if (forecastQuery.isError) {
+      setProjectedInstallments([]);
+      toast.error('No se pudieron cargar las cuotas proyectadas');
+    }
+  }, [forecastQuery.isError]);
+
+  const incomesQuery = useQuery({
+    queryKey: ['incomes', board._id, incomesChangedRefresh],
+    queryFn: () => incomesService.getIncomes(board._id),
+  });
+  const isIncomeLoading = incomesQuery.isLoading;
+
+  useEffect(() => {
+    if (incomesQuery.data) {
+      setIncomes(
+        incomesQuery.data.incomes.filter((item) =>
+          isDateInYearMonth(item.incomeDate, yearMonth),
+        ),
+      );
+    }
+  }, [incomesQuery.data, yearMonth]);
+
+  useEffect(() => {
+    if (incomesQuery.isError) {
+      setIncomes([]);
+    }
+  }, [incomesQuery.isError]);
 
   const isMovementLoading =
     movementType === 'expense'
-      ? isLoading
+      ? isLoading || isInstallmentsLoading
       : movementType === 'income'
         ? isIncomeLoading
-        : isLoading || isIncomeLoading;
+        : isLoading || isIncomeLoading || isInstallmentsLoading;
+
+  const visibleProjectedInstallments = useMemo(() => {
+    if (
+      categoryId !== ALL_FILTER ||
+      (status !== ALL_FILTER && status !== 'projected')
+    ) {
+      return [];
+    }
+
+    return projectedInstallments.filter(
+      (item) =>
+        paymentMethodId === ALL_FILTER ||
+        item.meta?.paymentMethodId === paymentMethodId,
+    );
+  }, [projectedInstallments, categoryId, status, paymentMethodId]);
 
   const movements = useMemo(
-    () =>
-      [
-        ...(movementType !== 'income'
-          ? expenses.map((expense) => ({
+    () => [
+      ...(movementType !== 'income'
+        ? expenses.map((expense) => {
+            const categoryLabel =
+              getExpenseCategoryLabel(expense.category) || 'Gasto';
+            const paymentMethodLabel = resolvePaymentMethodLabel(
+              expense,
+              paymentMethodNameById,
+            );
+            const statusLabel = expense.isRefund
+              ? 'Devolución'
+              : expense.status === ExpenseStatus.PAID
+                ? 'Pagado'
+                : 'Próximo';
+            const primaryLabel = expense.merchantName || expense.description;
+            const secondaryLabel =
+              expense.merchantName &&
+              expense.description &&
+              expense.merchantName !== expense.description
+                ? expense.description
+                : null;
+            return {
               id: expense._id,
               type: 'expense' as const,
               date: expense.expenseDate || expense.createdAt,
-              label: expense.description,
-              meta: `${getExpenseCategoryLabel(expense.category) || 'Gasto'} · ${resolvePaymentMethodLabel(expense, paymentMethodNameById)}`,
+              createdAt: expense.createdAt,
+              label: primaryLabel,
+              secondaryLabel,
+              categoryLabel,
+              paymentMethodLabel,
+              statusLabel,
+              meta: [
+                categoryLabel,
+                paymentMethodLabel,
+                expense.installmentNumber != null &&
+                expense.installmentTotalInstallments
+                  ? `Cuota ${expense.installmentNumber}/${expense.installmentTotalInstallments}`
+                  : null,
+                expense.isRefund ? 'Devolución' : null,
+              ]
+                .filter(Boolean)
+                .join(' · '),
               amount: expense.amount,
               currency: expense.currency,
               expense,
-            }))
-          : []),
-        ...(movementType !== 'expense'
-          ? incomes.map((income) => ({
+            };
+          })
+        : []),
+      ...(movementType !== 'income'
+        ? visibleProjectedInstallments.map((installment) => {
+            const date = `${yearMonth}-${String(installment.dayOfMonth).padStart(2, '0')}T12:00:00.000Z`;
+            const paymentMethodLabel = installment.meta?.paymentMethodId
+              ? (paymentMethodNameById.get(installment.meta.paymentMethodId) ??
+                'Sin medio')
+              : 'Sin medio';
+            return {
+              id: installment.id,
+              type: 'installment' as const,
+              date,
+              createdAt: date,
+              label: installment.label,
+              secondaryLabel: null,
+              categoryLabel: '—',
+              paymentMethodLabel,
+              statusLabel: 'Proyectado',
+              meta: `Cuota ${installment.meta?.installmentNumber}/${installment.meta?.totalInstallments} · ${paymentMethodLabel} · Proyectado`,
+              amount: installment.amount,
+              currency: installment.currency,
+              installment,
+            };
+          })
+        : []),
+      ...(movementType !== 'expense'
+        ? incomes.map((income) => {
+            return {
               id: income._id,
               type: 'income' as const,
               date: income.incomeDate,
+              createdAt: income.createdAt,
               label: income.label,
-              meta: `${income.recurringIncomeId ? 'Ingreso recurrente' : 'Ingreso puntual'} · ${income.status === 'pending' ? 'Pendiente' : 'Cobrado'}`,
+              secondaryLabel: null,
+              categoryLabel: 'Ingreso',
+              paymentMethodLabel: '—',
+              statusLabel: '',
+              meta: income.recurringIncomeId
+                ? 'Ingreso recurrente'
+                : 'Ingreso puntual',
               amount: income.amount,
               currency: income.currency,
               income,
-            }))
-          : []),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [expenses, incomes, movementType, paymentMethodNameById],
+            };
+          })
+        : []),
+    ],
+    [
+      expenses,
+      visibleProjectedInstallments,
+      incomes,
+      movementType,
+      paymentMethodNameById,
+      yearMonth,
+    ],
+  );
+
+  const filteredMovements = useMemo(() => {
+    const query = normalizeSearchText(searchQuery.trim());
+    if (!query) return movements;
+    return movements.filter((movement) =>
+      normalizeSearchText(
+        `${movement.label} ${movement.secondaryLabel ?? ''} ${movement.meta}`,
+      ).includes(query),
+    );
+  }, [movements, searchQuery]);
+
+  const sortedMovements = useMemo(
+    () =>
+      [...filteredMovements].sort((a, b) =>
+        compareMovements(a, b, sortField, sortDirection),
+      ),
+    [filteredMovements, sortField, sortDirection],
+  );
+
+  const handleSort = (field: MovementSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    setPageIndex(0);
+  };
+
+  const renderSortIcon = (field: MovementSortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="size-3.5 opacity-40" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="size-3.5" />
+    ) : (
+      <ArrowDown className="size-3.5" />
+    );
+  };
+
+  const renderSortButton = (
+    field: MovementSortField,
+    label: string,
+    align: 'start' | 'end' = 'start',
+  ) => (
+    <button
+      type="button"
+      onClick={() => handleSort(field)}
+      className={cn(
+        'flex items-center gap-1 hover:text-foreground',
+        align === 'end' && 'ml-auto',
+      )}
+    >
+      {label}
+      {renderSortIcon(field)}
+    </button>
   );
 
   const pageSize = 15;
-  const pageCount = Math.max(1, Math.ceil(movements.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(sortedMovements.length / pageSize));
   const currentPage = Math.min(pageIndex, pageCount - 1);
-  const pageMovements = movements.slice(
+  const pageMovements = sortedMovements.slice(
     currentPage * pageSize,
     currentPage * pageSize + pageSize,
   );
@@ -310,74 +537,90 @@ export function ExpensesExplorerSection({
   const totals = useMemo(() => {
     let expenseTotal = 0;
     let incomeTotal = 0;
-    let excludedExpenses = 0;
-    let excludedIncomes = 0;
+    const expensesByCurrency = new Map<string, number>();
+    const incomesByCurrency = new Map<string, number>();
 
     for (const expense of expenses) {
-      const amount = getExpenseAmountInBoardCurrency(
-        expense,
-        board.baseCurrency,
-      );
-      if (amount == null) {
-        excludedExpenses += 1;
-        continue;
+      if (expense.currency === board.baseCurrency) {
+        expenseTotal += expense.amount;
+      } else {
+        expensesByCurrency.set(
+          expense.currency,
+          (expensesByCurrency.get(expense.currency) ?? 0) + expense.amount,
+        );
       }
-      expenseTotal += amount;
+    }
+
+    for (const installment of visibleProjectedInstallments) {
+      expenseTotal += installment.amount;
     }
 
     for (const income of incomes) {
-      if (income.currency !== board.baseCurrency) {
-        excludedIncomes += 1;
-        continue;
+      if (income.currency === board.baseCurrency) {
+        incomeTotal += income.amount;
+      } else {
+        incomesByCurrency.set(
+          income.currency,
+          (incomesByCurrency.get(income.currency) ?? 0) + income.amount,
+        );
       }
-      incomeTotal += income.amount;
     }
 
     return {
       expenseTotal,
       incomeTotal,
-      excludedExpenses,
-      excludedIncomes,
+      expensesByCurrency: [...expensesByCurrency.entries()].map(
+        ([currency, total]) => ({ currency, total }),
+      ),
+      incomesByCurrency: [...incomesByCurrency.entries()].map(
+        ([currency, total]) => ({ currency, total }),
+      ),
     };
-  }, [expenses, incomes, board.baseCurrency]);
+  }, [expenses, visibleProjectedInstallments, incomes, board.baseCurrency]);
 
   const handleDelete = async (expenseId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
-      return;
-    }
-
+    setIsDeleting(true);
     try {
       await expensesService.deleteExpense(expenseId);
       toast.success('Gasto eliminado');
+      triggerDestructiveHaptic();
       setExpenses((current) =>
         current.filter((item) => item._id !== expenseId),
       );
+      setDetail(null);
+      setDeleteTarget(null);
     } catch {
       toast.error('Error al eliminar el gasto');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleDeleteIncome = async (incomeId: string) => {
-    const income = incomes.find((item) => item._id === incomeId);
-    const message = income?.recurringIncomeId
-      ? '¿Eliminar solo esta ocurrencia? La recurrencia de los demás meses continuará.'
-      : '¿Estás seguro de que deseas eliminar este ingreso?';
-    if (!confirm(message)) return;
+    setIsDeleting(true);
     try {
       await incomesService.deleteIncome(incomeId);
       setIncomes((current) => current.filter((item) => item._id !== incomeId));
       setDetail(null);
+      setDeleteTarget(null);
       toast.success('Ingreso eliminado');
+      triggerDestructiveHaptic();
     } catch {
       toast.error('No se pudo eliminar el ingreso');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleSkipIncome = async (incomeId: string) => {
     if (
-      !confirm(
-        '¿Omitir solo esta ocurrencia? La recurrencia continuará los demás meses.',
-      )
+      !(await requestConfirmation({
+        title: '¿Omitir este ingreso?',
+        description:
+          'Solo se omitirá esta ocurrencia. La recurrencia continuará normalmente los demás meses.',
+        confirmLabel: 'Omitir ocurrencia',
+        action: 'discard',
+      }))
     ) {
       return;
     }
@@ -402,32 +645,23 @@ export function ExpensesExplorerSection({
     setIsExpenseDialogOpen(false);
     setSelectedExpense(null);
     setPageIndex(0);
-    const { from, to } = getExpenseQueryDateRange(yearMonth, monthView);
     void expensesService
-      .listExpenses(board._id, {
-        from,
-        to,
+      .listExpensesByMonth(board._id, yearMonth, {
         paymentMethodId:
           paymentMethodId === ALL_FILTER ? undefined : paymentMethodId,
         categoryId: categoryId === ALL_FILTER ? undefined : categoryId,
-        status: status === ALL_FILTER ? undefined : (status as ExpenseStatus),
+        status:
+          status === ALL_FILTER || status === 'projected'
+            ? undefined
+            : (status as ExpenseStatus),
       })
       .then(({ expenses: items }) => {
         setExpenses(
-          items
-            .filter((expense) =>
-              expenseBelongsToYearMonth(
-                expense,
-                yearMonth,
-                monthView,
-                paymentMethodMap,
-              ),
-            )
-            .sort(
-              (a, b) =>
-                new Date(b.expenseDate || b.createdAt).getTime() -
-                new Date(a.expenseDate || a.createdAt).getTime(),
-            ),
+          (status === 'projected' ? [] : items).sort(
+            (a, b) =>
+              new Date(b.expenseDate || b.createdAt).getTime() -
+              new Date(a.expenseDate || a.createdAt).getTime(),
+          ),
         );
       })
       .catch(() => {
@@ -442,14 +676,12 @@ export function ExpensesExplorerSection({
           Movimientos
         </h1>
         <p className="text-sm text-muted-foreground">
-          Contexto:{' '}
+          Viendo:{' '}
           <span className="font-medium text-foreground">{board.name}</span>
         </p>
       </div>
 
       <YearMonthSelector yearMonth={yearMonth} onChange={setYearMonth} />
-
-      <HomeMonthViewToggle value={monthView} onChange={setMonthView} />
 
       <div className="flex items-center gap-2">
         <Tabs
@@ -476,6 +708,62 @@ export function ExpensesExplorerSection({
             <SlidersHorizontal className="size-4" />
           </Button>
         ) : null}
+      </div>
+
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Buscar por comercio, descripción, categoría o medio de pago…"
+          className="rounded-xl pl-9"
+          aria-label="Buscar movimientos"
+        />
+      </div>
+
+      <div className="flex items-center gap-2 sm:hidden">
+        <Select
+          value={sortField}
+          onValueChange={(value) => handleSort(value as MovementSortField)}
+        >
+          <SelectTrigger
+            className="rounded-xl"
+            aria-label="Ordenar movimientos por"
+          >
+            <SelectValue placeholder="Ordenar por" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="createdAt">Último cargado</SelectItem>
+            <SelectItem value="date">Fecha</SelectItem>
+            <SelectItem value="label">Comercio</SelectItem>
+            <SelectItem value="categoryLabel">Categoría</SelectItem>
+            <SelectItem value="paymentMethodLabel">Medio de pago</SelectItem>
+            {movementType !== 'income' ? (
+              <SelectItem value="statusLabel">Estado</SelectItem>
+            ) : null}
+            <SelectItem value="amount">Monto</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 rounded-xl"
+          onClick={() =>
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+          }
+          aria-label={
+            sortDirection === 'asc'
+              ? 'Orden ascendente, tocar para invertir'
+              : 'Orden descendente, tocar para invertir'
+          }
+        >
+          {sortDirection === 'asc' ? (
+            <ArrowUp className="size-4" />
+          ) : (
+            <ArrowDown className="size-4" />
+          )}
+        </Button>
       </div>
 
       {movementType !== 'income' ? (
@@ -546,9 +834,7 @@ export function ExpensesExplorerSection({
                 <SelectContent>
                   <SelectItem value={ALL_FILTER}>Todos</SelectItem>
                   <SelectItem value={ExpenseStatus.PAID}>Pagado</SelectItem>
-                  <SelectItem value={ExpenseStatus.PENDING}>
-                    Pendiente
-                  </SelectItem>
+                  <SelectItem value={ExpenseStatus.PENDING}>Próximo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -556,91 +842,67 @@ export function ExpensesExplorerSection({
         </Card>
       ) : null}
 
-      <div
-        className={cn(
-          'grid grid-cols-1 gap-4',
-          movementType === 'all' ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
-        )}
-      >
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>
-              {movementType === 'expense'
+      <StatStrip
+        centered
+        loading={isMovementLoading}
+        items={[
+          {
+            label:
+              movementType === 'expense'
                 ? 'Gastos encontrados'
                 : movementType === 'income'
                   ? 'Ingresos encontrados'
-                  : 'Movimientos encontrados'}
-            </CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {isMovementLoading ? '—' : movements.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>
-              {movementType === 'income' ? 'Entradas' : 'Salidas'} en{' '}
-              {board.baseCurrency}
-            </CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
-              {isMovementLoading
-                ? '—'
-                : `${movementType === 'income' ? '+' : '−'}${formatCurrency(
-                    movementType === 'income'
-                      ? totals.incomeTotal
-                      : totals.expenseTotal,
-                    board.baseCurrency,
-                  )}`}
-            </CardTitle>
-          </CardHeader>
-          {!isMovementLoading &&
-          (movementType === 'income'
-            ? totals.excludedIncomes > 0
-            : totals.excludedExpenses > 0) ? (
-            <CardContent className="pt-0 text-xs text-muted-foreground">
-              {movementType === 'income'
-                ? totals.excludedIncomes
-                : totals.excludedExpenses}{' '}
-              {movementType === 'income' ? 'ingreso' : 'gasto'}
-              {(movementType === 'income'
-                ? totals.excludedIncomes
-                : totals.excludedExpenses) === 1
-                ? ''
-                : 's'}{' '}
-              en otra moneda no incluidos.
-            </CardContent>
-          ) : null}
-        </Card>
-        {movementType === 'all' ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>
-                Entradas en {board.baseCurrency}
-              </CardDescription>
-              <CardTitle className="text-2xl tabular-nums">
-                {isMovementLoading
-                  ? '—'
-                  : `+${formatCurrency(totals.incomeTotal, board.baseCurrency)}`}
-              </CardTitle>
-            </CardHeader>
-            {!isMovementLoading && totals.excludedIncomes > 0 ? (
-              <CardContent className="pt-0 text-xs text-muted-foreground">
-                {totals.excludedIncomes} ingreso
-                {totals.excludedIncomes === 1 ? '' : 's'} en otra moneda no
-                incluido{totals.excludedIncomes === 1 ? '' : 's'}.
-              </CardContent>
-            ) : null}
-          </Card>
-        ) : null}
-      </div>
+                  : 'Movimientos',
+            value: filteredMovements.length,
+          },
+          {
+            label: movementType === 'income' ? 'Entradas' : 'Salidas',
+            value:
+              movementType === 'income'
+                ? totals.incomeTotal
+                : Math.abs(totals.expenseTotal),
+            currency: board.baseCurrency,
+            sign:
+              movementType === 'income'
+                ? '+'
+                : totals.expenseTotal < 0
+                  ? '+'
+                  : '−',
+          },
+          ...(movementType === 'all'
+            ? [
+                {
+                  label: 'Entradas',
+                  value: totals.incomeTotal,
+                  currency: board.baseCurrency,
+                  sign: '+' as const,
+                },
+              ]
+            : []),
+          ...(movementType !== 'income'
+            ? totals.expensesByCurrency.map((entry) => ({
+                label: `Gastos en ${entry.currency}`,
+                value: entry.total,
+                currency: entry.currency,
+                sign: '−' as const,
+              }))
+            : []),
+          ...(movementType !== 'expense'
+            ? totals.incomesByCurrency.map((entry) => ({
+                label: `Ingresos en ${entry.currency}`,
+                value: entry.total,
+                currency: entry.currency,
+                sign: '+' as const,
+              }))
+            : []),
+        ]}
+      />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Detalle</CardTitle>
           <CardDescription>
-            {monthView === 'cash_impact'
-              ? `Movimientos que impactan en ${yearMonth}`
-              : `Movimientos con fecha de compra en ${yearMonth}`}
+            Movimientos con mes de pago {yearMonth}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -668,46 +930,73 @@ export function ExpensesExplorerSection({
             <>
               <ul className="divide-y sm:hidden">
                 {pageMovements.map((movement) => (
-                  <li
-                    key={`${movement.type}-${movement.id}`}
-                    className="flex min-h-16 cursor-pointer items-center gap-3 rounded-xl py-3 focus-within:ring-2 focus-within:ring-ring"
-                    onClick={() =>
-                      setDetail({ type: movement.type, id: movement.id })
-                    }
-                  >
-                    <span
-                      className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-full',
-                        movement.type === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-primary/10 text-primary',
-                      )}
+                  <li key={`${movement.type}-${movement.id}`}>
+                    <button
+                      type="button"
+                      className="flex min-h-16 w-full items-center gap-3 rounded-xl py-3 text-left focus-visible:outline-2 focus-visible:outline-ring"
+                      onClick={() =>
+                        setDetail({ type: movement.type, id: movement.id })
+                      }
                     >
-                      {movement.type === 'income' ? (
-                        <ArrowDownLeft
-                          className="size-4"
-                          aria-label="Ingreso"
-                        />
-                      ) : (
-                        <ArrowUpRight className="size-4" aria-label="Gasto" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <strong className="block truncate text-sm">
-                        {movement.label}
-                      </strong>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {formatDate(movement.date)} · {movement.meta}
+                      <span
+                        className={cn(
+                          'flex size-9 shrink-0 items-center justify-center rounded-full',
+                          movement.type === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-primary/10 text-primary',
+                        )}
+                      >
+                        {movement.type === 'income' ? (
+                          <ArrowDownLeft
+                            className="size-4"
+                            aria-label="Ingreso"
+                          />
+                        ) : (
+                          <ArrowUpRight className="size-4" aria-label="Gasto" />
+                        )}
                       </span>
-                    </span>
-                    <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                      <span className="sr-only">
-                        {movement.type === 'income' ? 'Entrada' : 'Salida'}
-                        :{' '}
+                      <span className="min-w-0 flex-1">
+                        <strong className="flex flex-wrap items-center gap-1 break-words text-sm">
+                          {movement.label}
+                          {movement.type === 'installment' ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Proyectado
+                            </Badge>
+                          ) : null}
+                          {movement.type === 'expense' &&
+                          movement.expense.status === ExpenseStatus.PENDING ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Próximo
+                            </Badge>
+                          ) : null}
+                          {movement.type === 'expense' &&
+                          movement.expense.isRefund ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Devolución
+                            </Badge>
+                          ) : null}
+                        </strong>
+                        {movement.secondaryLabel ? (
+                          <span className="block break-words text-xs text-muted-foreground">
+                            {movement.secondaryLabel}
+                          </span>
+                        ) : null}
+                        <span className="block break-words text-xs text-muted-foreground">
+                          {formatDate(movement.date)} · {movement.meta}
+                        </span>
                       </span>
-                      {movement.type === 'income' ? '+' : '−'}
-                      {formatCurrency(movement.amount, movement.currency)}
-                    </span>
+                      <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                        <span className="sr-only">
+                          {movement.type === 'income' ? 'Entrada' : 'Salida'}
+                          :{' '}
+                        </span>
+                        {getMovementAmountDisplay(movement).sign}
+                        {formatCurrency(
+                          getMovementAmountDisplay(movement).amount,
+                          movement.currency,
+                        )}
+                      </span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -715,18 +1004,24 @@ export function ExpensesExplorerSection({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Descripción</TableHead>
+                      <TableHead>{renderSortButton('date', 'Fecha')}</TableHead>
+                      <TableHead>
+                        {renderSortButton('label', 'Comercio')}
+                      </TableHead>
                       <TableHead className="hidden sm:table-cell">
-                        Categoría
+                        {renderSortButton('categoryLabel', 'Categoría')}
                       </TableHead>
                       <TableHead className="hidden md:table-cell">
-                        Medio
+                        {renderSortButton('paymentMethodLabel', 'Medio')}
                       </TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Estado
+                      {movementType !== 'income' ? (
+                        <TableHead className="hidden lg:table-cell">
+                          {renderSortButton('statusLabel', 'Estado')}
+                        </TableHead>
+                      ) : null}
+                      <TableHead className="text-right">
+                        {renderSortButton('amount', 'Monto', 'end')}
                       </TableHead>
-                      <TableHead className="text-right">Monto</TableHead>
                       <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
@@ -746,39 +1041,49 @@ export function ExpensesExplorerSection({
                           <span className="block truncate">
                             {movement.label}
                           </span>
+                          {movement.secondaryLabel ? (
+                            <span className="block truncate text-xs font-normal text-muted-foreground">
+                              {movement.secondaryLabel}
+                            </span>
+                          ) : null}
                           <span className="text-xs text-muted-foreground">
-                            {movement.type === 'income' ? 'Ingreso' : 'Gasto'}
+                            {movement.type === 'income'
+                              ? 'Ingreso'
+                              : movement.type === 'installment'
+                                ? 'Cuota proyectada'
+                                : movement.expense.isRefund
+                                  ? 'Devolución'
+                                  : 'Gasto'}
+                            {movement.type === 'expense' &&
+                            movement.expense.installmentNumber != null &&
+                            movement.expense.installmentTotalInstallments
+                              ? ` · Cuota ${movement.expense.installmentNumber}/${movement.expense.installmentTotalInstallments}`
+                              : null}
                           </span>
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground sm:table-cell">
-                          {movement.type === 'expense'
-                            ? getExpenseCategoryLabel(
-                                movement.expense.category,
-                              ) || '—'
-                            : 'Ingreso'}
+                          {movement.categoryLabel}
                         </TableCell>
                         <TableCell className="hidden text-muted-foreground md:table-cell">
-                          {movement.type === 'expense'
-                            ? resolvePaymentMethodLabel(
-                                movement.expense,
-                                paymentMethodNameById,
-                              )
-                            : '—'}
+                          {movement.paymentMethodLabel}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {movement.type === 'expense'
-                            ? movement.expense.status === ExpenseStatus.PAID
-                              ? 'Pagado'
-                              : 'Pendiente'
-                            : 'Ingreso'}
-                        </TableCell>
+                        {movementType !== 'income' ? (
+                          <TableCell className="hidden lg:table-cell">
+                            <div className="flex flex-wrap items-center gap-1">
+                              {movement.statusLabel}
+                            </div>
+                          </TableCell>
+                        ) : null}
                         <TableCell className="text-right font-semibold tabular-nums">
                           <span className="sr-only">
                             {movement.type === 'income' ? 'Entrada' : 'Salida'}
                             :{' '}
                           </span>
-                          {movement.type === 'income' ? '+' : '−'}
-                          {formatCurrency(movement.amount, movement.currency)}
+                          {getMovementAmountDisplay(movement).sign}
+                          {formatCurrency(
+                            getMovementAmountDisplay(movement).amount,
+                            movement.currency,
+                          )}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -792,9 +1097,13 @@ export function ExpensesExplorerSection({
                                 id: movement.id,
                               });
                             }}
-                            aria-label={`Ver detalle de ${movement.type === 'income' ? 'ingreso' : 'gasto'}`}
+                            aria-label={`Ver detalle de ${movement.type === 'income' ? 'ingreso' : movement.type === 'installment' ? 'cuota proyectada' : 'gasto'}`}
                           >
-                            <Pencil className="size-4" />
+                            {movement.type === 'installment' ? (
+                              <Eye className="size-4" />
+                            ) : (
+                              <Pencil className="size-4" />
+                            )}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -880,9 +1189,20 @@ export function ExpensesExplorerSection({
             <>
               <DialogHeader>
                 <DialogTitle>{detailMovement.label}</DialogTitle>
+                {detailMovement.secondaryLabel ? (
+                  <p className="text-sm text-muted-foreground">
+                    {detailMovement.secondaryLabel}
+                  </p>
+                ) : null}
                 <DialogDescription>
-                  {detailMovement.type === 'income' ? 'Ingreso' : 'Gasto'} ·{' '}
-                  {formatDate(detailMovement.date)}
+                  {detailMovement.type === 'income'
+                    ? 'Ingreso'
+                    : detailMovement.type === 'installment'
+                      ? 'Cuota proyectada'
+                      : detailMovement.expense.isRefund
+                        ? 'Devolución'
+                        : 'Gasto'}{' '}
+                  · {formatDate(detailMovement.date)}
                 </DialogDescription>
               </DialogHeader>
               <p className="text-3xl font-bold tabular-nums">
@@ -890,8 +1210,11 @@ export function ExpensesExplorerSection({
                   {detailMovement.type === 'income' ? 'Entrada' : 'Salida'}
                   :{' '}
                 </span>
-                {detailMovement.type === 'income' ? '+' : '−'}
-                {formatCurrency(detailMovement.amount, detailMovement.currency)}
+                {getMovementAmountDisplay(detailMovement).sign}
+                {formatCurrency(
+                  getMovementAmountDisplay(detailMovement).amount,
+                  detailMovement.currency,
+                )}
               </p>
               <dl className="grid grid-cols-2 gap-4 rounded-2xl bg-muted/50 p-4 text-sm">
                 <div>
@@ -903,7 +1226,13 @@ export function ExpensesExplorerSection({
                 <div>
                   <dt className="text-muted-foreground">Tipo</dt>
                   <dd className="font-medium">
-                    {detailMovement.type === 'income' ? 'Ingreso' : 'Gasto'}
+                    {detailMovement.type === 'income'
+                      ? 'Ingreso'
+                      : detailMovement.type === 'installment'
+                        ? 'Cuota proyectada'
+                        : detailMovement.expense.isRefund
+                          ? 'Devolución'
+                          : 'Gasto'}
                   </dd>
                 </div>
                 <div className="col-span-2">
@@ -918,59 +1247,102 @@ export function ExpensesExplorerSection({
                   abajo afectan solamente esta fecha.
                 </p>
               ) : null}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  className="w-full flex-1"
-                  variant="outline"
-                  onClick={() => {
-                    setDetail(null);
-                    if (detailMovement.type === 'expense') {
-                      setSelectedExpense(detailMovement.expense);
-                      setIsExpenseDialogOpen(true);
-                    } else {
-                      setSelectedIncome(detailMovement.income);
-                    }
-                  }}
-                >
-                  <Pencil className="size-4" />
-                  {detailMovement.type === 'income' &&
-                  detailMovement.income.recurringIncomeId
-                    ? 'Editar esta ocurrencia'
-                    : 'Editar'}
-                </Button>
-                {detailMovement.type === 'income' &&
-                detailMovement.income.recurringIncomeId &&
-                detailMovement.income.status === 'pending' ? (
+              {detailMovement.type === 'installment' ? (
+                <p className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  Esta cuota es una proyección del plan y todavía no es un gasto
+                  confirmado. Podés editar el plan desde Configuración del
+                  tablero.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
-                    className="w-full sm:w-auto"
+                    className="w-full flex-1"
                     variant="outline"
-                    onClick={() => void handleSkipIncome(detailMovement.id)}
+                    onClick={() => {
+                      setDetail(null);
+                      if (detailMovement.type === 'expense') {
+                        setSelectedExpense(detailMovement.expense);
+                        setIsExpenseDialogOpen(true);
+                      } else {
+                        setSelectedIncome(detailMovement.income);
+                      }
+                    }}
                   >
-                    Omitir esta ocurrencia
-                  </Button>
-                ) : null}
-                <Button
-                  variant="outline"
-                  className="w-full text-destructive sm:w-auto"
-                  onClick={() =>
-                    detailMovement.type === 'expense'
-                      ? void handleDelete(detailMovement.id)
-                      : void handleDeleteIncome(detailMovement.id)
-                  }
-                >
-                  <Trash2 className="size-4" />
-                  <span>
+                    <Pencil className="size-4" />
                     {detailMovement.type === 'income' &&
                     detailMovement.income.recurringIncomeId
-                      ? 'Eliminar esta ocurrencia'
-                      : 'Eliminar'}
-                  </span>
-                </Button>
-              </div>
+                      ? 'Editar esta ocurrencia'
+                      : 'Editar'}
+                  </Button>
+                  {detailMovement.type === 'income' &&
+                  detailMovement.income.recurringIncomeId &&
+                  detailMovement.income.status === 'pending' ? (
+                    <Button
+                      className="w-full sm:w-auto"
+                      variant="outline"
+                      onClick={() => void handleSkipIncome(detailMovement.id)}
+                    >
+                      Omitir esta ocurrencia
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    className="w-full text-destructive sm:w-auto"
+                    onClick={() =>
+                      setDeleteTarget({
+                        type: detailMovement.type,
+                        id: detailMovement.id,
+                        label: detailMovement.label,
+                        isRecurringOccurrence:
+                          detailMovement.type === 'income' &&
+                          Boolean(detailMovement.income.recurringIncomeId),
+                      })
+                    }
+                  >
+                    <Trash2 className="size-4" />
+                    <span>
+                      {detailMovement.type === 'income' &&
+                      detailMovement.income.recurringIncomeId
+                        ? 'Eliminar esta ocurrencia'
+                        : 'Eliminar'}
+                    </span>
+                  </Button>
+                </div>
+              )}
             </>
           ) : null}
         </DialogContent>
       </Dialog>
+      <DestructiveActionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={
+          deleteTarget
+            ? `Eliminar “${deleteTarget.label}”`
+            : 'Eliminar movimiento'
+        }
+        description={
+          deleteTarget?.isRecurringOccurrence
+            ? 'Se eliminará solamente esta ocurrencia. La recurrencia de los demás meses continuará. Esta acción no se puede deshacer.'
+            : 'Este movimiento se eliminará definitivamente y los totales del mes se recalcularán. Esta acción no se puede deshacer.'
+        }
+        confirmLabel={
+          deleteTarget?.isRecurringOccurrence
+            ? 'Eliminar esta ocurrencia'
+            : 'Eliminar movimiento'
+        }
+        isPending={isDeleting}
+        onConfirm={() => {
+          if (deleteTarget?.type === 'expense') {
+            return handleDelete(deleteTarget.id);
+          }
+          if (deleteTarget?.type === 'income') {
+            return handleDeleteIncome(deleteTarget.id);
+          }
+        }}
+      />
       <CreateIncomeSheet
         open={Boolean(selectedIncome)}
         onOpenChange={(open) => {

@@ -3,6 +3,12 @@ import { AxiosError } from 'axios';
 import { toast } from 'sonner';
 import { categoriesService } from '@/services/categoriesService';
 import { Category } from '@/types/category';
+import {
+  getBoardScopedCache,
+  saveBoardScopedCache,
+} from '@/lib/board-scoped-cache';
+
+const CACHE_NAMESPACE = 'categories';
 
 export function useBoardCategories(boardId: string | undefined) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -14,10 +20,22 @@ export function useBoardCategories(boardId: string | undefined) {
       try {
         const { categories: items } =
           await categoriesService.getByBoard(targetBoardId);
+        const active = items.filter((category) => category.isActive);
+        saveBoardScopedCache(CACHE_NAMESPACE, targetBoardId, active);
         if (!cancelled()) {
-          setCategories(items.filter((category) => category.isActive));
+          setCategories(active);
         }
       } catch (error) {
+        const cached = getBoardScopedCache<Category[]>(
+          CACHE_NAMESPACE,
+          targetBoardId,
+        );
+        if (cached && cached.length > 0) {
+          if (!cancelled()) {
+            setCategories(cached);
+          }
+          return;
+        }
         if (!cancelled()) {
           const axiosError = error as AxiosError<{ message?: string }>;
           toast.error(

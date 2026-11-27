@@ -1,12 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import {
-  AlertTriangle,
-  Archive,
-  CalendarRange,
-  Pencil,
-  Plus,
-} from 'lucide-react';
+import { Archive, Pencil, Plus, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveFormDialog } from '@/components/responsive-form-dialog';
+import { DestructiveActionDialog } from '@/components/destructive-action-dialog';
 import { PaymentMethodInstitutionField } from '@/components/payment-method-institution-field';
 import { notifyPaymentMethodsChanged } from '@/lib/payment-method-events';
 import { cn } from '@/lib/utils';
@@ -49,7 +44,6 @@ interface PaymentMethodFormState {
   institutionCode: string;
   lastFourDigits: string;
   brand: string;
-  closingDay: string;
 }
 
 const defaultForm: PaymentMethodFormState = {
@@ -60,7 +54,6 @@ const defaultForm: PaymentMethodFormState = {
   institutionCode: '',
   lastFourDigits: '',
   brand: '',
-  closingDay: '',
 };
 
 function getOwnerLabel(method: PaymentMethod): string {
@@ -89,7 +82,6 @@ function formStateFromMethod(method: PaymentMethod): PaymentMethodFormState {
     institutionCode: method.institutionCode || '',
     lastFourDigits: method.lastFourDigits || '',
     brand: method.brand || '',
-    closingDay: method.closingDay ? String(method.closingDay) : '',
   };
 }
 
@@ -107,12 +99,6 @@ function buildUpdatePayload(
     updatePayload.lastFourDigits = formData.lastFourDigits.trim();
   }
 
-  if (formData.kind === 'credit') {
-    updatePayload.closingDay = formData.closingDay.trim()
-      ? Number(formData.closingDay)
-      : undefined;
-  }
-
   return updatePayload;
 }
 
@@ -124,9 +110,6 @@ function formatMethodSummary(method: PaymentMethod): string {
   const parts = [PAYMENT_METHOD_KIND_LABELS[method.kind]];
   if (method.lastFourDigits) {
     parts.push(`•••• ${method.lastFourDigits}`);
-  }
-  if (method.kind === 'credit' && method.closingDay) {
-    parts.push(`cierre día ${method.closingDay}`);
   }
   return parts.join(' · ');
 }
@@ -152,8 +135,10 @@ export function ManagePaymentMethodsSection({
     null,
   );
   const [formData, setFormData] = useState<PaymentMethodFormState>(defaultForm);
-  const [showClosingDayWarning, setShowClosingDayWarning] = useState(false);
-
+  const [archiveTarget, setArchiveTarget] = useState<PaymentMethod | null>(
+    null,
+  );
+  const [isArchiving, setIsArchiving] = useState(false);
   const fetchMethods = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -170,15 +155,19 @@ export function ManagePaymentMethodsSection({
         return ownerId === userId;
       };
 
-      setUserMethods(activeParticipantMethods.filter(belongsToCurrentUser));
+      const nextUserMethods =
+        activeParticipantMethods.filter(belongsToCurrentUser);
+      const nextBoardMethods = boardResult.paymentMethods.filter(
+        (method) => method.isActive,
+      );
+
+      setUserMethods(nextUserMethods);
       setParticipantMethods(
         activeParticipantMethods.filter(
           (method) => !belongsToCurrentUser(method),
         ),
       );
-      setBoardMethods(
-        boardResult.paymentMethods.filter((method) => method.isActive),
-      );
+      setBoardMethods(nextBoardMethods);
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       toast.error(
@@ -196,25 +185,15 @@ export function ManagePaymentMethodsSection({
     void fetchMethods();
   }, [fetchMethods]);
 
-  const creditWithoutClosingDay = useMemo(
-    () =>
-      [...userMethods, ...boardMethods].filter(
-        (method) => method.kind === 'credit' && !method.closingDay,
-      ),
-    [userMethods, boardMethods],
-  );
-
   const openCreate = () => {
     setEditingMethod(null);
     setFormData(defaultForm);
-    setShowClosingDayWarning(false);
     setSheetOpen(true);
   };
 
   const openEdit = (method: PaymentMethod) => {
     setEditingMethod(method);
     setFormData(formStateFromMethod(method));
-    setShowClosingDayWarning(false);
     setSheetOpen(true);
   };
 
@@ -236,10 +215,6 @@ export function ManagePaymentMethodsSection({
       payload.lastFourDigits = formData.lastFourDigits.trim();
     }
 
-    if (formData.kind === 'credit' && formData.closingDay.trim()) {
-      payload.closingDay = Number(formData.closingDay);
-    }
-
     return payload;
   };
 
@@ -257,16 +232,7 @@ export function ManagePaymentMethodsSection({
       return;
     }
 
-    if (formData.kind === 'credit' && formData.closingDay.trim()) {
-      const closingDay = Number(formData.closingDay);
-      if (closingDay < 1 || closingDay > 28) {
-        toast.error('El día de cierre debe estar entre 1 y 28');
-        return;
-      }
-    }
-
     setIsSaving(true);
-    const wasPendingClosingDay = showClosingDayWarning;
     try {
       if (editingMethod) {
         await paymentMethodsService.update(
@@ -277,29 +243,16 @@ export function ManagePaymentMethodsSection({
         await fetchMethods();
         notifyPaymentMethodsChanged(boardId);
 
-        if (!wasPendingClosingDay || formData.closingDay.trim()) {
-          setSheetOpen(false);
-          setEditingMethod(null);
-          setShowClosingDayWarning(false);
-          setFormData(defaultForm);
-        }
+        setSheetOpen(false);
+        setEditingMethod(null);
+        setFormData(defaultForm);
       } else {
         const payload = buildPayload();
-        const { paymentMethod } = await paymentMethodsService.create(payload);
-
-        if (payload.kind === 'credit' && !payload.closingDay) {
-          setEditingMethod(paymentMethod);
-          setFormData(formStateFromMethod(paymentMethod));
-          setShowClosingDayWarning(true);
-          toast.success(
-            'Medio creado. Podés agregar el día de cierre ahora o cerrar.',
-          );
-        } else {
-          toast.success('Medio de pago creado');
-          setSheetOpen(false);
-          setEditingMethod(null);
-          setFormData(defaultForm);
-        }
+        await paymentMethodsService.create(payload);
+        toast.success('Medio de pago creado');
+        setSheetOpen(false);
+        setEditingMethod(null);
+        setFormData(defaultForm);
 
         await fetchMethods();
         notifyPaymentMethodsChanged(boardId);
@@ -319,18 +272,11 @@ export function ManagePaymentMethodsSection({
     if (method.isDefault) {
       return;
     }
-
-    if (
-      !confirm(
-        `¿Archivar "${method.name}"? No se borran los gastos ya registrados.`,
-      )
-    ) {
-      return;
-    }
-
+    setIsArchiving(true);
     try {
       await paymentMethodsService.archive(method._id);
       toast.success('Medio de pago archivado');
+      setArchiveTarget(null);
       await fetchMethods();
       notifyPaymentMethodsChanged(boardId);
     } catch (error) {
@@ -339,6 +285,8 @@ export function ManagePaymentMethodsSection({
         axiosError.response?.data?.message ||
           'Error al archivar el medio de pago',
       );
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -403,7 +351,7 @@ export function ManagePaymentMethodsSection({
         {methods.map((method) => (
           <li
             key={method._id}
-            className="flex items-start justify-between gap-3 rounded-xl border bg-card px-4 py-3"
+            className="flex flex-col gap-3 rounded-xl border bg-card px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
           >
             <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -414,15 +362,6 @@ export function ManagePaymentMethodsSection({
                 {method.isDefault ? (
                   <Badge variant="secondary" className="text-[10px]">
                     Predeterminado
-                  </Badge>
-                ) : null}
-                {method.kind === 'credit' && !method.closingDay ? (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 text-[10px] text-amber-700 dark:text-amber-300"
-                  >
-                    <AlertTriangle className="size-3" />
-                    Sin cierre
                   </Badge>
                 ) : null}
               </div>
@@ -451,7 +390,7 @@ export function ManagePaymentMethodsSection({
                 </p>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center justify-end gap-1 self-end sm:self-auto">
               {options.toggleVisibility ? (
                 <button
                   type="button"
@@ -482,22 +421,18 @@ export function ManagePaymentMethodsSection({
                   />
                 </button>
               ) : null}
-              {options.editable &&
-              method.kind === 'credit' &&
-              method.closingDay ? (
+              {options.editable && method.kind === 'credit' ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
                   className="size-8"
                   onClick={() =>
-                    navigate(
-                      `/billing-periods/confirm?paymentMethodId=${method._id}&mode=manage`,
-                    )
+                    navigate(`/statement-imports?paymentMethodId=${method._id}`)
                   }
-                  aria-label={`Gestionar ciclos de ${method.name}`}
+                  aria-label={`Importar resumen de ${method.name}`}
                 >
-                  <CalendarRange className="size-4" />
+                  <Upload className="size-4" />
                 </Button>
               ) : null}
               {options.editable ? (
@@ -519,7 +454,7 @@ export function ManagePaymentMethodsSection({
                   variant="ghost"
                   size="icon"
                   className="size-8"
-                  onClick={() => handleArchive(method)}
+                  onClick={() => setArchiveTarget(method)}
                   aria-label={`Archivar ${method.name}`}
                 >
                   <Archive className="size-4 text-muted-foreground" />
@@ -553,7 +488,7 @@ export function ManagePaymentMethodsSection({
 
       <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm">
         <p className="text-muted-foreground">
-          Tablero activo:{' '}
+          Viendo:{' '}
           <span className="font-medium text-foreground">{boardName}</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -561,20 +496,6 @@ export function ManagePaymentMethodsSection({
           activo desde el selector del encabezado para configurar otro.
         </p>
       </div>
-
-      {creditWithoutClosingDay.length > 0 ? (
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium">Tarjetas de crédito sin día de cierre</p>
-            <p className="mt-1 text-amber-800/90 dark:text-amber-200/90">
-              {creditWithoutClosingDay.length === 1
-                ? `"${creditWithoutClosingDay[0].name}" no tiene día de cierre. Podés registrar gastos igual, pero los reportes por ciclo de facturación no estarán disponibles hasta configurarlo.`
-                : `${creditWithoutClosingDay.length} tarjetas de crédito no tienen día de cierre. Los gastos se registran igual; configurá el cierre para ver reportes por ciclo.`}
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando medios…</p>
@@ -629,22 +550,11 @@ export function ManagePaymentMethodsSection({
           setSheetOpen(open);
           if (!open) {
             setEditingMethod(null);
-            setShowClosingDayWarning(false);
             setFormData(defaultForm);
           }
         }}
-        title={
-          showClosingDayWarning && editingMethod
-            ? 'Agregar día de cierre'
-            : editingMethod
-              ? 'Editar medio de pago'
-              : 'Nuevo medio de pago'
-        }
-        description={
-          showClosingDayWarning && editingMethod
-            ? 'El medio ya fue creado. Completá el día de cierre o cerrá para hacerlo después.'
-            : 'Los medios personales se comparten entre tableros; los del tablero solo en este.'
-        }
+        title={editingMethod ? 'Editar medio de pago' : 'Nuevo medio de pago'}
+        description="Los medios personales se comparten entre tableros; los del tablero solo en este."
       >
         <div className="space-y-4">
           {!editingMethod ? (
@@ -759,70 +669,14 @@ export function ManagePaymentMethodsSection({
             />
           </div>
 
-          {formData.kind === 'credit' ? (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="pm-closing">Día de cierre (opcional)</Label>
-                <Input
-                  id="pm-closing"
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={formData.closingDay}
-                  onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      closingDay: event.target.value,
-                    }))
-                  }
-                  placeholder="14"
-                  disabled={isSaving}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Día del mes en que cierra el resumen (ej. 14 = cierra todos
-                  los meses el día 14). Se configura una vez; el sistema calcula
-                  cada ciclo automáticamente.
-                </p>
-              </div>
-            </>
-          ) : null}
-
-          {showClosingDayWarning ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-              Guardado sin día de cierre. Completá el campo de abajo y guardá, o
-              cerrá para configurarlo más tarde.
-            </div>
-          ) : null}
-
           <div className="flex gap-2 pt-2">
             <Button
               type="button"
               className="flex-1"
-              onClick={() => {
-                if (showClosingDayWarning && editingMethod) {
-                  if (formData.closingDay.trim()) {
-                    void handleSubmit();
-                    return;
-                  }
-                  setSheetOpen(false);
-                  setShowClosingDayWarning(false);
-                  setEditingMethod(null);
-                  setFormData(defaultForm);
-                  return;
-                }
-                void handleSubmit();
-              }}
+              onClick={() => void handleSubmit()}
               disabled={isSaving}
             >
-              {isSaving
-                ? 'Guardando…'
-                : showClosingDayWarning && editingMethod
-                  ? formData.closingDay.trim()
-                    ? 'Guardar cierre'
-                    : 'Cerrar'
-                  : editingMethod
-                    ? 'Actualizar'
-                    : 'Crear'}
+              {isSaving ? 'Guardando…' : editingMethod ? 'Actualizar' : 'Crear'}
             </Button>
             <Button
               type="button"
@@ -835,6 +689,26 @@ export function ManagePaymentMethodsSection({
           </div>
         </div>
       </ResponsiveFormDialog>
+
+      <DestructiveActionDialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setArchiveTarget(null);
+        }}
+        title={
+          archiveTarget
+            ? `Archivar “${archiveTarget.name}”`
+            : 'Archivar medio de pago'
+        }
+        description="El medio dejará de estar disponible para registrar nuevos gastos. Los movimientos existentes conservarán su información y no se borrarán."
+        confirmLabel="Archivar medio"
+        confirmIcon={<Archive className="size-4" aria-hidden />}
+        pendingLabel="Archivando…"
+        isPending={isArchiving}
+        onConfirm={() => {
+          if (archiveTarget) return handleArchive(archiveTarget);
+        }}
+      />
     </div>
   );
 }

@@ -32,8 +32,7 @@ export function SiteHeader() {
             className="mx-1 hidden data-[orientation=vertical]:h-4 md:block"
           />
           <h1 className="font-display min-w-0 flex-1 truncate text-base font-semibold">
-            <span className="md:hidden">FinanzApp</span>
-            <span className="hidden md:inline">{displayTitle}</span>
+            {displayTitle}
           </h1>
           <NotificationsBell />
         </div>
