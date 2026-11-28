@@ -1008,7 +1008,7 @@ export function QuickExpenseForm({
             onValueChange={(value) =>
               setExpenseCurrency(value as SupportedCurrency)
             }
-            disabled={isSubmitting || isEditing}
+            disabled={isSubmitting}
           >
             <SelectTrigger className="h-8 w-[110px] rounded-lg text-xs">
               <SelectValue />
